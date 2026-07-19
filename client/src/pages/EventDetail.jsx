@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api, formatCurrency, formatDate } from '../api';
+import { api, formatCurrency, formatDate, formatEventStyleLabel } from '../api';
 import { Tabs, useToast } from '../components/ui';
 import { PieChart, BarChart } from '../components/Charts';
 import { downloadExcel, downloadExcelMulti, downloadPdf } from '../utils/export';
@@ -440,12 +440,7 @@ export default function EventDetail() {
       <div className="event-detail-heading">
         <p className="event-section-label">Event</p>
         <h2 className="event-detail-title">{detail.name}</h2>
-        <p className="muted">
-          {detail.event_type}
-          {detail.sub_type ? ` · ${detail.sub_type}` : ''}
-          {detail.location ? ` · ${detail.location}` : ''}
-          {detail.event_date ? ` · ${formatDate(detail.event_date)}` : ''}
-        </p>
+        <p className="muted">{formatEventStyleLabel(detail.event_type, detail.sub_type)}</p>
       </div>
 
       <div className="event-detail-tabs-row">

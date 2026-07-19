@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { api, formatDate } from '../api';
+import { api, formatEventStyleLabel } from '../api';
 import { Tabs, useToast } from '../components/ui';
 
 const EVENT_TYPES = [
@@ -495,11 +495,7 @@ export default function Events() {
               <div key={ev.id} className="event-list-item">
                 <div className="event-list-item-main">
                   <strong>{ev.name}</strong>
-                  <p className="muted">
-                    {ev.event_type}
-                    {ev.sub_type ? ` · ${ev.sub_type}` : ''} · {formatDate(ev.event_date)}
-                    {ev.location ? ` · ${ev.location}` : ''}
-                  </p>
+                  <p className="muted">{formatEventStyleLabel(ev.event_type, ev.sub_type)}</p>
                 </div>
                 <div className="event-list-actions">
                   <button

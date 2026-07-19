@@ -96,6 +96,21 @@ export function formatDate(d) {
   return x.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+/**
+ * Subtitle under event name: style + type, e.g. wedding + Hindu → "Hindu Wedding".
+ * Without style: just the event type ("Birthday").
+ */
+export function formatEventStyleLabel(eventType, subType) {
+  const type = String(eventType || '').trim();
+  const style = String(subType || '').trim();
+  const typeLabel = type
+    ? type.charAt(0).toUpperCase() + type.slice(1).toLowerCase()
+    : '';
+  if (style && typeLabel) return `${style} ${typeLabel}`;
+  if (style) return style;
+  return typeLabel || '—';
+}
+
 export const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
