@@ -4,37 +4,60 @@ import Logo from '../components/Logo';
 import { useAuth } from '../auth/AuthContext';
 import { API_ORIGIN } from '../api';
 
+const PROVIDER_LABELS = {
+  google: 'Google',
+  facebook: 'Facebook',
+  microsoft: 'Microsoft',
+};
+
 export default function Login() {
   const { isAuthenticated, loading, loginWithProvider, loginAsGuest } = useAuth();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const error = params.get('error');
   const [providers, setProviders] = useState({
-    google: true,
-    facebook: true,
-    microsoft: true,
+    google: false,
+    facebook: false,
+    microsoft: false,
     guest: true,
   });
   const [guestLoading, setGuestLoading] = useState(false);
-  const [guestError, setGuestError] = useState('');
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     fetch(`${API_ORIGIN}/api/auth/providers`)
       .then((r) => r.json())
-      .then(setProviders)
-      .catch(() => {});
+      .then((data) => setProviders({ google: false, facebook: false, microsoft: false, guest: true, ...data }))
+      .catch(() => {
+        setMessage('Could not reach auth server. Try Guest login or wait for the site to wake up.');
+      });
   }, []);
+
+  useEffect(() => {
+    if (error) setMessage('Login failed. Please try again.');
+  }, [error]);
 
   if (!loading && isAuthenticated) return <Navigate to="/" replace />;
 
+  const onSocial = (provider) => {
+    setMessage('');
+    if (!providers[provider]) {
+      setMessage(
+        `${PROVIDER_LABELS[provider]} login is not configured on the server yet. Use Continue as Guest, or add ${PROVIDER_LABELS[provider]} OAuth keys in Render environment variables (see AUTH_SETUP.md).`
+      );
+      return;
+    }
+    loginWithProvider(provider);
+  };
+
   const onGuest = async () => {
-    setGuestError('');
+    setMessage('');
     setGuestLoading(true);
     try {
       await loginAsGuest();
       navigate('/', { replace: true });
     } catch (e) {
-      setGuestError(e.message || 'Guest login failed');
+      setMessage(e.message || 'Guest login failed');
     } finally {
       setGuestLoading(false);
     }
@@ -50,37 +73,18 @@ export default function Login() {
 
         <p className="muted login-sub">Sign in to access your world securely.</p>
 
-        {(error || guestError) && (
-          <div className="login-error">
-            {guestError || 'Login failed. Please try again.'}
-          </div>
-        )}
+        {message && <div className="login-error">{message}</div>}
 
         <div className="login-buttons">
-          <button
-            type="button"
-            className="btn login-btn login-google"
-            disabled={!providers.google}
-            onClick={() => loginWithProvider('google')}
-          >
+          <button type="button" className="btn login-btn login-google" onClick={() => onSocial('google')}>
             <span className="login-btn-icon">G</span>
             Continue with Google
           </button>
-          <button
-            type="button"
-            className="btn login-btn login-facebook"
-            disabled={!providers.facebook}
-            onClick={() => loginWithProvider('facebook')}
-          >
+          <button type="button" className="btn login-btn login-facebook" onClick={() => onSocial('facebook')}>
             <span className="login-btn-icon">f</span>
             Continue with Facebook
           </button>
-          <button
-            type="button"
-            className="btn login-btn login-microsoft"
-            disabled={!providers.microsoft}
-            onClick={() => loginWithProvider('microsoft')}
-          >
+          <button type="button" className="btn login-btn login-microsoft" onClick={() => onSocial('microsoft')}>
             <span className="login-btn-icon">⊞</span>
             Continue with Microsoft
           </button>
@@ -89,12 +93,7 @@ export default function Login() {
             <span>or</span>
           </div>
 
-          <button
-            type="button"
-            className="btn login-btn login-guest"
-            disabled={guestLoading}
-            onClick={onGuest}
-          >
+          <button type="button" className="btn login-btn login-guest" disabled={guestLoading} onClick={onGuest}>
             <span className="login-btn-icon">👤</span>
             {guestLoading ? 'Starting guest session…' : 'Continue as Guest'}
           </button>
