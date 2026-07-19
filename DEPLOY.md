@@ -64,7 +64,7 @@ Free tier may **sleep** after idle; first load can take ~30–60s.
 | Setting | Value |
 |--------|--------|
 | Root Directory | *(leave empty)* |
-| Build Command | `npm install --prefix server && npm install --prefix client && npm run build --prefix client` |
+| Build Command | `npm install --prefix server && npm install --prefix client --include=dev && npm run build --prefix client` |
 | Start Command | `npm run db:init --prefix server && npm start --prefix server` |
 
 4. Environment variables:
