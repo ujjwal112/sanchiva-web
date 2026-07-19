@@ -14,7 +14,7 @@
     "setup": "npm run install:all && npm run db:init"
   },
   "engines": {
-    "node": ">=18"
+    "node": "20.x"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

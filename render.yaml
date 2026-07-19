@@ -9,19 +9,19 @@ services:
     runtime: node
     plan: free
     region: oregon
-    buildCommand: npm install --prefix server && npm install --prefix client && npm run build --prefix client
+    buildCommand: npm install --prefix server && npm install --prefix client --include=dev && npm run build --prefix client
     startCommand: npm run db:init --prefix server && npm start --prefix server
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: "20"
       - key: DATABASE_URL
         fromDatabase:
           name: sanchiva-db
           property: connectionString
       - key: CLIENT_ORIGIN
         value: "*"
-      - key: PORT
-        value: 10000
 
 databases:
   - name: sanchiva-db
