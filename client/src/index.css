@@ -1367,6 +1367,49 @@ table.data-table tbody tr:hover {
   flex: 1;
 }
 
+.ceremony-card-edit-btn {
+  flex-shrink: 0;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+.ceremony-card--editing {
+  transform: none;
+  min-height: auto;
+}
+
+.ceremony-card--editing:hover {
+  transform: none;
+}
+
+.ceremony-card-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.ceremony-card-edit-form .field {
+  margin: 0;
+}
+
+.ceremony-card-edit-form .field label {
+  font-size: 0.75rem;
+}
+
+.ceremony-card-edit-form .field input {
+  width: 100%;
+  font-size: 0.88rem;
+  padding: 0.45rem 0.55rem;
+}
+
+.ceremony-card-edit-actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-top: 0.15rem;
+}
+
 .events-list-layout {
   display: grid;
   grid-template-columns: 1fr;

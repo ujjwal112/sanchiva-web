@@ -37,6 +37,18 @@ export default function EventDetail() {
   const [editingGuest, setEditingGuest] = useState(null);
   const [guestCeremonyTab, setGuestCeremonyTab] = useState('');
   const [guestPage, setGuestPage] = useState(1);
+  const [editingCeremony, setEditingCeremony] = useState(null); // original ceremony name
+  const [ceremonyEditForm, setCeremonyEditForm] = useState({ name: '', date: '' });
+  const [savingCeremony, setSavingCeremony] = useState(false);
+
+  const toDateInputValue = (d) => {
+    if (!d) return '';
+    const s = String(d);
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    const dt = new Date(d);
+    if (Number.isNaN(dt.getTime())) return '';
+    return dt.toISOString().slice(0, 10);
+  };
 
   const loadDetail = useCallback(() => {
     if (!eventId) return;
@@ -289,6 +301,48 @@ export default function EventDetail() {
     });
   };
 
+  const startEditCeremony = (card) => {
+    setEditingCeremony(card.name);
+    setCeremonyEditForm({
+      name: card.name || '',
+      date: toDateInputValue(card.date),
+    });
+  };
+
+  const cancelEditCeremony = () => {
+    setEditingCeremony(null);
+    setCeremonyEditForm({ name: '', date: '' });
+  };
+
+  const saveCeremony = async (e) => {
+    e.preventDefault();
+    if (!editingCeremony) return;
+    const name = ceremonyEditForm.name.trim();
+    if (!name) {
+      show('Ceremony name is required', 'error');
+      return;
+    }
+    setSavingCeremony(true);
+    try {
+      await api.put(`/events/${eventId}/ceremonies`, {
+        originalName: editingCeremony,
+        name,
+        date: ceremonyEditForm.date || null,
+      });
+      show('Ceremony updated');
+      // Keep guest tab in sync if the open ceremony was renamed
+      if (guestCeremonyTab === editingCeremony && name !== editingCeremony) {
+        setGuestCeremonyTab(name);
+      }
+      cancelEditCeremony();
+      loadDetail();
+    } catch (err) {
+      show(err.message, 'error');
+    } finally {
+      setSavingCeremony(false);
+    }
+  };
+
   const deleteGuest = async (g) => {
     if (!confirm('Remove guest?')) return;
     await api.del(`/events/guests/${g.id}`);
@@ -463,32 +517,89 @@ export default function EventDetail() {
               </div>
               <div className="ceremony-cards-grid">
                 {ceremonyCards.map((card) => {
-                  const theme = card.theme || getCeremonyTheme(card.name);
+                  const isEditing = editingCeremony === card.name;
+                  const theme = getCeremonyTheme(isEditing ? ceremonyEditForm.name || card.name : card.name);
                   return (
                     <article
                       key={card.name}
-                      className={`ceremony-card ceremony-card--${theme.key}`}
+                      className={`ceremony-card ceremony-card--${theme.key}${isEditing ? ' ceremony-card--editing' : ''}`}
                       style={{
                         background: theme.bg,
                         borderColor: theme.border,
                       }}
                     >
-                      <div className="ceremony-card-top">
-                        <h4 className="ceremony-card-name" style={{ color: theme.accent }}>
-                          {card.name}
-                        </h4>
-                        <span
-                          className="ceremony-card-dot"
-                          style={{ background: theme.accent }}
-                          aria-hidden
-                        />
-                      </div>
-                      <p className="ceremony-card-date">
-                        {card.date ? formatDate(card.date) : 'Date not set'}
-                      </p>
-                      <blockquote className="ceremony-card-quote" style={{ color: theme.text }}>
-                        “{card.quote}”
-                      </blockquote>
+                      {isEditing ? (
+                        <form className="ceremony-card-edit-form" onSubmit={saveCeremony}>
+                          <div className="field">
+                            <label>Ceremony name</label>
+                            <input
+                              required
+                              value={ceremonyEditForm.name}
+                              onChange={(e) =>
+                                setCeremonyEditForm((f) => ({ ...f, name: e.target.value }))
+                              }
+                              placeholder="Ceremony name"
+                              autoFocus
+                            />
+                          </div>
+                          <div className="field">
+                            <label>Date</label>
+                            <input
+                              type="date"
+                              value={ceremonyEditForm.date}
+                              onChange={(e) =>
+                                setCeremonyEditForm((f) => ({ ...f, date: e.target.value }))
+                              }
+                              className="date-input-clickable"
+                              onClick={(e) => {
+                                try {
+                                  e.currentTarget.showPicker?.();
+                                } catch {
+                                  /* ignore */
+                                }
+                              }}
+                            />
+                          </div>
+                          <div className="ceremony-card-edit-actions">
+                            <button
+                              type="submit"
+                              className="btn btn-primary btn-sm"
+                              disabled={savingCeremony}
+                            >
+                              {savingCeremony ? 'Saving…' : 'Save'}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={cancelEditCeremony}
+                              disabled={savingCeremony}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <>
+                          <div className="ceremony-card-top">
+                            <h4 className="ceremony-card-name" style={{ color: theme.accent }}>
+                              {card.name}
+                            </h4>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm ceremony-card-edit-btn"
+                              onClick={() => startEditCeremony(card)}
+                            >
+                              Edit
+                            </button>
+                          </div>
+                          <p className="ceremony-card-date">
+                            {card.date ? formatDate(card.date) : 'Date not set'}
+                          </p>
+                          <blockquote className="ceremony-card-quote" style={{ color: theme.text }}>
+                            “{card.quote}”
+                          </blockquote>
+                        </>
+                      )}
                     </article>
                   );
                 })}

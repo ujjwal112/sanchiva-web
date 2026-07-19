@@ -487,6 +487,95 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+/** Update a ceremony name and/or date (overview cards); renames guests if name changes */
+router.put('/:id/ceremonies', async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const uid = userId(req);
+    const { originalName, name, date } = req.body || {};
+    const oldName = String(originalName || '').trim();
+    const newName = String(name || '').trim();
+
+    if (!oldName) return res.status(400).json({ error: 'originalName required' });
+    if (!newName) return res.status(400).json({ error: 'Ceremony name is required' });
+    if (!isRealCeremony(newName)) {
+      return res.status(400).json({ error: 'Invalid ceremony name' });
+    }
+
+    const { rows } = await query('SELECT * FROM events WHERE id = $1 AND user_id = $2', [eventId, uid]);
+    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+
+    const meta = parseMeta(rows[0].metadata);
+    let details = Array.isArray(meta.ceremony_details)
+      ? meta.ceremony_details.filter((d) => d && isRealCeremony(d.name)).map((d) => ({ ...d }))
+      : [];
+
+    if (!details.length && Array.isArray(meta.ceremonies)) {
+      details = meta.ceremonies.filter(isRealCeremony).map((n) => ({
+        name: String(n),
+        date: null,
+        quote: ceremonyQuote(n),
+        theme: ceremonyThemeKey(n),
+      }));
+    }
+
+    let idx = details.findIndex((d) => d.name === oldName);
+    if (idx < 0) {
+      // Ceremony only on guests — add a detail entry so it becomes editable
+      details.push({
+        name: oldName,
+        date: null,
+        quote: ceremonyQuote(oldName),
+        theme: ceremonyThemeKey(oldName),
+      });
+      idx = details.length - 1;
+    }
+
+    if (newName !== oldName && details.some((d, i) => i !== idx && d.name === newName)) {
+      return res.status(400).json({ error: 'A ceremony with that name already exists' });
+    }
+
+    const dateVal = date ? String(date).slice(0, 10) : null;
+    details[idx] = {
+      name: newName,
+      date: dateVal,
+      quote: ceremonyQuote(newName),
+      theme: ceremonyThemeKey(newName),
+    };
+
+    meta.ceremony_details = details;
+    meta.ceremonies = details.map((d) => d.name);
+
+    // Keep wizard answer dates in sync when possible
+    if (Array.isArray(meta.ceremonies)) {
+      details.forEach((d, i) => {
+        meta[`ceremony_date_${i}`] = d.date || '';
+      });
+    }
+
+    await query(
+      `UPDATE events SET metadata = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`,
+      [JSON.stringify(meta), eventId, uid]
+    );
+
+    if (newName !== oldName) {
+      await query(
+        `UPDATE event_guests SET ceremony = $1, updated_at = NOW()
+         WHERE event_id = $2 AND ceremony = $3`,
+        [newName, eventId, oldName]
+      );
+    }
+
+    res.json({
+      success: true,
+      ceremony_details: details,
+      ceremonies: meta.ceremonies,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.delete('/:id', async (req, res) => {
   try {
     const { rowCount } = await query('DELETE FROM events WHERE id = $1 AND user_id = $2', [
