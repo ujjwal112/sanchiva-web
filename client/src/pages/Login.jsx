@@ -46,14 +46,13 @@ export default function Login() {
         <div className="login-brand">
           <Logo size={72} />
           <h1>Sanchiva</h1>
-          <p className="login-motto">Everything that matters — one place.</p>
         </div>
 
-        <p className="muted login-sub">Sign in to access your personal finance data securely.</p>
+        <p className="muted login-sub">Sign in to access your world securely.</p>
 
         {(error || guestError) && (
           <div className="login-error">
-            {guestError || `Login failed (${error}). Please try again or check OAuth app settings.`}
+            {guestError || 'Login failed. Please try again.'}
           </div>
         )}
 
@@ -100,21 +99,6 @@ export default function Login() {
             {guestLoading ? 'Starting guest session…' : 'Continue as Guest'}
           </button>
         </div>
-
-        <p className="muted login-hint">
-          Guest mode lets you try all features. When you log out, all guest data from that session is
-          deleted permanently.
-        </p>
-
-        {(!providers.google || !providers.facebook || !providers.microsoft) && (
-          <p className="muted login-hint">
-            Some social providers are not configured yet. You can still use Guest login anytime.
-          </p>
-        )}
-
-        <p className="muted login-footer">
-          Developed by Ujjwal Gupta · Access & refresh token sessions
-        </p>
       </div>
     </div>
   );
