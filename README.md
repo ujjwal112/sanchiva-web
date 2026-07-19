@@ -20,14 +20,46 @@ Sanchiva is a personal finance web app for tracking daily expenses, loans, credi
 - **Daily Expense** — entry + live list, week/month views, Excel & PDF export  
 - **Loans / Credit Cards** — loans, card spends, card EMIs + summaries  
 - **Monetary** — salary/income, assets (FD, MF, crypto…), money lent  
-- **Events** — create events with checklists, budgets, guest list  
+- **Events** — smart wizard, event detail page, todos, ceremony guests, exports  
 - **About** — app info, developed by, copyright  
 
+### Events module (detail)
+
+**Create (wizard)**  
+- Pick event type (Wedding, Birthday, Anniversary, Housewarming, Corporate, Other)  
+- Guided questions with auto-scroll between steps  
+- Wedding ceremonies multi-select: **Tilak** (first), Engagement, Haldi, Mehendi, Sangeet, Main Wedding, Reception, Other (+ custom name)  
+- After selecting ceremonies, wizard asks for **each ceremony’s date**  
+- Builds a smart todo checklist from answers  
+
+**My Events list**  
+- Card list with **View** (opens full detail page) and **Delete**  
+
+**Event detail page** (`/events/:eventId`)  
+Separate page with section tabs and **← My Events** on the right of the tab row:
+
+| Tab | What you get |
+|-----|----------------|
+| **Overview** | Budget KPIs + progress; **ceremony cards** (name, date, themed color, quote) |
+| **Budget charts** | Category pie + paid vs remaining |
+| **Todos** | Form at top (add / full **Edit** including task name); list with Done checkbox, **Delete**; **10 per page** pagination; **Excel & PDF** download of full list |
+| **Guests** | Ceremony-wise tabs only (no “General”); add/edit/delete; pagination (10); **Excel & PDF** export |
+
+**Ceremony overview cards**  
+Color and quote follow the ceremony type, for example:  
+- **Tilak** — saffron / orange  
+- **Haldi** — turmeric gold  
+- **Mehendi** — green  
+- **Sangeet** — purple  
+- **Engagement** — rose  
+- **Main Wedding** — deep red  
+- **Reception** — blue  
+
 ### Authentication & sessions
-- Login with **Google**, **Facebook**, or **Microsoft** (OAuth)  
+- Login with **Google** (primary social) and optional Facebook / Microsoft when configured  
 - **Guest login** — try the app as **Guest User** without social accounts  
 - **Access token** (JWT, short-lived) + **refresh token** (rotated, stored hashed)  
-- Top-left user menu (name → **Logout**)  
+- Top-right user menu (name → **Logout**)  
 - **Per-user data** — each logged-in user only sees their own records  
 - Guest logout **deletes all guest data** for that session  
 
@@ -55,12 +87,19 @@ Interactive OpenAPI docs (try endpoints in the browser):
 
 ```
 sanchiva-web/
-  client/          React (Vite) UI
-  server/          Express API + PostgreSQL
-  render.yaml      Render Blueprint (web + Postgres)
-  DEPLOY.md        Deploy walkthrough
-  AUTH_SETUP.md    OAuth provider setup (Google / Facebook / Microsoft)
-  .env.example     Environment variable template
+  client/                 React (Vite) UI
+    src/pages/
+      Events.jsx          Create wizard + My Events list
+      EventDetail.jsx     Overview / charts / todos / guests
+    src/utils/
+      ceremonyThemes.js   Ceremony colors + quotes
+      export.js           Excel / PDF helpers
+  server/                 Express API + PostgreSQL
+    src/routes/events.js  Wizard, items, guests, ceremony_details
+  render.yaml             Render Blueprint (web + Postgres)
+  DEPLOY.md               Deploy walkthrough
+  AUTH_SETUP.md           OAuth provider setup (Google / Facebook / Microsoft)
+  .env.example            Environment variable template
 ```
 
 ---
@@ -94,6 +133,8 @@ npm run dev
 | API health | http://localhost:5000/api/health |
 | **Swagger** | http://localhost:5000/api/docs |
 | Login | http://localhost:5173/login |
+| Events | http://localhost:5173/events |
+| Event detail | http://localhost:5173/events/:id |
 
 Guest login works locally without OAuth. Social logins need client IDs (see **AUTH_SETUP.md**).
 
@@ -124,6 +165,7 @@ OAuth keys: **[AUTH_SETUP.md](./AUTH_SETUP.md)**
 |------|-----|
 | App / login | https://sanchiva.onrender.com/login |
 | Dashboard (after login) | https://sanchiva.onrender.com/ |
+| Events | https://sanchiva.onrender.com/events |
 | **Swagger UI** | https://sanchiva.onrender.com/api/docs |
 | OpenAPI JSON | https://sanchiva.onrender.com/api/openapi.json |
 | Health check | https://sanchiva.onrender.com/api/health |
@@ -144,10 +186,17 @@ Base path: `/api`
 | Loans | `GET/POST /loans`, `GET /loans/summary` |
 | Credit cards | `/credit-cards/spends`, `/credit-cards/emis` |
 | Monetary | `/monetary/income`, `/monetary/assets`, `/monetary/money-given` |
-| Events | `/events`, `/events/wizard`, items & guests |
+| Events | `GET /events`, `GET /events/:id` (includes `ceremonies`, `ceremony_details`, guests by ceremony), `POST /events/wizard`, items & guests CRUD |
+| Wizard meta | `GET /events/meta/wizard-questions/:eventType` |
 | Categories | `GET/POST /categories/:section` |
 
 Full interactive list: **Swagger** → `/api/docs`
+
+### Event detail response (highlights)
+- `ceremony_details` — `[{ name, date, quote, theme }]` for overview cards  
+- `ceremonies` — ordered list of real ceremony names (no “General”)  
+- `guestsByCeremony` / `ceremonyCounts` — guest lists and headcounts per ceremony  
+- `items` / `guests` / `summary` — todos, guests, budget rollup  
 
 ---
 

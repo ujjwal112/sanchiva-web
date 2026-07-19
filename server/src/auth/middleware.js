@@ -11,8 +11,12 @@ export function requireAuth(req, res, next) {
     if (payload.type !== 'access') {
       return res.status(401).json({ error: 'Invalid token type' });
     }
+    const id = Number(payload.sub);
+    if (!id || Number.isNaN(id)) {
+      return res.status(401).json({ error: 'Invalid token subject' });
+    }
     req.user = {
-      id: payload.sub,
+      id,
       email: payload.email,
       name: payload.name,
       picture: payload.picture,

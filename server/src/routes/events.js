@@ -5,6 +5,97 @@ import { requireAuth, userId } from '../auth/middleware.js';
 const router = Router();
 router.use(requireAuth);
 
+/** Ceremony quote + theme key (stored in metadata for overview cards) */
+function ceremonyQuote(name = '') {
+  const n = String(name).toLowerCase();
+  if (n.includes('haldi') || n.includes('pithi')) {
+    return 'May turmeric bring you glow, joy, and a lifetime of blessings.';
+  }
+  if (n.includes('mehend') || n.includes('mehndi') || n.includes('henna')) {
+    return 'Every leaf of mehendi is a wish for love that lasts forever.';
+  }
+  if (n.includes('sangeet') || n.includes('garba')) {
+    return 'Dance like the music was written for your forever.';
+  }
+  if (n.includes('tilak')) {
+    return 'A sacred mark of blessing as two families join in joy.';
+  }
+  if (n.includes('engag') || n.includes('roka') || n.includes('sagai')) {
+    return 'Two hearts, one promise, a beautiful lifetime ahead.';
+  }
+  if (n.includes('nikah') || n.includes('nikaah')) {
+    return 'May faith and love guide every step of your journey together.';
+  }
+  if (n.includes('walima') || n.includes('mehfil')) {
+    return 'May this feast of joy mark the start of endless happiness.';
+  }
+  if (n.includes('reception') || n.includes('party')) {
+    return 'Celebrating love with the ones who matter most.';
+  }
+  if (n.includes('wedding') || n.includes('shaadi') || n.includes('vivah') || n.includes('main')) {
+    return 'Today we begin a beautiful forever, hand in hand.';
+  }
+  return 'Celebrating this special moment with love, laughter, and joy.';
+}
+
+function ceremonyThemeKey(name = '') {
+  const n = String(name).toLowerCase();
+  if (n.includes('haldi') || n.includes('pithi')) return 'haldi';
+  if (n.includes('mehend') || n.includes('mehndi') || n.includes('henna')) return 'mehendi';
+  if (n.includes('sangeet') || n.includes('garba')) return 'sangeet';
+  if (n.includes('tilak')) return 'tilak';
+  if (n.includes('engag') || n.includes('roka') || n.includes('sagai')) return 'engagement';
+  if (n.includes('nikah') || n.includes('nikaah')) return 'nikah';
+  if (n.includes('walima') || n.includes('mehfil')) return 'walima';
+  if (n.includes('reception') || n.includes('party')) return 'reception';
+  if (n.includes('wedding') || n.includes('shaadi') || n.includes('vivah') || n.includes('main')) {
+    return 'wedding';
+  }
+  return 'default';
+}
+
+function isRealCeremony(name) {
+  if (!name) return false;
+  const n = String(name).trim();
+  if (!n) return false;
+  const lower = n.toLowerCase();
+  return lower !== 'other' && lower !== 'general';
+}
+
+/** Build ceremony_details from wizard answers (names + per-ceremony dates) */
+function buildCeremonyDetails(answers = {}) {
+  const names = Array.isArray(answers.ceremonies)
+    ? answers.ceremonies
+    : String(answers.ceremonies || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+  const real = names.filter(isRealCeremony);
+  return real.map((name, i) => {
+    const date =
+      answers[`ceremony_date_${i}`] ||
+      answers[`ceremony_date__${name}`] ||
+      null;
+    return {
+      name,
+      date: date || null,
+      quote: ceremonyQuote(name),
+      theme: ceremonyThemeKey(name),
+    };
+  });
+}
+
+function parseMeta(raw) {
+  if (!raw) return {};
+  if (typeof raw === 'object') return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
 async function assertEventOwner(eventId, uid) {
   const { rows } = await query('SELECT id FROM events WHERE id = $1 AND user_id = $2', [eventId, uid]);
   return rows[0];
@@ -51,6 +142,17 @@ export function buildEventTemplate(eventType, answers = {}) {
     }
     if (answers.days && Number(answers.days) > 1) {
       push(`Multi-day coordination (${answers.days} days)`, 'Planning', 0);
+    }
+    // Extra todos for selected / custom ceremonies
+    const ceremonies = Array.isArray(answers.ceremonies)
+      ? answers.ceremonies
+      : String(answers.ceremonies || '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+    for (const c of ceremonies) {
+      if (!c || c.toLowerCase() === 'other') continue;
+      push(`${c} ceremony planning`, 'Rituals', 0);
     }
   } else if (type === 'birthday') {
     push('Venue / home setup', 'Venue', 0);
@@ -121,7 +223,17 @@ router.get('/meta/wizard-questions/:eventType', (req, res) => {
         id: 'ceremonies',
         label: 'Which ceremonies do you plan?',
         type: 'multiselect',
-        options: ['Engagement', 'Haldi', 'Mehendi', 'Sangeet', 'Main Wedding', 'Reception', 'Walima'],
+        allowCustom: true,
+        options: [
+          'Tilak',
+          'Engagement',
+          'Haldi',
+          'Mehendi',
+          'Sangeet',
+          'Main Wedding',
+          'Reception',
+          'Other',
+        ],
       },
     ];
   } else if (type === 'birthday') {
@@ -182,7 +294,7 @@ router.get('/:id', async (req, res) => {
       [req.params.id]
     );
     const { rows: guests } = await query(
-      'SELECT * FROM event_guests WHERE event_id = $1 ORDER BY id',
+      'SELECT * FROM event_guests WHERE event_id = $1 ORDER BY ceremony, id',
       [req.params.id]
     );
     const planned = items.reduce((s, i) => s + Number(i.planned_amount), 0);
@@ -191,10 +303,70 @@ router.get('/:id', async (req, res) => {
       (s, i) => s + (Number(i.remaining_amount) || Math.max(Number(i.planned_amount) - Number(i.token_paid), 0)),
       0
     );
+
+    // Ceremonies from wizard metadata + guest ceremony values (no "General")
+    const meta = parseMeta(rows[0].metadata);
+    let ceremonyDetails = Array.isArray(meta.ceremony_details)
+      ? meta.ceremony_details.filter((d) => d && isRealCeremony(d.name))
+      : [];
+
+    // Backfill details from plain ceremonies list if older events
+    if (!ceremonyDetails.length && Array.isArray(meta.ceremonies)) {
+      ceremonyDetails = meta.ceremonies.filter(isRealCeremony).map((name) => ({
+        name: String(name),
+        date: null,
+        quote: ceremonyQuote(name),
+        theme: ceremonyThemeKey(name),
+      }));
+    }
+
+    const fromMeta = ceremonyDetails.map((d) => d.name);
+    const fromGuests = [
+      ...new Set(
+        guests
+          .map((g) => (g.ceremony || '').trim())
+          .filter((c) => isRealCeremony(c))
+      ),
+    ];
+    // Prefer order from ceremony_details, then any extra guest ceremonies
+    const ceremonies = [...new Set([...fromMeta, ...fromGuests])];
+
+    // Ensure ceremony_details covers every ceremony name (for overview cards)
+    const detailByName = Object.fromEntries(ceremonyDetails.map((d) => [d.name, d]));
+    const fullCeremonyDetails = ceremonies.map((name) => {
+      if (detailByName[name]) return detailByName[name];
+      return {
+        name,
+        date: null,
+        quote: ceremonyQuote(name),
+        theme: ceremonyThemeKey(name),
+      };
+    });
+
+    const guestsByCeremony = {};
+    for (const c of ceremonies) guestsByCeremony[c] = [];
+    for (const g of guests) {
+      const key = (g.ceremony || '').trim();
+      if (!isRealCeremony(key)) continue; // skip General / empty
+      if (!guestsByCeremony[key]) guestsByCeremony[key] = [];
+      guestsByCeremony[key].push(g);
+    }
+    const ceremonyCounts = Object.fromEntries(
+      Object.entries(guestsByCeremony).map(([c, list]) => [
+        c,
+        list.reduce((s, g) => s + (Number(g.count) || 1), 0),
+      ])
+    );
+
     res.json({
       ...rows[0],
+      metadata: meta,
       items,
       guests,
+      ceremonies,
+      ceremony_details: fullCeremonyDetails,
+      guestsByCeremony,
+      ceremonyCounts,
       summary: {
         planned,
         paid,
@@ -223,6 +395,8 @@ router.post('/wizard', async (req, res) => {
     const budget = answers.budget || 0;
     const notes = answers.notes || null;
     const days = answers.days || null;
+    const ceremony_details = buildCeremonyDetails(answers);
+    const ceremonies = ceremony_details.map((d) => d.name);
 
     const { rows } = await query(
       `INSERT INTO events (user_id, name, event_type, sub_type, event_date, end_date, location, budget, notes, metadata, status)
@@ -237,7 +411,12 @@ router.post('/wizard', async (req, res) => {
         location,
         budget,
         notes,
-        JSON.stringify({ ...answers, days }),
+        JSON.stringify({
+          ...answers,
+          days,
+          ceremonies,
+          ceremony_details,
+        }),
       ]
     );
     const event = rows[0];
@@ -400,12 +579,22 @@ router.post('/:id/guests', async (req, res) => {
     if (!(await assertEventOwner(req.params.id, userId(req)))) {
       return res.status(404).json({ error: 'Not found' });
     }
-    const { name, side, rsvp, count, phone, notes } = req.body;
+    const { name, side, rsvp, count, phone, notes, ceremony } = req.body;
     if (!name) return res.status(400).json({ error: 'name required' });
+    const rsvpVal = ['yes', 'no', 'maybe'].includes(rsvp) ? rsvp : 'maybe';
     const { rows } = await query(
-      `INSERT INTO event_guests (event_id, name, side, rsvp, count, phone, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [req.params.id, name, side || null, rsvp || 'pending', count || 1, phone || null, notes || null]
+      `INSERT INTO event_guests (event_id, name, side, ceremony, rsvp, count, phone, notes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [
+        req.params.id,
+        name,
+        side || null,
+        (ceremony || '').trim() || null,
+        rsvpVal,
+        count || 1,
+        phone || null,
+        notes || null,
+      ]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -421,7 +610,10 @@ router.put('/guests/:guestId', async (req, res) => {
       [req.params.guestId, userId(req)]
     );
     if (!own.rows[0]) return res.status(404).json({ error: 'Not found' });
-    const fields = ['name', 'side', 'rsvp', 'count', 'phone', 'notes'];
+    if (req.body.rsvp !== undefined && !['yes', 'no', 'maybe'].includes(req.body.rsvp)) {
+      return res.status(400).json({ error: 'rsvp must be yes, no, or maybe' });
+    }
+    const fields = ['name', 'side', 'ceremony', 'rsvp', 'count', 'phone', 'notes'];
     const sets = [];
     const params = [];
     for (const f of fields) {

@@ -162,6 +162,9 @@ router.get('/providers', (_req, res) => {
 router.post('/guest', async (_req, res) => {
   try {
     const user = await createGuestUser();
+    if (!user?.id) {
+      return res.status(500).json({ error: 'Failed to create guest user' });
+    }
     const accessToken = signAccessToken(user);
     const refreshToken = await issueRefreshToken(user.id);
     res.status(201).json({
@@ -172,14 +175,20 @@ router.post('/guest', async (_req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
+        name: user.name || 'Guest User',
         picture: user.picture,
         provider: user.provider,
         created_at: user.created_at,
       },
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    const msg = err.message || 'Guest login failed';
+    if (/relation .* does not exist/i.test(msg)) {
+      return res.status(500).json({
+        error: 'Database tables missing. Run: npm run db:init --prefix server',
+      });
+    }
+    res.status(500).json({ error: msg });
   }
 });
 

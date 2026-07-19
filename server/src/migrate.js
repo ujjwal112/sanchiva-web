@@ -84,6 +84,14 @@ export async function runMigrations() {
     }
   }
 
+  // Ceremony-wise guest lists
+  if (await tableExists('event_guests') && !(await columnExists('event_guests', 'ceremony'))) {
+    await query(
+      `ALTER TABLE event_guests ADD COLUMN ceremony VARCHAR(150) DEFAULT 'General'`
+    );
+    console.log('  + event_guests.ceremony');
+  }
+
   // Drop legacy single-tenant unique constraint if present
   try {
     await query(`ALTER TABLE custom_categories DROP CONSTRAINT IF EXISTS custom_categories_section_name_key`);

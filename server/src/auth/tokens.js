@@ -15,7 +15,7 @@ export function signAccessToken(user) {
   const { access } = secrets();
   return jwt.sign(
     {
-      sub: user.id,
+      sub: Number(user.id),
       email: user.email,
       name: user.name,
       picture: user.picture,
@@ -88,9 +88,12 @@ export async function findOrCreateOAuthUser({ provider, providerId, email, name,
 }
 
 export async function getUserById(id) {
-  const { rows } = await query(`SELECT id, email, name, picture, provider, created_at FROM users WHERE id = $1`, [
-    id,
-  ]);
+  const uid = Number(id);
+  if (!uid || Number.isNaN(uid)) return null;
+  const { rows } = await query(
+    `SELECT id, email, name, picture, provider, created_at FROM users WHERE id = $1`,
+    [uid]
+  );
   return rows[0] || null;
 }
 

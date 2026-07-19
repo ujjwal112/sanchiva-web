@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import { api, formatCurrency, formatDate, todayISO } from '../api';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { api, formatDate } from '../api';
 import { Tabs, useToast } from '../components/ui';
-import { PieChart, BarChart } from '../components/Charts';
 
 const EVENT_TYPES = [
   { id: 'wedding', label: 'Wedding', icon: '💍' },
@@ -13,13 +13,13 @@ const EVENT_TYPES = [
 ];
 
 export default function Events() {
-  const [tab, setTab] = useState('create');
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'list' ? 'list' : 'create';
+  const [tab, setTab] = useState(initialTab);
   const [events, setEvents] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [detail, setDetail] = useState(null);
 
-  // Wizard state
-  const [step, setStep] = useState('pick'); // pick | questions | done
+  const [step, setStep] = useState('pick');
   const [eventType, setEventType] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [intro, setIntro] = useState('');
@@ -27,43 +27,67 @@ export default function Events() {
   const [answers, setAnswers] = useState({});
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [multiSel, setMultiSel] = useState([]);
+  const [customCeremony, setCustomCeremony] = useState('');
+  const [customCeremonies, setCustomCeremonies] = useState([]);
   const [chat, setChat] = useState([]);
   const [creating, setCreating] = useState(false);
 
-  // Item / guest forms
-  const [itemForm, setItemForm] = useState({
-    title: '',
-    category: '',
-    planned_amount: '',
-    token_paid: '',
-    vendor_name: '',
-  });
-  const [guestForm, setGuestForm] = useState({ name: '', side: '', count: 1, rsvp: 'pending' });
-
   const { show, Toast } = useToast();
+  const wizardChatRef = useRef(null);
+  const wizardQuestionRef = useRef(null);
+  const wizardAnswerRef = useRef(null);
+  const answerInputRef = useRef(null);
 
   const loadEvents = useCallback(() => {
     api.get('/events').then(setEvents).catch((e) => show(e.message, 'error'));
   }, []);
-
-  const loadDetail = useCallback(
-    (id) => {
-      if (!id) return;
-      api
-        .get(`/events/${id}`)
-        .then(setDetail)
-        .catch((e) => show(e.message, 'error'));
-    },
-    []
-  );
 
   useEffect(() => {
     loadEvents();
   }, [loadEvents]);
 
   useEffect(() => {
-    if (selected) loadDetail(selected);
-  }, [selected, loadDetail]);
+    const t = searchParams.get('tab') === 'list' ? 'list' : 'create';
+    setTab(t);
+  }, [searchParams]);
+
+  const changeTab = (id) => {
+    setTab(id);
+    setSearchParams(id === 'list' ? { tab: 'list' } : {});
+  };
+
+  // When question changes: only apply default for THIS question
+  useEffect(() => {
+    if (step !== 'questions') return;
+    const q = questions[qIndex];
+    if (!q) return;
+    if (q.type === 'multiselect') {
+      setCurrentAnswer('');
+      setMultiSel([]);
+      setCustomCeremony('');
+      setCustomCeremonies([]);
+    } else if (q.default != null && q.default !== '') {
+      setCurrentAnswer(String(q.default));
+    } else {
+      setCurrentAnswer('');
+    }
+  }, [qIndex, step, questions]);
+
+  useEffect(() => {
+    if (step !== 'questions') return;
+    const q = questions[qIndex];
+    const t = setTimeout(() => {
+      if (wizardChatRef.current) {
+        wizardChatRef.current.scrollTop = wizardChatRef.current.scrollHeight;
+      }
+      wizardQuestionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      wizardAnswerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (q?.type !== 'date') {
+        answerInputRef.current?.focus?.();
+      }
+    }, 80);
+    return () => clearTimeout(t);
+  }, [qIndex, step, chat.length, questions]);
 
   const startWizard = async (type) => {
     setEventType(type);
@@ -75,6 +99,8 @@ export default function Events() {
       setAnswers({});
       setCurrentAnswer('');
       setMultiSel([]);
+      setCustomCeremony('');
+      setCustomCeremonies([]);
       setChat([{ role: 'ai', text: data.intro }]);
       setStep('questions');
     } catch (e) {
@@ -83,11 +109,58 @@ export default function Events() {
   };
 
   const currentQ = questions[qIndex];
+  const multiOptions = currentQ?.options || [];
+  const allowCustomMulti =
+    currentQ?.type === 'multiselect' &&
+    (currentQ.allowCustom || multiOptions.includes('Other') || currentQ.id === 'ceremonies');
+  const otherSelected = multiSel.includes('Other');
+
+  const addCustomCeremony = () => {
+    const name = customCeremony.trim();
+    if (!name) {
+      show('Enter a ceremony name', 'error');
+      return;
+    }
+    if (name.toLowerCase() === 'other') {
+      show('Please enter a real ceremony name', 'error');
+      return;
+    }
+    const exists =
+      multiOptions.some((o) => o.toLowerCase() === name.toLowerCase() && o !== 'Other') ||
+      customCeremonies.some((c) => c.toLowerCase() === name.toLowerCase());
+    if (exists) {
+      show('That ceremony is already in the list', 'error');
+      return;
+    }
+    setCustomCeremonies((list) => [...list, name]);
+    setCustomCeremony('');
+    if (!multiSel.includes('Other')) {
+      setMultiSel((s) => [...s, 'Other']);
+    }
+  };
+
+  const removeCustomCeremony = (name) => {
+    setCustomCeremonies((list) => list.filter((c) => c !== name));
+  };
+
+  const goNextQuestion = () => {
+    setMultiSel([]);
+    setCustomCeremony('');
+    setCustomCeremonies([]);
+    setQIndex((i) => i + 1);
+  };
 
   const pushAnswer = async () => {
     if (!currentQ) return;
     let value = currentAnswer;
-    if (currentQ.type === 'multiselect') value = multiSel;
+    if (currentQ.type === 'multiselect') {
+      const selectedBuiltIn = multiSel.filter((x) => x !== 'Other');
+      value = [...selectedBuiltIn, ...customCeremonies];
+      if (otherSelected && !customCeremonies.length && allowCustomMulti) {
+        show('Add your custom ceremony name, or unselect Other', 'error');
+        return;
+      }
+    }
     if (currentQ.type === 'number') value = currentAnswer === '' ? '' : Number(currentAnswer);
     if (currentQ.required && (value === '' || value == null || (Array.isArray(value) && !value.length))) {
       show('This field is required', 'error');
@@ -103,13 +176,36 @@ export default function Events() {
       { role: 'user', text: Array.isArray(value) ? value.join(', ') : String(value || '—') },
     ]);
     setAnswers(nextAnswers);
-    setCurrentAnswer(currentQ.default != null ? String(currentQ.default) : '');
     setMultiSel([]);
+    setCustomCeremony('');
+    setCustomCeremonies([]);
 
+    // After ceremony multi-select: ask for each ceremony's date
+    if (currentQ.id === 'ceremonies' && Array.isArray(value) && value.length) {
+      const names = value.filter((n) => n && String(n).toLowerCase() !== 'other');
+      setQuestions((prev) => {
+        const cleaned = prev.filter((q) => !String(q.id).startsWith('ceremony_date_'));
+        const idx = cleaned.findIndex((q) => q.id === 'ceremonies');
+        if (idx < 0) return cleaned;
+        const dateQs = names.map((ceremonyName, i) => ({
+          id: `ceremony_date_${i}`,
+          label: `When is the ${ceremonyName} ceremony?`,
+          type: 'date',
+          required: true,
+          ceremonyName,
+        }));
+        const next = [...cleaned];
+        next.splice(idx + 1, 0, ...dateQs);
+        return next;
+      });
+      setQIndex(qIndex + 1);
+      return;
+    }
+
+    // Compute remaining questions (questions state may still be pre-inject for length)
     if (qIndex + 1 < questions.length) {
       setQIndex(qIndex + 1);
     } else {
-      // Finish — create event
       setCreating(true);
       try {
         const name = nextAnswers.name || `${eventType} event`;
@@ -125,11 +221,10 @@ export default function Events() {
           ...c,
           {
             role: 'ai',
-            text: `All set! I created “${created.name}” with ${created.items?.length || 0} planned tasks. Open it under My Events to track tokens, budgets and guests.`,
+            text: `All set! I created “${created.name}” with ${created.items?.length || 0} planned tasks. Open it under My Events to view details.`,
           },
         ]);
         loadEvents();
-        setSelected(created.id);
       } catch (e) {
         show(e.message, 'error');
       } finally {
@@ -147,90 +242,23 @@ export default function Events() {
     setChat([]);
   };
 
-  const addItem = async (e) => {
-    e.preventDefault();
-    if (!selected) return;
-    try {
-      await api.post(`/events/${selected}/items`, {
-        ...itemForm,
-        planned_amount: Number(itemForm.planned_amount || 0),
-        token_paid: Number(itemForm.token_paid || 0),
-      });
-      setItemForm({ title: '', category: '', planned_amount: '', token_paid: '', vendor_name: '' });
-      loadDetail(selected);
-      show('Todo item added');
-    } catch (err) {
-      show(err.message, 'error');
-    }
-  };
-
-  const updateItem = async (item, patch) => {
-    try {
-      await api.put(`/events/items/${item.id}`, patch);
-      loadDetail(selected);
-    } catch (err) {
-      show(err.message, 'error');
-    }
-  };
-
-  const deleteItem = async (item) => {
-    if (!confirm('Delete this item?')) return;
-    await api.del(`/events/items/${item.id}`);
-    loadDetail(selected);
-    show('Item deleted');
-  };
-
-  const addGuest = async (e) => {
-    e.preventDefault();
-    if (!selected) return;
-    try {
-      await api.post(`/events/${selected}/guests`, {
-        ...guestForm,
-        count: Number(guestForm.count || 1),
-      });
-      setGuestForm({ name: '', side: '', count: 1, rsvp: 'pending' });
-      loadDetail(selected);
-      show('Guest added');
-    } catch (err) {
-      show(err.message, 'error');
-    }
-  };
-
-  const deleteGuest = async (g) => {
-    if (!confirm('Remove guest?')) return;
-    await api.del(`/events/guests/${g.id}`);
-    loadDetail(selected);
-  };
-
   const deleteEvent = async (ev) => {
     if (!confirm(`Delete event “${ev.name}”?`)) return;
     await api.del(`/events/${ev.id}`);
-    if (selected === ev.id) {
-      setSelected(null);
-      setDetail(null);
-    }
     loadEvents();
     show('Event deleted');
   };
 
-  const items = detail?.items || [];
-  const guests = detail?.guests || [];
-  const byCat = {};
-  for (const it of items) {
-    const k = it.category || 'Other';
-    byCat[k] = (byCat[k] || 0) + Number(it.planned_amount);
-  }
-
   return (
-    <div>
+    <div className="events-page">
       {Toast}
       <Tabs
         tabs={[
-          { id: 'create', label: 'Create Event (AI wizard)' },
+          { id: 'create', label: 'Create Event' },
           { id: 'list', label: 'My Events' },
         ]}
         active={tab}
-        onChange={setTab}
+        onChange={changeTab}
       />
 
       {tab === 'create' && (
@@ -239,20 +267,19 @@ export default function Events() {
             <>
               <h3>What are we planning?</h3>
               <p className="muted" style={{ marginBottom: '1rem' }}>
-                I am your event planning agent. Pick a type and I will ask the right questions, then build a
-                checklist with venues, vendors, budgets and guest tracking.
+                Pick a type and I will ask the right questions, then build a checklist with venues, vendors,
+                budgets and guest tracking.
               </p>
               <div className="grid grid-3">
                 {EVENT_TYPES.map((t) => (
                   <button
                     key={t.id}
                     type="button"
-                    className="card"
-                    style={{ cursor: 'pointer', textAlign: 'left' }}
+                    className="card event-type-card"
                     onClick={() => startWizard(t.id)}
                   >
-                    <div style={{ fontSize: '1.6rem' }}>{t.icon}</div>
-                    <h3 style={{ marginTop: '0.5rem' }}>{t.label}</h3>
+                    <div className="event-type-icon">{t.icon}</div>
+                    <h3>{t.label}</h3>
                     <p className="muted">Smart questionnaire + todo tracker</p>
                   </button>
                 ))}
@@ -262,7 +289,7 @@ export default function Events() {
 
           {step === 'questions' && currentQ && (
             <>
-              <div className="flex-between" style={{ marginBottom: '0.75rem' }}>
+              <div className="flex-between wizard-header">
                 <div>
                   <h3>
                     Planning · {eventType}{' '}
@@ -276,26 +303,34 @@ export default function Events() {
                   Start over
                 </button>
               </div>
-              <div className="progress-bar" style={{ marginBottom: '1rem' }}>
+              <div className="progress-bar wizard-progress">
                 <span style={{ width: `${((qIndex + 1) / questions.length) * 100}%` }} />
               </div>
 
-              <div className="wizard-chat">
+              <div className="wizard-chat" ref={wizardChatRef}>
                 {chat.map((m, i) => (
                   <div key={i} className={`bubble ${m.role === 'ai' ? 'ai' : 'user'}`}>
                     {m.text}
                   </div>
                 ))}
-                <div className="bubble ai">
+                <div className="bubble ai wizard-current-q" ref={wizardQuestionRef}>
                   <strong>{currentQ.label}</strong>
-                  {currentQ.required && <span className="badge" style={{ marginLeft: 8 }}>required</span>}
+                  {currentQ.required && (
+                    <span className="badge" style={{ marginLeft: 8 }}>
+                      required
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <div style={{ marginTop: '1rem' }}>
+              <div className="wizard-answer-panel card" ref={wizardAnswerRef}>
                 {currentQ.type === 'select' && (
                   <div className="field">
-                    <select value={currentAnswer} onChange={(e) => setCurrentAnswer(e.target.value)}>
+                    <select
+                      ref={answerInputRef}
+                      value={currentAnswer}
+                      onChange={(e) => setCurrentAnswer(e.target.value)}
+                    >
                       <option value="">Select…</option>
                       {(currentQ.options || []).map((o) => (
                         <option key={o} value={o}>
@@ -306,38 +341,105 @@ export default function Events() {
                   </div>
                 )}
                 {currentQ.type === 'multiselect' && (
-                  <div className="checkbox-row">
-                    {(currentQ.options || []).map((o) => {
-                      const on = multiSel.includes(o);
-                      return (
-                        <button
-                          key={o}
-                          type="button"
-                          className={`chip ${on ? 'selected' : ''}`}
-                          onClick={() =>
-                            setMultiSel((s) => (on ? s.filter((x) => x !== o) : [...s, o]))
-                          }
-                        >
-                          {o}
-                        </button>
-                      );
-                    })}
+                  <div className="multi-select-block">
+                    <div className="checkbox-row">
+                      {multiOptions.map((o) => {
+                        const on = multiSel.includes(o);
+                        return (
+                          <button
+                            key={o}
+                            type="button"
+                            className={`chip ${on ? 'selected' : ''}`}
+                            onClick={() => {
+                              setMultiSel((s) => {
+                                if (on) {
+                                  const next = s.filter((x) => x !== o);
+                                  if (o === 'Other') {
+                                    setCustomCeremony('');
+                                    setCustomCeremonies([]);
+                                  }
+                                  return next;
+                                }
+                                return [...s, o];
+                              });
+                            }}
+                          >
+                            {o}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {allowCustomMulti && otherSelected && (
+                      <div className="custom-ceremony-box">
+                        <div className="custom-ceremony-row">
+                          <div className="field" style={{ flex: 1, marginBottom: 0 }}>
+                            <label>Custom ceremony name</label>
+                            <input
+                              value={customCeremony}
+                              onChange={(e) => setCustomCeremony(e.target.value)}
+                              placeholder="Enter ceremony name"
+                              autoComplete="off"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  addCustomCeremony();
+                                }
+                              }}
+                            />
+                          </div>
+                          <button type="button" className="btn btn-ghost" onClick={addCustomCeremony}>
+                            Add
+                          </button>
+                        </div>
+                        {!!customCeremonies.length && (
+                          <div className="checkbox-row" style={{ marginTop: '0.65rem' }}>
+                            {customCeremonies.map((c) => (
+                              <button
+                                key={c}
+                                type="button"
+                                className="chip selected custom-chip"
+                                onClick={() => removeCustomCeremony(c)}
+                                title="Click to remove"
+                              >
+                                {c} ×
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
                 {['text', 'number', 'date'].includes(currentQ.type) && (
-                  <div className="field">
+                  <div className={`field ${currentQ.type === 'date' ? 'field-date' : ''}`}>
                     <input
+                      ref={answerInputRef}
                       type={currentQ.type === 'text' ? 'text' : currentQ.type}
                       value={currentAnswer}
                       onChange={(e) => setCurrentAnswer(e.target.value)}
-                      placeholder="Your answer…"
+                      placeholder={currentQ.type === 'date' ? 'Select a date' : 'Your answer…'}
+                      className={currentQ.type === 'date' ? 'date-input-clickable' : undefined}
+                      onClick={(e) => {
+                        if (currentQ.type === 'date') {
+                          try {
+                            e.currentTarget.showPicker?.();
+                          } catch {
+                            /* ignore */
+                          }
+                        }
+                      }}
                       onKeyDown={(e) => e.key === 'Enter' && pushAnswer()}
                     />
                   </div>
                 )}
                 {currentQ.type === 'textarea' && (
                   <div className="field">
-                    <textarea value={currentAnswer} onChange={(e) => setCurrentAnswer(e.target.value)} />
+                    <textarea
+                      ref={answerInputRef}
+                      value={currentAnswer}
+                      onChange={(e) => setCurrentAnswer(e.target.value)}
+                    />
                   </div>
                 )}
                 <div className="form-actions" style={{ marginTop: '0.75rem' }}>
@@ -345,15 +447,7 @@ export default function Events() {
                     {qIndex + 1 >= questions.length ? (creating ? 'Creating…' : 'Create event') : 'Next'}
                   </button>
                   {!currentQ.required && qIndex + 1 < questions.length && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      onClick={() => {
-                        setCurrentAnswer('');
-                        setMultiSel([]);
-                        setQIndex(qIndex + 1);
-                      }}
-                    >
+                    <button type="button" className="btn btn-ghost" onClick={goNextQuestion}>
                       Skip
                     </button>
                   )}
@@ -372,7 +466,7 @@ export default function Events() {
                 ))}
               </div>
               <div className="form-actions" style={{ marginTop: '1rem' }}>
-                <button type="button" className="btn btn-primary" onClick={() => setTab('list')}>
+                <button type="button" className="btn btn-primary" onClick={() => changeTab('list')}>
                   Open My Events
                 </button>
                 <button type="button" className="btn btn-ghost" onClick={resetWizard}>
@@ -385,294 +479,44 @@ export default function Events() {
       )}
 
       {tab === 'list' && (
-        <div className="grid grid-2">
-          <div className="card">
-            <h3>Your events</h3>
-            {!events.length && (
-              <div className="empty">
-                <span className="emoji">✦</span>
-                No events yet — create one with the AI wizard.
-              </div>
-            )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.75rem' }}>
-              {events.map((ev) => (
-                <div
-                  key={ev.id}
-                  className="card"
-                  style={{
-                    padding: '0.85rem',
-                    cursor: 'pointer',
-                    borderColor: selected === ev.id ? 'rgba(124,108,255,0.55)' : undefined,
-                  }}
-                  onClick={() => setSelected(ev.id)}
-                >
-                  <div className="flex-between">
-                    <div>
-                      <strong>{ev.name}</strong>
-                      <p className="muted">
-                        {ev.event_type}
-                        {ev.sub_type ? ` · ${ev.sub_type}` : ''} · {formatDate(ev.event_date)}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn btn-danger btn-sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteEvent(ev);
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
+        <section className="card events-list-only">
+          <h3>Your events</h3>
+          <p className="muted" style={{ marginBottom: '1rem' }}>
+            All events you created. Click <strong>View</strong> to open full event details.
+          </p>
+          {!events.length && (
+            <div className="empty">
+              <span className="emoji">✦</span>
+              No events yet — create one with the Create Event tab.
             </div>
+          )}
+          <div className="events-list-items events-list-items-wide">
+            {events.map((ev) => (
+              <div key={ev.id} className="event-list-item">
+                <div className="event-list-item-main">
+                  <strong>{ev.name}</strong>
+                  <p className="muted">
+                    {ev.event_type}
+                    {ev.sub_type ? ` · ${ev.sub_type}` : ''} · {formatDate(ev.event_date)}
+                    {ev.location ? ` · ${ev.location}` : ''}
+                  </p>
+                </div>
+                <div className="event-list-actions">
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => navigate(`/events/${ev.id}`)}
+                  >
+                    View
+                  </button>
+                  <button type="button" className="btn btn-danger btn-sm" onClick={() => deleteEvent(ev)}>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-
-          <div className="card">
-            {!detail && <div className="empty">Select an event to manage todos, payments & guests</div>}
-            {detail && (
-              <>
-                <div className="flex-between">
-                  <div>
-                    <h3>{detail.name}</h3>
-                    <p className="muted">
-                      {detail.event_type}
-                      {detail.sub_type ? ` · ${detail.sub_type}` : ''} · {detail.location || 'No location'}
-                    </p>
-                  </div>
-                  <span className="badge warning">{detail.status}</span>
-                </div>
-
-                <div className="grid grid-3" style={{ margin: '1rem 0' }}>
-                  <div>
-                    <p className="muted">Planned</p>
-                    <strong>{formatCurrency(detail.summary?.planned)}</strong>
-                  </div>
-                  <div>
-                    <p className="muted">Token paid</p>
-                    <strong>{formatCurrency(detail.summary?.paid)}</strong>
-                  </div>
-                  <div>
-                    <p className="muted">Remaining</p>
-                    <strong>{formatCurrency(detail.summary?.remaining)}</strong>
-                  </div>
-                </div>
-                <div className="progress-bar" style={{ marginBottom: '1rem' }}>
-                  <span
-                    style={{
-                      width: `${
-                        detail.summary?.planned
-                          ? Math.min(100, (detail.summary.paid / detail.summary.planned) * 100)
-                          : 0
-                      }%`,
-                    }}
-                  />
-                </div>
-
-                <div className="grid grid-2" style={{ marginBottom: '1rem' }}>
-                  <div>
-                    <h4 style={{ marginBottom: '0.5rem' }}>Budget by category</h4>
-                    <PieChart labels={Object.keys(byCat)} values={Object.values(byCat)} doughnut />
-                  </div>
-                  <div>
-                    <h4 style={{ marginBottom: '0.5rem' }}>Paid vs remaining</h4>
-                    <BarChart
-                      labels={['Paid', 'Remaining']}
-                      values={[detail.summary?.paid || 0, detail.summary?.remaining || 0]}
-                    />
-                  </div>
-                </div>
-
-                <h4 style={{ marginBottom: '0.5rem' }}>
-                  Todo / bookings ({detail.summary?.itemsDone}/{detail.summary?.itemsTotal} done)
-                </h4>
-                <div className="table-wrap">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Done</th>
-                        <th>Task</th>
-                        <th>Vendor</th>
-                        <th>Planned</th>
-                        <th>Token</th>
-                        <th>Left</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((it) => (
-                        <tr key={it.id}>
-                          <td>
-                            <input
-                              type="checkbox"
-                              checked={!!it.is_done}
-                              onChange={(e) => updateItem(it, { is_done: e.target.checked })}
-                            />
-                          </td>
-                          <td>
-                            <div>{it.title}</div>
-                            <span className="muted" style={{ fontSize: '0.75rem' }}>
-                              {it.category}
-                            </span>
-                          </td>
-                          <td>
-                            <input
-                              style={{ width: 100, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: 4 }}
-                              defaultValue={it.vendor_name || ''}
-                              onBlur={(e) => updateItem(it, { vendor_name: e.target.value })}
-                              placeholder="Vendor"
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              style={{ width: 80, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: 4 }}
-                              defaultValue={it.planned_amount}
-                              onBlur={(e) => updateItem(it, { planned_amount: Number(e.target.value) })}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              style={{ width: 80, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: 4 }}
-                              defaultValue={it.token_paid}
-                              onBlur={(e) => updateItem(it, { token_paid: Number(e.target.value) })}
-                            />
-                          </td>
-                          <td>{formatCurrency(it.remaining_amount)}</td>
-                          <td>
-                            <button type="button" className="btn btn-danger btn-sm" onClick={() => deleteItem(it)}>
-                              Del
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <form onSubmit={addItem} className="form-grid" style={{ marginTop: '1rem' }}>
-                  <div className="field">
-                    <label>New task</label>
-                    <input
-                      required
-                      value={itemForm.title}
-                      onChange={(e) => setItemForm({ ...itemForm, title: e.target.value })}
-                    />
-                  </div>
-                  <div className="field">
-                    <label>Category</label>
-                    <input
-                      value={itemForm.category}
-                      onChange={(e) => setItemForm({ ...itemForm, category: e.target.value })}
-                    />
-                  </div>
-                  <div className="field">
-                    <label>Planned ₹</label>
-                    <input
-                      type="number"
-                      value={itemForm.planned_amount}
-                      onChange={(e) => setItemForm({ ...itemForm, planned_amount: e.target.value })}
-                    />
-                  </div>
-                  <div className="field">
-                    <label>Token paid ₹</label>
-                    <input
-                      type="number"
-                      value={itemForm.token_paid}
-                      onChange={(e) => setItemForm({ ...itemForm, token_paid: e.target.value })}
-                    />
-                  </div>
-                  <div className="form-actions" style={{ alignItems: 'end' }}>
-                    <button className="btn btn-primary" type="submit">
-                      Add task
-                    </button>
-                  </div>
-                </form>
-
-                <h4 style={{ margin: '1.25rem 0 0.5rem' }}>
-                  Guest list · {detail.summary?.guestCount || 0} people
-                </h4>
-                <div className="table-wrap">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Side</th>
-                        <th>Count</th>
-                        <th>RSVP</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {guests.map((g) => (
-                        <tr key={g.id}>
-                          <td>{g.name}</td>
-                          <td>{g.side || '—'}</td>
-                          <td>{g.count}</td>
-                          <td>
-                            <span className="badge">{g.rsvp}</span>
-                          </td>
-                          <td>
-                            <button type="button" className="btn btn-danger btn-sm" onClick={() => deleteGuest(g)}>
-                              Del
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <form onSubmit={addGuest} className="form-grid" style={{ marginTop: '0.75rem' }}>
-                  <div className="field">
-                    <label>Guest name</label>
-                    <input
-                      required
-                      value={guestForm.name}
-                      onChange={(e) => setGuestForm({ ...guestForm, name: e.target.value })}
-                    />
-                  </div>
-                  <div className="field">
-                    <label>Side</label>
-                    <input
-                      placeholder="Bride / Groom / Friend"
-                      value={guestForm.side}
-                      onChange={(e) => setGuestForm({ ...guestForm, side: e.target.value })}
-                    />
-                  </div>
-                  <div className="field">
-                    <label>Count</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={guestForm.count}
-                      onChange={(e) => setGuestForm({ ...guestForm, count: e.target.value })}
-                    />
-                  </div>
-                  <div className="field">
-                    <label>RSVP</label>
-                    <select
-                      value={guestForm.rsvp}
-                      onChange={(e) => setGuestForm({ ...guestForm, rsvp: e.target.value })}
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="yes">Yes</option>
-                      <option value="no">No</option>
-                      <option value="maybe">Maybe</option>
-                    </select>
-                  </div>
-                  <div className="form-actions" style={{ alignItems: 'end' }}>
-                    <button className="btn btn-primary" type="submit">
-                      Add guest
-                    </button>
-                  </div>
-                </form>
-              </>
-            )}
-          </div>
-        </div>
+        </section>
       )}
     </div>
   );

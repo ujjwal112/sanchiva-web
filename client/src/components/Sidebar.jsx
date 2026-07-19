@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import Logo from './Logo';
 
 const links = [
@@ -11,6 +11,8 @@ const links = [
 ];
 
 export default function Sidebar({ open, onClose }) {
+  const { pathname } = useLocation();
+
   return (
     <>
       {open && <div className="overlay" onClick={onClose} />}
@@ -25,7 +27,15 @@ export default function Sidebar({ open, onClose }) {
         <ul className="nav-list">
           {links.map((l) => (
             <li className="nav-item" key={l.to}>
-              <NavLink to={l.to} end={l.end} onClick={onClose} className={({ isActive }) => (isActive ? 'active' : '')}>
+              <NavLink
+                to={l.to}
+                end={l.end}
+                onClick={onClose}
+                className={({ isActive }) => {
+                  if (l.to === '/events' && pathname.startsWith('/events')) return 'active';
+                  return isActive ? 'active' : '';
+                }}
+              >
                 <span className="nav-icon">{l.icon}</span>
                 {l.label}
               </NavLink>

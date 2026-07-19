@@ -9,17 +9,24 @@ const titles = {
   '/daily-expense': { title: 'Daily Expense', sub: 'Log spends and review week / month insights' },
   '/loans-credit': { title: 'Loans & Credit Cards', sub: 'EMIs, loan progress and card spends' },
   '/monetary': { title: 'Monetary', sub: 'Income, assets and money given to people' },
-  '/events': { title: 'Events', sub: 'Plan weddings, birthdays and more with an AI wizard' },
+  '/events': { title: 'Events', sub: 'Create events and manage your list' },
   '/about': {
     title: 'About Sanchiva',
     sub: 'Everything that matters — one place',
   },
 };
 
+function titleForPath(pathname) {
+  if (pathname.startsWith('/events/') && pathname !== '/events') {
+    return { title: 'Event details', sub: 'Overview, charts, todos and guests' };
+  }
+  return titles[pathname] || titles['/'];
+}
+
 export default function Layout() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
-  const meta = titles[pathname] || titles['/'];
+  const meta = titleForPath(pathname);
 
   return (
     <div className="app-shell">
