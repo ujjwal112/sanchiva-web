@@ -10,12 +10,16 @@ async function init() {
   const schemaPath = path.join(__dirname, 'schema.sql');
   const sql = fs.readFileSync(schemaPath, 'utf8');
   try {
+    // 1) Create missing tables (does not alter existing columns)
     await pool.query(sql);
-    console.log('✓ Database schema applied');
+    console.log('✓ Database schema applied (CREATE IF NOT EXISTS)');
+
+    // 2) Add user_id + indexes for multi-user auth
     await runMigrations();
     console.log('✓ Database ready');
   } catch (err) {
     console.error('Failed to init database:', err.message);
+    if (err.stack) console.error(err.stack);
     console.error('\nMake sure PostgreSQL is running and DATABASE_URL is correct.');
     process.exit(1);
   } finally {

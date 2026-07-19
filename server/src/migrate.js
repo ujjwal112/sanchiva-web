@@ -1,29 +1,44 @@
 /**
- * Safe migrations for existing deployments (add users + user_id columns).
- * Runs after schema.sql CREATE IF NOT EXISTS.
+ * Upgrades existing databases for multi-user auth.
+ * Runs AFTER schema.sql CREATE IF NOT EXISTS.
  */
 import { query } from './db.js';
+
+async function tableExists(table) {
+  const { rows } = await query(
+    `SELECT 1 FROM information_schema.tables
+     WHERE table_schema = 'public' AND table_name = $1`,
+    [table]
+  );
+  return rows.length > 0;
+}
 
 async function columnExists(table, column) {
   const { rows } = await query(
     `SELECT 1 FROM information_schema.columns
-     WHERE table_name = $1 AND column_name = $2`,
+     WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2`,
     [table, column]
   );
   return rows.length > 0;
 }
 
 async function addUserIdIfMissing(table) {
-  if (await columnExists(table, 'user_id')) return;
-  // nullable first for legacy rows, then we leave legacy orphaned (not visible)
-  await query(`ALTER TABLE ${table} ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE`);
+  if (!(await tableExists(table))) return;
+  if (await columnExists(table, 'user_id')) {
+    console.log(`  · ${table}.user_id already exists`);
+    return;
+  }
+  await query(
+    `ALTER TABLE ${table}
+     ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE`
+  );
   console.log(`  + ${table}.user_id`);
 }
 
 export async function runMigrations() {
   console.log('Running migrations…');
 
-  // Ensure users / refresh_tokens exist (also in schema.sql)
+  // Ensure auth tables exist even if schema.sql was an older version mid-deploy
   await query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -64,23 +79,47 @@ export async function runMigrations() {
     try {
       await addUserIdIfMissing(t);
     } catch (e) {
-      console.warn(`  skip ${t}:`, e.message);
+      console.warn(`  ! ${t}: ${e.message}`);
+      throw e;
     }
   }
 
-  // Fix custom_categories unique for multi-user
+  // Drop legacy single-tenant unique constraint if present
   try {
     await query(`ALTER TABLE custom_categories DROP CONSTRAINT IF EXISTS custom_categories_section_name_key`);
   } catch (_) {
     /* ignore */
   }
+
+  // Multi-user unique category names
   try {
     await query(`
       CREATE UNIQUE INDEX IF NOT EXISTS custom_categories_user_section_name
-      ON custom_categories(user_id, section, name)
+      ON custom_categories (user_id, section, name)
+      WHERE user_id IS NOT NULL
     `);
-  } catch (_) {
-    /* ignore */
+  } catch (e) {
+    console.warn('  ! custom_categories unique index:', e.message);
+  }
+
+  // Indexes that require user_id — only after column exists
+  const indexes = [
+    `CREATE INDEX IF NOT EXISTS idx_refresh_user ON refresh_tokens(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_daily_expenses_user_date ON daily_expenses(user_id, expense_date)`,
+    `CREATE INDEX IF NOT EXISTS idx_loans_user ON loans(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_cc_spends_user ON credit_card_spends(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_income_user ON income_sources(user_id, year, month)`,
+    `CREATE INDEX IF NOT EXISTS idx_events_user ON events(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_event_items_event ON event_items(event_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_event_guests_event ON event_guests(event_id)`,
+  ];
+
+  for (const sql of indexes) {
+    try {
+      await query(sql);
+    } catch (e) {
+      console.warn('  ! index:', e.message);
+    }
   }
 
   console.log('Migrations done');
