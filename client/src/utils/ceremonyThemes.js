@@ -137,8 +137,15 @@ export function getCeremonyQuote(name) {
   return getCeremonyTheme(name).quote;
 }
 
+function ceremonyDateValue(date) {
+  if (!date) return null;
+  const t = new Date(date).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
 /**
  * Build display cards from API ceremony_details / ceremonies.
+ * Sorted by date ascending; ceremonies without a date appear last.
  * @param {{ name: string, date?: string, quote?: string }[]} details
  */
 export function buildCeremonyCards(details = []) {
@@ -152,5 +159,14 @@ export function buildCeremonyCards(details = []) {
         quote: d.quote || theme.quote,
         theme,
       };
+    })
+    .sort((a, b) => {
+      const ta = ceremonyDateValue(a.date);
+      const tb = ceremonyDateValue(b.date);
+      if (ta == null && tb == null) return String(a.name).localeCompare(String(b.name));
+      if (ta == null) return 1; // no date → end
+      if (tb == null) return -1;
+      if (ta !== tb) return ta - tb;
+      return String(a.name).localeCompare(String(b.name));
     });
 }
