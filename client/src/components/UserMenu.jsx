@@ -38,16 +38,6 @@ export default function UserMenu() {
       </button>
       {open && (
         <div className="user-menu-dropdown">
-          <div className="user-menu-meta">
-            <strong>{displayName}</strong>
-            {!isGuest && <span className="muted">{user.email}</span>}
-            <span className={`badge ${isGuest ? 'warning' : ''}`}>{isGuest ? 'guest session' : user.provider}</span>
-            {isGuest && (
-              <span className="muted" style={{ fontSize: '0.75rem', marginTop: 4 }}>
-                Logout will permanently delete all guest data from this session.
-              </span>
-            )}
-          </div>
           <button
             type="button"
             className="btn btn-danger btn-sm user-logout-btn"
@@ -58,7 +48,7 @@ export default function UserMenu() {
               });
             }}
           >
-            {isGuest ? 'Logout & clear guest data' : 'Logout'}
+            Logout
           </button>
         </div>
       )}
