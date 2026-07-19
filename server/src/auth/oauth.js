@@ -10,6 +10,8 @@ import {
   rotateRefreshToken,
   revokeRefreshToken,
   getUserById,
+  createGuestUser,
+  deleteGuestUserCompletely,
 } from './tokens.js';
 import { requireAuth } from './middleware.js';
 
@@ -152,7 +154,33 @@ router.get('/providers', (_req, res) => {
     google: providerEnabled('google'),
     facebook: providerEnabled('facebook'),
     microsoft: providerEnabled('microsoft'),
+    guest: true,
   });
+});
+
+/** Guest login — no OAuth; data wiped on logout */
+router.post('/guest', async (_req, res) => {
+  try {
+    const user = await createGuestUser();
+    const accessToken = signAccessToken(user);
+    const refreshToken = await issueRefreshToken(user.id);
+    res.status(201).json({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      token_type: 'Bearer',
+      expires_in: 900,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture,
+        provider: user.provider,
+        created_at: user.created_at,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.get('/google', (req, res, next) => {
@@ -239,7 +267,15 @@ router.post('/logout', requireAuth, async (req, res) => {
   try {
     const { refresh_token: refreshToken } = req.body || {};
     if (refreshToken) await revokeRefreshToken(refreshToken);
-    res.json({ success: true });
+
+    // Guest sessions: delete all data + guest user for this session
+    const full = await getUserById(req.user.id);
+    if (full?.provider === 'guest') {
+      await deleteGuestUserCompletely(req.user.id);
+      return res.json({ success: true, guest_data_deleted: true });
+    }
+
+    res.json({ success: true, guest_data_deleted: false });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

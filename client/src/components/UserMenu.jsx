@@ -16,7 +16,9 @@ export default function UserMenu() {
 
   if (!user) return null;
 
-  const initial = (user.name || user.email || 'U').trim().charAt(0).toUpperCase();
+  const isGuest = user.provider === 'guest';
+  const displayName = isGuest ? 'Guest User' : user.name || user.email;
+  const initial = (displayName || 'G').trim().charAt(0).toUpperCase();
 
   return (
     <div className="user-menu" ref={ref}>
@@ -26,20 +28,25 @@ export default function UserMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        {user.picture ? (
+        {user.picture && !isGuest ? (
           <img src={user.picture} alt="" className="user-avatar" referrerPolicy="no-referrer" />
         ) : (
-          <span className="user-avatar user-avatar-fallback">{initial}</span>
+          <span className={`user-avatar user-avatar-fallback ${isGuest ? 'guest' : ''}`}>{initial}</span>
         )}
-        <span className="user-menu-name">{user.name || user.email}</span>
+        <span className="user-menu-name">{displayName}</span>
         <span className="user-menu-caret">{open ? '▴' : '▾'}</span>
       </button>
       {open && (
         <div className="user-menu-dropdown">
           <div className="user-menu-meta">
-            <strong>{user.name}</strong>
-            <span className="muted">{user.email}</span>
-            <span className="badge">{user.provider}</span>
+            <strong>{displayName}</strong>
+            {!isGuest && <span className="muted">{user.email}</span>}
+            <span className={`badge ${isGuest ? 'warning' : ''}`}>{isGuest ? 'guest session' : user.provider}</span>
+            {isGuest && (
+              <span className="muted" style={{ fontSize: '0.75rem', marginTop: 4 }}>
+                Logout will permanently delete all guest data from this session.
+              </span>
+            )}
           </div>
           <button
             type="button"
@@ -51,7 +58,7 @@ export default function UserMenu() {
               });
             }}
           >
-            Logout
+            {isGuest ? 'Logout & clear guest data' : 'Logout'}
           </button>
         </div>
       )}

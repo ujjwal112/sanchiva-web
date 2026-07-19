@@ -93,3 +93,29 @@ export async function getUserById(id) {
   ]);
   return rows[0] || null;
 }
+
+/** Create a one-time guest user for exploring the app */
+export async function createGuestUser() {
+  const guestId = crypto.randomUUID();
+  const { rows } = await query(
+    `INSERT INTO users (email, name, picture, provider, provider_id)
+     VALUES ($1, $2, NULL, 'guest', $3) RETURNING *`,
+    [`guest-${guestId}@sanchiva.local`, 'Guest User', guestId]
+  );
+  return rows[0];
+}
+
+/**
+ * Wipe all guest session data and remove the guest account.
+ * FK CASCADE on user_id tables handles related rows.
+ */
+export async function deleteGuestUserCompletely(userId) {
+  const user = await getUserById(userId);
+  if (!user || user.provider !== 'guest') {
+    return { deleted: false, reason: 'not_guest' };
+  }
+  // Extra cleanup for safety (events cascade via event_id, but explicit is fine)
+  await query(`DELETE FROM refresh_tokens WHERE user_id = $1`, [userId]);
+  await query(`DELETE FROM users WHERE id = $1 AND provider = 'guest'`, [userId]);
+  return { deleted: true };
+}

@@ -73,6 +73,15 @@ export function AuthProvider({ children }) {
     window.location.href = `${API_ORIGIN}/api/auth/${provider}`;
   };
 
+  const loginAsGuest = useCallback(async () => {
+    const res = await fetch(`${API_ORIGIN}/api/auth/guest`, { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Guest login failed');
+    setTokens(data.access_token, data.refresh_token);
+    setUser(data.user);
+    return data.user;
+  }, []);
+
   const completeLogin = (access, refresh) => {
     setTokens(access, refresh);
     return loadMe();
@@ -83,12 +92,14 @@ export function AuthProvider({ children }) {
       user,
       loading,
       isAuthenticated: !!user,
+      isGuest: user?.provider === 'guest',
       loginWithProvider,
+      loginAsGuest,
       completeLogin,
       logout,
       refreshUser: loadMe,
     }),
-    [user, loading, logout, loadMe]
+    [user, loading, logout, loadMe, loginAsGuest]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
