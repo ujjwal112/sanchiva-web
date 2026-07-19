@@ -841,42 +841,31 @@ export default function EventDetail() {
               No ceremonies for this event yet. Create a wedding event and pick ceremonies (with dates) in the wizard to organise guests by ceremony.
             </p>
           ) : (
-            <>
-              <div className="ceremony-count-row">
-                {ceremonyTabs.map((c) => (
-                  <div key={c} className="ceremony-count-chip">
-                    <span className="muted">{c}</span>
-                    <strong>{detail.ceremonyCounts?.[c] || 0}</strong>
-                  </div>
-                ))}
-              </div>
-
-              <div className="ceremony-tabs">
-                {ceremonyTabs.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`tab ${guestCeremonyTab === c ? 'active' : ''}`}
-                    onClick={() => {
-                      setGuestCeremonyTab(c);
-                      setEditingGuest(null);
-                      setGuestForm({
-                        name: '',
-                        side: '',
-                        count: 1,
-                        rsvp: 'maybe',
-                        ceremony: c,
-                      });
-                    }}
-                  >
-                    {c}
-                    <span className="badge" style={{ marginLeft: 6 }}>
-                      {detail.ceremonyCounts?.[c] || 0}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </>
+            <div className="ceremony-tabs">
+              {ceremonyTabs.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`tab ${guestCeremonyTab === c ? 'active' : ''}`}
+                  onClick={() => {
+                    setGuestCeremonyTab(c);
+                    setEditingGuest(null);
+                    setGuestForm({
+                      name: '',
+                      side: '',
+                      count: 1,
+                      rsvp: 'maybe',
+                      ceremony: c,
+                    });
+                  }}
+                >
+                  {c}
+                  <span className="badge" style={{ marginLeft: 6 }}>
+                    {detail.ceremonyCounts?.[c] || 0}
+                  </span>
+                </button>
+              ))}
+            </div>
           )}
 
           <form onSubmit={addGuest} className="form-grid event-add-form" style={{ borderTop: 'none', paddingTop: 0 }}>
