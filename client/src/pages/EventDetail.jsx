@@ -480,6 +480,10 @@ export default function EventDetail() {
             </div>
             <div className="event-kpi-row">
               <div className="event-kpi">
+                <span className="muted">Total budget</span>
+                <strong>{formatCurrency(detail.budget ?? detail.metadata?.budget ?? 0)}</strong>
+              </div>
+              <div className="event-kpi">
                 <span className="muted">Planned</span>
                 <strong>{formatCurrency(detail.summary?.planned)}</strong>
               </div>
