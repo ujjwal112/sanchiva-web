@@ -27,7 +27,6 @@ export default function Layout() {
       <main className="main">
         <div className="topbar">
           <div className="topbar-left">
-            <UserMenu />
             <button className="menu-toggle" onClick={() => setOpen(true)} aria-label="Open menu">
               ☰
             </button>
@@ -36,6 +35,9 @@ export default function Layout() {
               <h2>{meta.title}</h2>
               <p>{meta.sub}</p>
             </div>
+          </div>
+          <div className="topbar-right">
+            <UserMenu />
           </div>
         </div>
         <Outlet />
