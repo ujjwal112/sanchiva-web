@@ -1,14 +1,75 @@
-// Production: set VITE_API_URL to your API origin (e.g. https://sanchiva-api.onrender.com)
-// Local / same-origin deploy: leave empty so requests go to /api
-const API_ORIGIN = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+// Production: set VITE_API_URL to your API origin if split hosting
+// Same-origin (Render): leave empty
+export const API_ORIGIN = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const BASE = `${API_ORIGIN}/api`;
 
-async function request(path, options = {}) {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-    ...options,
+const ACCESS_KEY = 'sanchiva_access_token';
+const REFRESH_KEY = 'sanchiva_refresh_token';
+
+export function getAccessToken() {
+  return localStorage.getItem(ACCESS_KEY);
+}
+export function getRefreshToken() {
+  return localStorage.getItem(REFRESH_KEY);
+}
+export function setTokens(access, refresh) {
+  if (access) localStorage.setItem(ACCESS_KEY, access);
+  if (refresh) localStorage.setItem(REFRESH_KEY, refresh);
+}
+export function clearTokens() {
+  localStorage.removeItem(ACCESS_KEY);
+  localStorage.removeItem(REFRESH_KEY);
+}
+
+let refreshPromise = null;
+
+async function refreshAccessToken() {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    const refresh = getRefreshToken();
+    if (!refresh) throw new Error('No refresh token');
+    const res = await fetch(`${BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      clearTokens();
+      throw new Error(data.error || 'Session expired');
+    }
+    setTokens(data.access_token, data.refresh_token);
+    return data.access_token;
+  })().finally(() => {
+    refreshPromise = null;
   });
+  return refreshPromise;
+}
+
+async function request(path, options = {}, retry = true) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {}),
+  };
+  const access = getAccessToken();
+  if (access) headers.Authorization = `Bearer ${access}`;
+
+  const res = await fetch(`${BASE}${path}`, { ...options, headers });
   const data = await res.json().catch(() => ({}));
+
+  if (res.status === 401 && retry && getRefreshToken() && !path.startsWith('/auth/')) {
+    try {
+      await refreshAccessToken();
+      return request(path, options, false);
+    } catch {
+      clearTokens();
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
+      throw new Error(data.error || 'Session expired');
+    }
+  }
+
   if (!res.ok) throw new Error(data.error || res.statusText);
   return data;
 }

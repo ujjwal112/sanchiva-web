@@ -1,23 +1,24 @@
 import { Router } from 'express';
 import { query } from '../db.js';
+import { requireAuth, userId } from '../auth/middleware.js';
 
 const router = Router();
+router.use(requireAuth);
 
-async function maybeAddAssetType(type) {
+async function maybeAddAssetType(uid, type) {
   if (!type || type.toLowerCase() === 'other') return;
   await query(
-    `INSERT INTO custom_categories (section, name) VALUES ('asset', $1)
-     ON CONFLICT (section, name) DO NOTHING`,
-    [type]
+    `INSERT INTO custom_categories (user_id, section, name) VALUES ($1, 'asset', $2)
+     ON CONFLICT (user_id, section, name) DO NOTHING`,
+    [uid, type]
   );
 }
 
-// ---- Income ----
 router.get('/income', async (req, res) => {
   try {
     const { month, year } = req.query;
-    let sql = 'SELECT * FROM income_sources WHERE 1=1';
-    const params = [];
+    let sql = 'SELECT * FROM income_sources WHERE user_id = $1';
+    const params = [userId(req)];
     if (month) {
       params.push(Number(month));
       sql += ` AND month = $${params.length}`;
@@ -36,23 +37,21 @@ router.get('/income', async (req, res) => {
 
 router.get('/income/summary', async (req, res) => {
   try {
+    const uid = userId(req);
     const now = new Date();
     const month = Number(req.query.month) || now.getMonth() + 1;
     const year = Number(req.query.year) || now.getFullYear();
-
     const { rows: incomes } = await query(
-      'SELECT * FROM income_sources WHERE month = $1 AND year = $2',
-      [month, year]
+      'SELECT * FROM income_sources WHERE user_id = $1 AND month = $2 AND year = $3',
+      [uid, month, year]
     );
     const totalIncome = incomes.reduce((s, r) => s + Number(r.amount), 0);
-
     const { rows: spends } = await query(
       `SELECT COALESCE(SUM(amount), 0) AS total FROM daily_expenses
-       WHERE EXTRACT(MONTH FROM expense_date) = $1 AND EXTRACT(YEAR FROM expense_date) = $2`,
-      [month, year]
+       WHERE user_id = $1 AND EXTRACT(MONTH FROM expense_date) = $2 AND EXTRACT(YEAR FROM expense_date) = $3`,
+      [uid, month, year]
     );
     const totalSpend = Number(spends[0].total);
-
     res.json({
       month,
       year,
@@ -74,9 +73,9 @@ router.post('/income', async (req, res) => {
       return res.status(400).json({ error: 'source_name, amount, month, year required' });
     }
     const { rows } = await query(
-      `INSERT INTO income_sources (source_name, amount, month, year)
-       VALUES ($1,$2,$3,$4) RETURNING *`,
-      [source_name, amount, month, year]
+      `INSERT INTO income_sources (user_id, source_name, amount, month, year)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [userId(req), source_name, amount, month, year]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -94,8 +93,8 @@ router.put('/income/:id', async (req, res) => {
          month = COALESCE($3, month),
          year = COALESCE($4, year),
          updated_at = NOW()
-       WHERE id = $5 RETURNING *`,
-      [source_name, amount, month, year, req.params.id]
+       WHERE id = $5 AND user_id = $6 RETURNING *`,
+      [source_name, amount, month, year, req.params.id, userId(req)]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Not found' });
     res.json(rows[0]);
@@ -106,7 +105,10 @@ router.put('/income/:id', async (req, res) => {
 
 router.delete('/income/:id', async (req, res) => {
   try {
-    const { rowCount } = await query('DELETE FROM income_sources WHERE id = $1', [req.params.id]);
+    const { rowCount } = await query('DELETE FROM income_sources WHERE id = $1 AND user_id = $2', [
+      req.params.id,
+      userId(req),
+    ]);
     if (!rowCount) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true });
   } catch (err) {
@@ -114,19 +116,20 @@ router.delete('/income/:id', async (req, res) => {
   }
 });
 
-// ---- Assets ----
-router.get('/assets', async (_req, res) => {
+router.get('/assets', async (req, res) => {
   try {
-    const { rows } = await query('SELECT * FROM assets ORDER BY created_at DESC');
+    const { rows } = await query('SELECT * FROM assets WHERE user_id = $1 ORDER BY created_at DESC', [
+      userId(req),
+    ]);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.get('/assets/summary', async (_req, res) => {
+router.get('/assets/summary', async (req, res) => {
   try {
-    const { rows } = await query('SELECT * FROM assets');
+    const { rows } = await query('SELECT * FROM assets WHERE user_id = $1', [userId(req)]);
     const byType = {};
     let total = 0;
     for (const r of rows) {
@@ -146,17 +149,18 @@ router.get('/assets/summary', async (_req, res) => {
 
 router.post('/assets', async (req, res) => {
   try {
+    const uid = userId(req);
     let { asset_type, amount, notes, custom_type } = req.body;
     if (asset_type === 'Other' && custom_type) {
       asset_type = custom_type.trim();
-      await maybeAddAssetType(asset_type);
+      await maybeAddAssetType(uid, asset_type);
     }
     if (!asset_type || amount == null) {
       return res.status(400).json({ error: 'asset_type and amount required' });
     }
     const { rows } = await query(
-      `INSERT INTO assets (asset_type, amount, notes) VALUES ($1,$2,$3) RETURNING *`,
-      [asset_type, amount, notes || null]
+      `INSERT INTO assets (user_id, asset_type, amount, notes) VALUES ($1,$2,$3,$4) RETURNING *`,
+      [uid, asset_type, amount, notes || null]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -166,10 +170,11 @@ router.post('/assets', async (req, res) => {
 
 router.put('/assets/:id', async (req, res) => {
   try {
+    const uid = userId(req);
     let { asset_type, amount, notes, custom_type } = req.body;
     if (asset_type === 'Other' && custom_type) {
       asset_type = custom_type.trim();
-      await maybeAddAssetType(asset_type);
+      await maybeAddAssetType(uid, asset_type);
     }
     const { rows } = await query(
       `UPDATE assets SET
@@ -177,8 +182,8 @@ router.put('/assets/:id', async (req, res) => {
          amount = COALESCE($2, amount),
          notes = COALESCE($3, notes),
          updated_at = NOW()
-       WHERE id = $4 RETURNING *`,
-      [asset_type, amount, notes, req.params.id]
+       WHERE id = $4 AND user_id = $5 RETURNING *`,
+      [asset_type, amount, notes, req.params.id, uid]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Not found' });
     res.json(rows[0]);
@@ -189,7 +194,10 @@ router.put('/assets/:id', async (req, res) => {
 
 router.delete('/assets/:id', async (req, res) => {
   try {
-    const { rowCount } = await query('DELETE FROM assets WHERE id = $1', [req.params.id]);
+    const { rowCount } = await query('DELETE FROM assets WHERE id = $1 AND user_id = $2', [
+      req.params.id,
+      userId(req),
+    ]);
     if (!rowCount) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true });
   } catch (err) {
@@ -197,19 +205,21 @@ router.delete('/assets/:id', async (req, res) => {
   }
 });
 
-// ---- Money Given (Lent / Personal advances) ----
-router.get('/money-given', async (_req, res) => {
+router.get('/money-given', async (req, res) => {
   try {
-    const { rows } = await query('SELECT * FROM money_given ORDER BY given_date DESC, id DESC');
+    const { rows } = await query(
+      'SELECT * FROM money_given WHERE user_id = $1 ORDER BY given_date DESC, id DESC',
+      [userId(req)]
+    );
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.get('/money-given/summary', async (_req, res) => {
+router.get('/money-given/summary', async (req, res) => {
   try {
-    const { rows } = await query('SELECT * FROM money_given');
+    const { rows } = await query('SELECT * FROM money_given WHERE user_id = $1', [userId(req)]);
     const byPerson = {};
     let total = 0;
     for (const r of rows) {
@@ -234,9 +244,9 @@ router.post('/money-given', async (req, res) => {
       return res.status(400).json({ error: 'person_name, given_date, amount required' });
     }
     const { rows } = await query(
-      `INSERT INTO money_given (person_name, given_date, amount, notes)
-       VALUES ($1,$2,$3,$4) RETURNING *`,
-      [person_name, given_date, amount, notes || null]
+      `INSERT INTO money_given (user_id, person_name, given_date, amount, notes)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [userId(req), person_name, given_date, amount, notes || null]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -254,8 +264,8 @@ router.put('/money-given/:id', async (req, res) => {
          amount = COALESCE($3, amount),
          notes = COALESCE($4, notes),
          updated_at = NOW()
-       WHERE id = $5 RETURNING *`,
-      [person_name, given_date, amount, notes, req.params.id]
+       WHERE id = $5 AND user_id = $6 RETURNING *`,
+      [person_name, given_date, amount, notes, req.params.id, userId(req)]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Not found' });
     res.json(rows[0]);
@@ -266,7 +276,10 @@ router.put('/money-given/:id', async (req, res) => {
 
 router.delete('/money-given/:id', async (req, res) => {
   try {
-    const { rowCount } = await query('DELETE FROM money_given WHERE id = $1', [req.params.id]);
+    const { rowCount } = await query('DELETE FROM money_given WHERE id = $1 AND user_id = $2', [
+      req.params.id,
+      userId(req),
+    ]);
     if (!rowCount) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true });
   } catch (err) {

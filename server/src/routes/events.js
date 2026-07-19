@@ -1,7 +1,14 @@
 import { Router } from 'express';
 import { query } from '../db.js';
+import { requireAuth, userId } from '../auth/middleware.js';
 
 const router = Router();
+router.use(requireAuth);
+
+async function assertEventOwner(eventId, uid) {
+  const { rows } = await query('SELECT id FROM events WHERE id = $1 AND user_id = $2', [eventId, uid]);
+  return rows[0];
+}
 
 /** Template builders for common event types */
 export function buildEventTemplate(eventType, answers = {}) {
@@ -152,9 +159,11 @@ router.get('/meta/wizard-questions/:eventType', (req, res) => {
   });
 });
 
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const { rows } = await query('SELECT * FROM events ORDER BY created_at DESC');
+    const { rows } = await query('SELECT * FROM events WHERE user_id = $1 ORDER BY created_at DESC', [
+      userId(req),
+    ]);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -163,7 +172,10 @@ router.get('/', async (_req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const { rows } = await query('SELECT * FROM events WHERE id = $1', [req.params.id]);
+    const { rows } = await query('SELECT * FROM events WHERE id = $1 AND user_id = $2', [
+      req.params.id,
+      userId(req),
+    ]);
     if (!rows[0]) return res.status(404).json({ error: 'Not found' });
     const { rows: items } = await query(
       'SELECT * FROM event_items WHERE event_id = $1 ORDER BY sort_order, id',
@@ -213,9 +225,10 @@ router.post('/wizard', async (req, res) => {
     const days = answers.days || null;
 
     const { rows } = await query(
-      `INSERT INTO events (name, event_type, sub_type, event_date, end_date, location, budget, notes, metadata, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'planning') RETURNING *`,
+      `INSERT INTO events (user_id, name, event_type, sub_type, event_date, end_date, location, budget, notes, metadata, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'planning') RETURNING *`,
       [
+        userId(req),
         name,
         event_type,
         sub_type,
@@ -256,9 +269,9 @@ router.post('/', async (req, res) => {
     const { name, event_type, sub_type, event_date, end_date, location, budget, notes, metadata } = req.body;
     if (!name || !event_type) return res.status(400).json({ error: 'name and event_type required' });
     const { rows } = await query(
-      `INSERT INTO events (name, event_type, sub_type, event_date, end_date, location, budget, notes, metadata)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [name, event_type, sub_type || null, event_date || null, end_date || null, location || null, budget || 0, notes || null, JSON.stringify(metadata || {})]
+      `INSERT INTO events (user_id, name, event_type, sub_type, event_date, end_date, location, budget, notes, metadata)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      [userId(req), name, event_type, sub_type || null, event_date || null, end_date || null, location || null, budget || 0, notes || null, JSON.stringify(metadata || {})]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -282,9 +295,10 @@ router.put('/:id', async (req, res) => {
       sets.push(`metadata = $${params.length}`);
     }
     if (!sets.length) return res.status(400).json({ error: 'No fields' });
-    params.push(req.params.id);
+    params.push(req.params.id, userId(req));
     const { rows } = await query(
-      `UPDATE events SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${params.length} RETURNING *`,
+      `UPDATE events SET ${sets.join(', ')}, updated_at = NOW()
+       WHERE id = $${params.length - 1} AND user_id = $${params.length} RETURNING *`,
       params
     );
     if (!rows[0]) return res.status(404).json({ error: 'Not found' });
@@ -296,7 +310,10 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const { rowCount } = await query('DELETE FROM events WHERE id = $1', [req.params.id]);
+    const { rowCount } = await query('DELETE FROM events WHERE id = $1 AND user_id = $2', [
+      req.params.id,
+      userId(req),
+    ]);
     if (!rowCount) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true });
   } catch (err) {
@@ -307,6 +324,9 @@ router.delete('/:id', async (req, res) => {
 // Event items
 router.post('/:id/items', async (req, res) => {
   try {
+    if (!(await assertEventOwner(req.params.id, userId(req)))) {
+      return res.status(404).json({ error: 'Not found' });
+    }
     const { title, category, planned_amount = 0, token_paid = 0, due_date, vendor_name, notes } = req.body;
     if (!title) return res.status(400).json({ error: 'title required' });
     const remaining = Math.max(Number(planned_amount) - Number(token_paid), 0);
@@ -324,6 +344,12 @@ router.post('/:id/items', async (req, res) => {
 
 router.put('/items/:itemId', async (req, res) => {
   try {
+    const own = await query(
+      `SELECT ei.id FROM event_items ei JOIN events e ON e.id = ei.event_id
+       WHERE ei.id = $1 AND e.user_id = $2`,
+      [req.params.itemId, userId(req)]
+    );
+    if (!own.rows[0]) return res.status(404).json({ error: 'Not found' });
     const fields = ['title', 'category', 'planned_amount', 'token_paid', 'due_date', 'is_done', 'vendor_name', 'notes', 'sort_order'];
     const sets = [];
     const params = [];
@@ -333,7 +359,6 @@ router.put('/items/:itemId', async (req, res) => {
         sets.push(`${f} = $${params.length}`);
       }
     }
-    // recompute remaining if amounts change
     if (req.body.planned_amount !== undefined || req.body.token_paid !== undefined) {
       const { rows: cur } = await query('SELECT planned_amount, token_paid FROM event_items WHERE id = $1', [req.params.itemId]);
       if (!cur[0]) return res.status(404).json({ error: 'Not found' });
@@ -357,7 +382,11 @@ router.put('/items/:itemId', async (req, res) => {
 
 router.delete('/items/:itemId', async (req, res) => {
   try {
-    const { rowCount } = await query('DELETE FROM event_items WHERE id = $1', [req.params.itemId]);
+    const { rowCount } = await query(
+      `DELETE FROM event_items ei USING events e
+       WHERE ei.id = $1 AND ei.event_id = e.id AND e.user_id = $2`,
+      [req.params.itemId, userId(req)]
+    );
     if (!rowCount) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true });
   } catch (err) {
@@ -368,6 +397,9 @@ router.delete('/items/:itemId', async (req, res) => {
 // Guests
 router.post('/:id/guests', async (req, res) => {
   try {
+    if (!(await assertEventOwner(req.params.id, userId(req)))) {
+      return res.status(404).json({ error: 'Not found' });
+    }
     const { name, side, rsvp, count, phone, notes } = req.body;
     if (!name) return res.status(400).json({ error: 'name required' });
     const { rows } = await query(
@@ -383,6 +415,12 @@ router.post('/:id/guests', async (req, res) => {
 
 router.put('/guests/:guestId', async (req, res) => {
   try {
+    const own = await query(
+      `SELECT eg.id FROM event_guests eg JOIN events e ON e.id = eg.event_id
+       WHERE eg.id = $1 AND e.user_id = $2`,
+      [req.params.guestId, userId(req)]
+    );
+    if (!own.rows[0]) return res.status(404).json({ error: 'Not found' });
     const fields = ['name', 'side', 'rsvp', 'count', 'phone', 'notes'];
     const sets = [];
     const params = [];
@@ -407,7 +445,11 @@ router.put('/guests/:guestId', async (req, res) => {
 
 router.delete('/guests/:guestId', async (req, res) => {
   try {
-    const { rowCount } = await query('DELETE FROM event_guests WHERE id = $1', [req.params.guestId]);
+    const { rowCount } = await query(
+      `DELETE FROM event_guests eg USING events e
+       WHERE eg.id = $1 AND eg.event_id = e.id AND e.user_id = $2`,
+      [req.params.guestId, userId(req)]
+    );
     if (!rowCount) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true });
   } catch (err) {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Logo from './Logo';
+import UserMenu from './UserMenu';
 
 const titles = {
   '/': { title: 'Dashboard', sub: 'Overview of expenses, loans & money flow' },
@@ -25,7 +26,8 @@ export default function Layout() {
       <Sidebar open={open} onClose={() => setOpen(false)} />
       <main className="main">
         <div className="topbar">
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <div className="topbar-left">
+            <UserMenu />
             <button className="menu-toggle" onClick={() => setOpen(true)} aria-label="Open menu">
               ☰
             </button>

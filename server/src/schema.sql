@@ -1,18 +1,43 @@
--- Expense Tracker Schema
+-- Sanchiva Schema (multi-user)
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Custom categories per section (user-only custom types)
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  name VARCHAR(255) NOT NULL DEFAULT '',
+  picture TEXT,
+  provider VARCHAR(50) NOT NULL,
+  provider_id VARCHAR(255) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(provider, provider_id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_provider ON users(email, provider);
+
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash VARCHAR(128) NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_refresh_user ON refresh_tokens(user_id);
+
 CREATE TABLE IF NOT EXISTS custom_categories (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   section VARCHAR(50) NOT NULL,
   name VARCHAR(100) NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(section, name)
+  UNIQUE(user_id, section, name)
 );
 
--- Daily Expenses
 CREATE TABLE IF NOT EXISTS daily_expenses (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   category VARCHAR(100) NOT NULL,
   amount NUMERIC(12, 2) NOT NULL CHECK (amount >= 0),
   expense_date DATE NOT NULL,
@@ -21,9 +46,9 @@ CREATE TABLE IF NOT EXISTS daily_expenses (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Loans
 CREATE TABLE IF NOT EXISTS loans (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   bank_name VARCHAR(150) NOT NULL,
   emi_deduction_bank VARCHAR(150) NOT NULL,
   emi_deduction_date INTEGER NOT NULL CHECK (emi_deduction_date BETWEEN 1 AND 31),
@@ -37,9 +62,9 @@ CREATE TABLE IF NOT EXISTS loans (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Credit Card Spends
 CREATE TABLE IF NOT EXISTS credit_card_spends (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   spend_date DATE NOT NULL,
   spend_type VARCHAR(100) NOT NULL,
   credit_card_name VARCHAR(150) NOT NULL,
@@ -48,9 +73,9 @@ CREATE TABLE IF NOT EXISTS credit_card_spends (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Credit Card EMIs
 CREATE TABLE IF NOT EXISTS credit_card_emis (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   emi_name VARCHAR(150) NOT NULL,
   credit_card_name VARCHAR(150) NOT NULL,
   start_month INTEGER NOT NULL CHECK (start_month BETWEEN 1 AND 12),
@@ -62,9 +87,9 @@ CREATE TABLE IF NOT EXISTS credit_card_emis (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Income / Salary sources
 CREATE TABLE IF NOT EXISTS income_sources (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   source_name VARCHAR(150) NOT NULL,
   amount NUMERIC(12, 2) NOT NULL CHECK (amount >= 0),
   month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
@@ -73,9 +98,9 @@ CREATE TABLE IF NOT EXISTS income_sources (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Other Assets
 CREATE TABLE IF NOT EXISTS assets (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   asset_type VARCHAR(100) NOT NULL,
   amount NUMERIC(12, 2) NOT NULL CHECK (amount >= 0),
   notes VARCHAR(255),
@@ -83,9 +108,9 @@ CREATE TABLE IF NOT EXISTS assets (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Money given to people (receivables / personal loans given)
 CREATE TABLE IF NOT EXISTS money_given (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   person_name VARCHAR(150) NOT NULL,
   given_date DATE NOT NULL,
   amount NUMERIC(12, 2) NOT NULL CHECK (amount >= 0),
@@ -94,9 +119,9 @@ CREATE TABLE IF NOT EXISTS money_given (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Events
 CREATE TABLE IF NOT EXISTS events (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name VARCHAR(200) NOT NULL,
   event_type VARCHAR(50) NOT NULL,
   sub_type VARCHAR(100),
@@ -111,7 +136,6 @@ CREATE TABLE IF NOT EXISTS events (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Event todo / booking items
 CREATE TABLE IF NOT EXISTS event_items (
   id SERIAL PRIMARY KEY,
   event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -129,7 +153,6 @@ CREATE TABLE IF NOT EXISTS event_items (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Event guest list
 CREATE TABLE IF NOT EXISTS event_guests (
   id SERIAL PRIMARY KEY,
   event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -143,10 +166,8 @@ CREATE TABLE IF NOT EXISTS event_guests (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_daily_expenses_date ON daily_expenses(expense_date);
-CREATE INDEX IF NOT EXISTS idx_loans_status ON loans(status);
-CREATE INDEX IF NOT EXISTS idx_cc_spends_date ON credit_card_spends(spend_date);
-CREATE INDEX IF NOT EXISTS idx_income_month ON income_sources(year, month);
-CREATE INDEX IF NOT EXISTS idx_event_items_event ON event_items(event_id);
-CREATE INDEX IF NOT EXISTS idx_event_guests_event ON event_guests(event_id);
+CREATE INDEX IF NOT EXISTS idx_daily_expenses_user_date ON daily_expenses(user_id, expense_date);
+CREATE INDEX IF NOT EXISTS idx_loans_user ON loans(user_id);
+CREATE INDEX IF NOT EXISTS idx_cc_spends_user ON credit_card_spends(user_id);
+CREATE INDEX IF NOT EXISTS idx_income_user ON income_sources(user_id, year, month);
+CREATE INDEX IF NOT EXISTS idx_events_user ON events(user_id);
