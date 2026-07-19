@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import swaggerUi from 'swagger-ui-express';
 import pool from './db.js';
 
 import categoriesRouter from './routes/categories.js';
@@ -16,6 +17,10 @@ import dashboardRouter from './routes/dashboard.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
+const openapi = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'openapi.json'), 'utf8')
+);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -40,6 +45,22 @@ app.use(
   })
 );
 app.use(express.json());
+
+// Swagger / OpenAPI docs
+app.get('/api/openapi.json', (_req, res) => {
+  res.json(openapi);
+});
+app.use(
+  '/api/docs',
+  swaggerUi.serve,
+  swaggerUi.setup(openapi, {
+    customSiteTitle: 'Sanchiva API Docs',
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayRequestDuration: true,
+    },
+  })
+);
 
 app.get('/api/health', async (_req, res) => {
   try {
@@ -75,6 +96,7 @@ app.use((err, _req, res, _next) => {
 
 app.listen(PORT, () => {
   console.log(`Sanchiva API running on port ${PORT}`);
+  console.log(`Swagger UI: http://localhost:${PORT}/api/docs`);
   if (fs.existsSync(clientDist)) {
     console.log(`Serving frontend from ${clientDist}`);
   }
