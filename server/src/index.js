@@ -54,7 +54,13 @@ app.use(
   swaggerUi.serve,
   swaggerUi.setup(openapi, {
     customSiteTitle: 'Sanchiva API Docs',
-    swaggerOptions: { persistAuthorization: true, displayRequestDuration: true },
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayRequestDuration: true,
+      tryItOutEnabled: true,
+      // Show Authorize (lock) so users can paste JWT Bearer access token
+      initOAuth: false,
+    },
   })
 );
 

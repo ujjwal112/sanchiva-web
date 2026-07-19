@@ -71,15 +71,15 @@ Interactive OpenAPI docs (try endpoints in the browser):
 | **Production** | [https://sanchiva.onrender.com/api/docs](https://sanchiva.onrender.com/api/docs) | […/api/openapi.json](https://sanchiva.onrender.com/api/openapi.json) | […/api/health](https://sanchiva.onrender.com/api/health) |
 | **Local** | http://localhost:5000/api/docs | http://localhost:5000/api/openapi.json | http://localhost:5000/api/health |
 
-**How to use Swagger**
+**How to use Swagger (with Bearer auth)**
 1. Open `/api/docs`  
-2. Choose an endpoint (e.g. `GET /api/health`)  
-3. Click **Try it out** → **Execute**  
-4. For protected routes, click **Authorize** and paste:  
-   `Bearer <your_access_token>`  
-   (get a token via login / guest login, or from the browser after signing in)
+2. Run **POST /api/auth/guest** → **Try it out** → **Execute** and copy `access_token` from the response  
+   (or copy the access token from the app after Google / guest login)  
+3. Click **Authorize** (lock icon, top right)  
+4. Paste the **access token only** (Swagger adds `Bearer` automatically) → **Authorize** → **Close**  
+5. Call any protected endpoint with **Try it out** → **Execute**  
 
-**Note:** Most business endpoints require a valid access token. Public without auth: `/api/health`, `/api/docs`, `/api/auth/*` login routes.
+**Note:** Most business endpoints require a valid access token. Public without auth: `/api/health`, `/api/docs`, `/api/auth/guest`, `/api/auth/refresh`, `/api/auth/providers`.
 
 ---
 

@@ -2,62 +2,245 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Sanchiva API",
-    "description": "Sanchiva — Everything that matters, one place. REST API for expenses, loans, monetary data, and events.\n\n**Developed by Ujjwal Gupta**",
+    "description": "Sanchiva — Everything that matters, one place. REST API for expenses, loans, monetary data, and events.\n\n## Authentication\nMost endpoints require a JWT **Bearer** access token.\n\n1. Call **POST /api/auth/guest** (or sign in via Google OAuth in the app) to get `access_token`.\n2. Click **Authorize** (lock icon, top right).\n3. Paste the access token only (Swagger adds the word Bearer for you).\n4. Click **Authorize** → **Close**, then try protected endpoints.\n\n**Developed by Ujjwal Gupta**",
     "version": "1.0.0"
   },
   "servers": [
-    { "url": "/", "description": "Current host" }
+    {
+      "url": "/",
+      "description": "Current host"
+    }
   ],
   "tags": [
-    { "name": "Health" },
-    { "name": "Categories" },
-    { "name": "Expenses" },
-    { "name": "Loans" },
-    { "name": "Credit Cards" },
-    { "name": "Monetary" },
-    { "name": "Events" },
-    { "name": "Dashboard" }
+    {
+      "name": "Auth",
+      "description": "Login, tokens, current user"
+    },
+    {
+      "name": "Health"
+    },
+    {
+      "name": "Categories"
+    },
+    {
+      "name": "Expenses"
+    },
+    {
+      "name": "Loans"
+    },
+    {
+      "name": "Credit Cards"
+    },
+    {
+      "name": "Monetary"
+    },
+    {
+      "name": "Events"
+    },
+    {
+      "name": "Dashboard"
+    }
   ],
   "paths": {
     "/api/health": {
       "get": {
-        "tags": ["Health"],
+        "tags": [
+          "Health"
+        ],
         "summary": "Health check",
         "responses": {
           "200": {
             "description": "API and DB status",
             "content": {
               "application/json": {
-                "example": { "ok": true, "db": true, "env": "production" }
+                "example": {
+                  "ok": true,
+                  "db": true,
+                  "env": "production"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/auth/guest": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Create a guest session",
+        "description": "Returns access_token and refresh_token. Use access_token in Authorize.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Tokens issued",
+            "content": {
+              "application/json": {
+                "example": {
+                  "user": {
+                    "id": 1,
+                    "name": "Guest User",
+                    "provider": "guest"
+                  },
+                  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                  "refresh_token": "raw-refresh-token",
+                  "token_type": "Bearer"
+                }
               }
             }
           }
         }
       }
     },
+    "/api/auth/refresh": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Refresh access token",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "refresh_token"
+                ],
+                "properties": {
+                  "refresh_token": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "refresh_token": "your-refresh-token"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New access and refresh tokens"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Current authenticated user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User profile"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Logout (revokes refresh token; wipes guest data)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refresh_token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logged out"
+          }
+        }
+      }
+    },
+    "/api/auth/providers": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Which OAuth providers are configured",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Provider flags"
+          }
+        }
+      }
+    },
     "/api/categories/{section}": {
       "get": {
-        "tags": ["Categories"],
+        "tags": [
+          "Categories"
+        ],
         "summary": "List categories for a section",
         "parameters": [
           {
             "name": "section",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "enum": ["expense", "asset", "spend"] }
+            "schema": {
+              "type": "string",
+              "enum": [
+                "expense",
+                "asset",
+                "spend"
+              ]
+            }
           }
         ],
-        "responses": { "200": { "description": "Category list" } }
+        "responses": {
+          "200": {
+            "description": "Category list"
+          }
+        }
       },
       "post": {
-        "tags": ["Categories"],
+        "tags": [
+          "Categories"
+        ],
         "summary": "Add custom category",
         "parameters": [
           {
             "name": "section",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "enum": ["expense", "asset", "spend"] }
+            "schema": {
+              "type": "string",
+              "enum": [
+                "expense",
+                "asset",
+                "spend"
+              ]
+            }
           }
         ],
         "requestBody": {
@@ -66,36 +249,84 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["name"],
-                "properties": { "name": { "type": "string" } }
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                }
               },
-              "example": { "name": "Subscriptions" }
+              "example": {
+                "name": "Subscriptions"
+              }
             }
           }
         },
-        "responses": { "201": { "description": "Created" } }
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
       }
     },
     "/api/expenses": {
       "get": {
-        "tags": ["Expenses"],
+        "tags": [
+          "Expenses"
+        ],
         "summary": "List daily expenses",
         "parameters": [
-          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "month", "in": "query", "schema": { "type": "integer" } },
-          { "name": "year", "in": "query", "schema": { "type": "integer" } }
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Expense list" } }
+        "responses": {
+          "200": {
+            "description": "Expense list"
+          }
+        }
       },
       "post": {
-        "tags": ["Expenses"],
+        "tags": [
+          "Expenses"
+        ],
         "summary": "Create daily expense",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/DailyExpenseInput" },
+              "schema": {
+                "$ref": "#/components/schemas/DailyExpenseInput"
+              },
               "example": {
                 "category": "Grocery",
                 "amount": 450,
@@ -105,69 +336,141 @@
             }
           }
         },
-        "responses": { "201": { "description": "Created" } }
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
       }
     },
     "/api/expenses/summary/weeks": {
       "get": {
-        "tags": ["Expenses"],
+        "tags": [
+          "Expenses"
+        ],
         "summary": "Week-wise expense summary",
         "parameters": [
-          { "name": "year", "in": "query", "schema": { "type": "integer" } },
-          { "name": "month", "in": "query", "schema": { "type": "integer" } }
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Weekly buckets" } }
+        "responses": {
+          "200": {
+            "description": "Weekly buckets"
+          }
+        }
       }
     },
     "/api/expenses/summary/months": {
       "get": {
-        "tags": ["Expenses"],
+        "tags": [
+          "Expenses"
+        ],
         "summary": "Month-wise expense summary",
         "parameters": [
-          { "name": "year", "in": "query", "schema": { "type": "integer" } }
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Monthly buckets" } }
+        "responses": {
+          "200": {
+            "description": "Monthly buckets"
+          }
+        }
       }
     },
     "/api/expenses/{id}": {
       "put": {
-        "tags": ["Expenses"],
+        "tags": [
+          "Expenses"
+        ],
         "summary": "Update expense",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "requestBody": {
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/DailyExpenseInput" }
+              "schema": {
+                "$ref": "#/components/schemas/DailyExpenseInput"
+              }
             }
           }
         },
-        "responses": { "200": { "description": "Updated" } }
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
       },
       "delete": {
-        "tags": ["Expenses"],
+        "tags": [
+          "Expenses"
+        ],
         "summary": "Delete expense",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Deleted" } }
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
       }
     },
     "/api/loans": {
       "get": {
-        "tags": ["Loans"],
+        "tags": [
+          "Loans"
+        ],
         "summary": "List loans with progress",
-        "responses": { "200": { "description": "Loans" } }
+        "responses": {
+          "200": {
+            "description": "Loans"
+          }
+        }
       },
       "post": {
-        "tags": ["Loans"],
+        "tags": [
+          "Loans"
+        ],
         "summary": "Create loan",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/LoanInput" },
+              "schema": {
+                "$ref": "#/components/schemas/LoanInput"
+              },
               "example": {
                 "bank_name": "HDFC",
                 "emi_deduction_bank": "SBI",
@@ -182,47 +485,95 @@
             }
           }
         },
-        "responses": { "201": { "description": "Created" } }
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
       }
     },
     "/api/loans/summary": {
       "get": {
-        "tags": ["Loans"],
+        "tags": [
+          "Loans"
+        ],
         "summary": "Loan summary cards",
-        "responses": { "200": { "description": "Summary" } }
+        "responses": {
+          "200": {
+            "description": "Summary"
+          }
+        }
       }
     },
     "/api/loans/{id}": {
       "put": {
-        "tags": ["Loans"],
+        "tags": [
+          "Loans"
+        ],
         "summary": "Update loan",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "requestBody": {
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/LoanInput" } }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoanInput"
+              }
+            }
           }
         },
-        "responses": { "200": { "description": "Updated" } }
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
       },
       "delete": {
-        "tags": ["Loans"],
+        "tags": [
+          "Loans"
+        ],
         "summary": "Delete loan",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Deleted" } }
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
       }
     },
     "/api/credit-cards/spends": {
       "get": {
-        "tags": ["Credit Cards"],
+        "tags": [
+          "Credit Cards"
+        ],
         "summary": "List credit card spends",
-        "responses": { "200": { "description": "Spends" } }
+        "responses": {
+          "200": {
+            "description": "Spends"
+          }
+        }
       },
       "post": {
-        "tags": ["Credit Cards"],
+        "tags": [
+          "Credit Cards"
+        ],
         "summary": "Create credit card spend",
         "requestBody": {
           "required": true,
@@ -237,42 +588,86 @@
             }
           }
         },
-        "responses": { "201": { "description": "Created" } }
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
       }
     },
     "/api/credit-cards/spends/summary": {
       "get": {
-        "tags": ["Credit Cards"],
+        "tags": [
+          "Credit Cards"
+        ],
         "summary": "CC spends summary",
-        "responses": { "200": { "description": "Summary" } }
+        "responses": {
+          "200": {
+            "description": "Summary"
+          }
+        }
       }
     },
     "/api/credit-cards/spends/{id}": {
       "put": {
-        "tags": ["Credit Cards"],
+        "tags": [
+          "Credit Cards"
+        ],
         "summary": "Update CC spend",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Updated" } }
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
       },
       "delete": {
-        "tags": ["Credit Cards"],
+        "tags": [
+          "Credit Cards"
+        ],
         "summary": "Delete CC spend",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Deleted" } }
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
       }
     },
     "/api/credit-cards/emis": {
       "get": {
-        "tags": ["Credit Cards"],
+        "tags": [
+          "Credit Cards"
+        ],
         "summary": "List credit card EMIs",
-        "responses": { "200": { "description": "EMIs" } }
+        "responses": {
+          "200": {
+            "description": "EMIs"
+          }
+        }
       },
       "post": {
-        "tags": ["Credit Cards"],
+        "tags": [
+          "Credit Cards"
+        ],
         "summary": "Create credit card EMI",
         "requestBody": {
           "required": true,
@@ -290,46 +685,102 @@
             }
           }
         },
-        "responses": { "201": { "description": "Created" } }
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
       }
     },
     "/api/credit-cards/emis/summary": {
       "get": {
-        "tags": ["Credit Cards"],
+        "tags": [
+          "Credit Cards"
+        ],
         "summary": "CC EMI summary",
-        "responses": { "200": { "description": "Summary" } }
+        "responses": {
+          "200": {
+            "description": "Summary"
+          }
+        }
       }
     },
     "/api/credit-cards/emis/{id}": {
       "put": {
-        "tags": ["Credit Cards"],
+        "tags": [
+          "Credit Cards"
+        ],
         "summary": "Update CC EMI",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Updated" } }
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
       },
       "delete": {
-        "tags": ["Credit Cards"],
+        "tags": [
+          "Credit Cards"
+        ],
         "summary": "Delete CC EMI",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Deleted" } }
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
       }
     },
     "/api/monetary/income": {
       "get": {
-        "tags": ["Monetary"],
+        "tags": [
+          "Monetary"
+        ],
         "summary": "List income sources",
         "parameters": [
-          { "name": "month", "in": "query", "schema": { "type": "integer" } },
-          { "name": "year", "in": "query", "schema": { "type": "integer" } }
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Incomes" } }
+        "responses": {
+          "200": {
+            "description": "Incomes"
+          }
+        }
       },
       "post": {
-        "tags": ["Monetary"],
+        "tags": [
+          "Monetary"
+        ],
         "summary": "Create income source",
         "requestBody": {
           "required": true,
@@ -344,91 +795,195 @@
             }
           }
         },
-        "responses": { "201": { "description": "Created" } }
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
       }
     },
     "/api/monetary/income/summary": {
       "get": {
-        "tags": ["Monetary"],
+        "tags": [
+          "Monetary"
+        ],
         "summary": "Income vs spend summary",
         "parameters": [
-          { "name": "month", "in": "query", "schema": { "type": "integer" } },
-          { "name": "year", "in": "query", "schema": { "type": "integer" } }
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Summary" } }
+        "responses": {
+          "200": {
+            "description": "Summary"
+          }
+        }
       }
     },
     "/api/monetary/income/{id}": {
       "put": {
-        "tags": ["Monetary"],
+        "tags": [
+          "Monetary"
+        ],
         "summary": "Update income",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Updated" } }
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
       },
       "delete": {
-        "tags": ["Monetary"],
+        "tags": [
+          "Monetary"
+        ],
         "summary": "Delete income",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Deleted" } }
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
       }
     },
     "/api/monetary/assets": {
       "get": {
-        "tags": ["Monetary"],
+        "tags": [
+          "Monetary"
+        ],
         "summary": "List assets",
-        "responses": { "200": { "description": "Assets" } }
+        "responses": {
+          "200": {
+            "description": "Assets"
+          }
+        }
       },
       "post": {
-        "tags": ["Monetary"],
+        "tags": [
+          "Monetary"
+        ],
         "summary": "Create asset",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "example": { "asset_type": "FD", "amount": 100000, "notes": "Bank FD" }
+              "example": {
+                "asset_type": "FD",
+                "amount": 100000,
+                "notes": "Bank FD"
+              }
             }
           }
         },
-        "responses": { "201": { "description": "Created" } }
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
       }
     },
     "/api/monetary/assets/summary": {
       "get": {
-        "tags": ["Monetary"],
+        "tags": [
+          "Monetary"
+        ],
         "summary": "Assets summary",
-        "responses": { "200": { "description": "Summary" } }
+        "responses": {
+          "200": {
+            "description": "Summary"
+          }
+        }
       }
     },
     "/api/monetary/assets/{id}": {
       "put": {
-        "tags": ["Monetary"],
+        "tags": [
+          "Monetary"
+        ],
         "summary": "Update asset",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Updated" } }
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
       },
       "delete": {
-        "tags": ["Monetary"],
+        "tags": [
+          "Monetary"
+        ],
         "summary": "Delete asset",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Deleted" } }
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
       }
     },
     "/api/monetary/money-given": {
       "get": {
-        "tags": ["Monetary"],
+        "tags": [
+          "Monetary"
+        ],
         "summary": "List money lent entries",
-        "responses": { "200": { "description": "Entries" } }
+        "responses": {
+          "200": {
+            "description": "Entries"
+          }
+        }
       },
       "post": {
-        "tags": ["Monetary"],
+        "tags": [
+          "Monetary"
+        ],
         "summary": "Create money lent entry",
         "requestBody": {
           "required": true,
@@ -443,42 +998,86 @@
             }
           }
         },
-        "responses": { "201": { "description": "Created" } }
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
       }
     },
     "/api/monetary/money-given/summary": {
       "get": {
-        "tags": ["Monetary"],
+        "tags": [
+          "Monetary"
+        ],
         "summary": "Money lent summary by person",
-        "responses": { "200": { "description": "Summary" } }
+        "responses": {
+          "200": {
+            "description": "Summary"
+          }
+        }
       }
     },
     "/api/monetary/money-given/{id}": {
       "put": {
-        "tags": ["Monetary"],
+        "tags": [
+          "Monetary"
+        ],
         "summary": "Update money lent entry",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Updated" } }
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
       },
       "delete": {
-        "tags": ["Monetary"],
+        "tags": [
+          "Monetary"
+        ],
         "summary": "Delete money lent entry",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Deleted" } }
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
       }
     },
     "/api/events": {
       "get": {
-        "tags": ["Events"],
+        "tags": [
+          "Events"
+        ],
         "summary": "List events",
-        "responses": { "200": { "description": "Events" } }
+        "responses": {
+          "200": {
+            "description": "Events"
+          }
+        }
       },
       "post": {
-        "tags": ["Events"],
+        "tags": [
+          "Events"
+        ],
         "summary": "Create event (manual)",
         "requestBody": {
           "required": true,
@@ -494,12 +1093,18 @@
             }
           }
         },
-        "responses": { "201": { "description": "Created" } }
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
       }
     },
     "/api/events/wizard": {
       "post": {
-        "tags": ["Events"],
+        "tags": [
+          "Events"
+        ],
         "summary": "Create event with AI-style checklist",
         "requestBody": {
           "required": true,
@@ -519,12 +1124,18 @@
             }
           }
         },
-        "responses": { "201": { "description": "Created with todos" } }
+        "responses": {
+          "201": {
+            "description": "Created with todos"
+          }
+        }
       }
     },
     "/api/events/meta/wizard-questions/{eventType}": {
       "get": {
-        "tags": ["Events"],
+        "tags": [
+          "Events"
+        ],
         "summary": "Wizard questions for event type",
         "parameters": [
           {
@@ -533,45 +1144,104 @@
             "required": true,
             "schema": {
               "type": "string",
-              "enum": ["wedding", "birthday", "anniversary", "housewarming", "corporate", "other"]
+              "enum": [
+                "wedding",
+                "birthday",
+                "anniversary",
+                "housewarming",
+                "corporate",
+                "other"
+              ]
             }
           }
         ],
-        "responses": { "200": { "description": "Questions" } }
+        "responses": {
+          "200": {
+            "description": "Questions"
+          }
+        }
       }
     },
     "/api/events/{id}": {
       "get": {
-        "tags": ["Events"],
+        "tags": [
+          "Events"
+        ],
         "summary": "Get event detail with items and guests",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Event detail" } }
+        "responses": {
+          "200": {
+            "description": "Event detail"
+          }
+        }
       },
       "put": {
-        "tags": ["Events"],
+        "tags": [
+          "Events"
+        ],
         "summary": "Update event",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Updated" } }
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
       },
       "delete": {
-        "tags": ["Events"],
+        "tags": [
+          "Events"
+        ],
         "summary": "Delete event",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Deleted" } }
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
       }
     },
     "/api/events/{id}/items": {
       "post": {
-        "tags": ["Events"],
+        "tags": [
+          "Events"
+        ],
         "summary": "Add event todo / booking item",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "requestBody": {
           "content": {
@@ -585,67 +1255,147 @@
             }
           }
         },
-        "responses": { "201": { "description": "Created" } }
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
       }
     },
     "/api/events/items/{itemId}": {
       "put": {
-        "tags": ["Events"],
+        "tags": [
+          "Events"
+        ],
         "summary": "Update event item",
         "parameters": [
-          { "name": "itemId", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Updated" } }
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
       },
       "delete": {
-        "tags": ["Events"],
+        "tags": [
+          "Events"
+        ],
         "summary": "Delete event item",
         "parameters": [
-          { "name": "itemId", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Deleted" } }
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
       }
     },
     "/api/events/{id}/guests": {
       "post": {
-        "tags": ["Events"],
+        "tags": [
+          "Events"
+        ],
         "summary": "Add guest",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "requestBody": {
           "content": {
             "application/json": {
-              "example": { "name": "Amit", "side": "Groom", "count": 2, "rsvp": "pending" }
+              "example": {
+                "name": "Amit",
+                "side": "Groom",
+                "count": 2,
+                "rsvp": "pending"
+              }
             }
           }
         },
-        "responses": { "201": { "description": "Created" } }
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
       }
     },
     "/api/events/guests/{guestId}": {
       "put": {
-        "tags": ["Events"],
+        "tags": [
+          "Events"
+        ],
         "summary": "Update guest",
         "parameters": [
-          { "name": "guestId", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "guestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Updated" } }
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
       },
       "delete": {
-        "tags": ["Events"],
+        "tags": [
+          "Events"
+        ],
         "summary": "Delete guest",
         "parameters": [
-          { "name": "guestId", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "guestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Deleted" } }
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
       }
     },
     "/api/dashboard": {
       "get": {
-        "tags": ["Dashboard"],
+        "tags": [
+          "Dashboard"
+        ],
         "summary": "Full dashboard payload",
-        "responses": { "200": { "description": "Dashboard KPIs and chart data" } }
+        "responses": {
+          "200": {
+            "description": "Dashboard KPIs and chart data"
+          }
+        }
       }
     }
   },
@@ -654,27 +1404,73 @@
       "DailyExpenseInput": {
         "type": "object",
         "properties": {
-          "category": { "type": "string" },
-          "custom_category": { "type": "string" },
-          "amount": { "type": "number" },
-          "expense_date": { "type": "string", "format": "date" },
-          "item_name": { "type": "string" }
+          "category": {
+            "type": "string"
+          },
+          "custom_category": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "expense_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "item_name": {
+            "type": "string"
+          }
         }
       },
       "LoanInput": {
         "type": "object",
         "properties": {
-          "bank_name": { "type": "string" },
-          "emi_deduction_bank": { "type": "string" },
-          "emi_deduction_date": { "type": "integer" },
-          "emi_close_month": { "type": "integer" },
-          "emi_close_year": { "type": "integer" },
-          "emi_amount": { "type": "number" },
-          "status": { "type": "string", "enum": ["ongoing", "closed"] },
-          "start_month": { "type": "integer" },
-          "start_year": { "type": "integer" }
+          "bank_name": {
+            "type": "string"
+          },
+          "emi_deduction_bank": {
+            "type": "string"
+          },
+          "emi_deduction_date": {
+            "type": "integer"
+          },
+          "emi_close_month": {
+            "type": "integer"
+          },
+          "emi_close_year": {
+            "type": "integer"
+          },
+          "emi_amount": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ongoing",
+              "closed"
+            ]
+          },
+          "start_month": {
+            "type": "integer"
+          },
+          "start_year": {
+            "type": "integer"
+          }
         }
       }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Paste your JWT access token (from POST /api/auth/guest or login). Do not include the word \"Bearer\"."
+      }
     }
-  }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
 }
