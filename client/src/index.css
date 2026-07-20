@@ -1140,18 +1140,21 @@ table.data-table tbody tr:hover {
   border-style: dashed;
 }
 
-/* Date field: no calendar icon; whole box opens the picker */
+/* Date fields: whole textbox opens the calendar (not only the icon) */
 .field-date {
   position: relative;
 }
 
-.field-date .date-input-clickable {
+.field-date .date-input-clickable,
+input[type='date'].date-input-clickable {
   cursor: pointer;
   color-scheme: dark;
+  position: relative;
 }
 
-/* Hide native calendar icon (Chrome/Edge/Safari) */
-.field-date input[type='date']::-webkit-calendar-picker-indicator {
+/* Stretch native indicator so click on text area still hits the picker control */
+.field-date input[type='date']::-webkit-calendar-picker-indicator,
+input[type='date'].date-input-clickable::-webkit-calendar-picker-indicator {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -1164,11 +1167,14 @@ table.data-table tbody tr:hover {
 
 /* Keep empty date field readable */
 .field-date input[type='date']:not(:valid),
-.field-date input[type='date'][value=''] {
+.field-date input[type='date'][value=''],
+input[type='date'].date-input-clickable:not(:valid),
+input[type='date'].date-input-clickable[value=''] {
   color: var(--text-muted);
 }
 
-.field-date input[type='date']:valid {
+.field-date input[type='date']:valid,
+input[type='date'].date-input-clickable:valid {
   color: var(--text);
 }
 

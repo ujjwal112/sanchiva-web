@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, formatCurrency, formatDate, todayISO, MONTHS } from '../api';
-import { Tabs, CategorySelect, DataTable, useToast, MonthYearFilters } from '../components/ui';
+import { Tabs, CategorySelect, DataTable, DateInput, useToast, MonthYearFilters } from '../components/ui';
 import { PieChart, BarChart, categoryChartData } from '../components/Charts';
 
 const emptyIncome = {
@@ -538,10 +538,9 @@ export default function Monetary() {
                         onChange={(e) => setGivenForm({ ...givenForm, person_name: e.target.value })}
                       />
                     </div>
-                    <div className="field">
+                    <div className="field field-date">
                       <label>Date given</label>
-                      <input
-                        type="date"
+                      <DateInput
                         required
                         value={givenForm.given_date}
                         onChange={(e) => setGivenForm({ ...givenForm, given_date: e.target.value })}

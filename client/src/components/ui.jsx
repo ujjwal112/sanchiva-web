@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import { downloadExcel, downloadPdf, filterByMonthYear, filterByMonthYearFields } from '../utils/export';
 
@@ -18,6 +18,29 @@ export function Tabs({ tabs, active, onChange }) {
     </div>
   );
 }
+
+/**
+ * Date input: clicking anywhere on the textbox opens the calendar
+ * (not only the native calendar icon).
+ */
+export const DateInput = forwardRef(function DateInput({ className = '', onClick, ...props }, ref) {
+  return (
+    <input
+      ref={ref}
+      type="date"
+      className={`date-input-clickable ${className}`.trim()}
+      onClick={(e) => {
+        try {
+          e.currentTarget.showPicker?.();
+        } catch {
+          /* unsupported or already open */
+        }
+        onClick?.(e);
+      }}
+      {...props}
+    />
+  );
+});
 
 export function CategorySelect({ section, value, onChange, customValue, onCustomChange }) {
   const [cats, setCats] = useState([]);

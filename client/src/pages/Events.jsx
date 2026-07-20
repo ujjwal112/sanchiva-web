@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api, formatEventStyleLabel } from '../api';
-import { Tabs, useToast } from '../components/ui';
+import { Tabs, DateInput, useToast } from '../components/ui';
 
 const EVENT_TYPES = [
   { id: 'wedding', label: 'Wedding', icon: '💍' },
@@ -411,24 +411,25 @@ export default function Events() {
                     )}
                   </div>
                 )}
-                {['text', 'number', 'date'].includes(currentQ.type) && (
-                  <div className={`field ${currentQ.type === 'date' ? 'field-date' : ''}`}>
+                {currentQ.type === 'date' && (
+                  <div className="field field-date">
+                    <DateInput
+                      ref={answerInputRef}
+                      value={currentAnswer}
+                      onChange={(e) => setCurrentAnswer(e.target.value)}
+                      placeholder="Select a date"
+                      onKeyDown={(e) => e.key === 'Enter' && pushAnswer()}
+                    />
+                  </div>
+                )}
+                {['text', 'number'].includes(currentQ.type) && (
+                  <div className="field">
                     <input
                       ref={answerInputRef}
                       type={currentQ.type === 'text' ? 'text' : currentQ.type}
                       value={currentAnswer}
                       onChange={(e) => setCurrentAnswer(e.target.value)}
-                      placeholder={currentQ.type === 'date' ? 'Select a date' : 'Your answer…'}
-                      className={currentQ.type === 'date' ? 'date-input-clickable' : undefined}
-                      onClick={(e) => {
-                        if (currentQ.type === 'date') {
-                          try {
-                            e.currentTarget.showPicker?.();
-                          } catch {
-                            /* ignore */
-                          }
-                        }
-                      }}
+                      placeholder="Your answer…"
                       onKeyDown={(e) => e.key === 'Enter' && pushAnswer()}
                     />
                   </div>

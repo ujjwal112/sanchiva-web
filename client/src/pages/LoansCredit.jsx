@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, formatCurrency, formatDate, todayISO, MONTHS } from '../api';
-import { Tabs, CategorySelect, DataTable, useToast } from '../components/ui';
+import { Tabs, CategorySelect, DataTable, DateInput, useToast } from '../components/ui';
 import { PieChart, BarChart, MultiBarChart, categoryChartData } from '../components/Charts';
 
 const emptyLoan = {
@@ -555,10 +555,9 @@ export default function LoansCredit() {
                     <h3>{spendEdit ? 'Edit spend' : 'Add credit card spend'}</h3>
                     <form onSubmit={submitSpend} style={{ marginTop: '1rem' }}>
                       <div className="form-grid">
-                        <div className="field">
+                        <div className="field field-date">
                           <label>Date</label>
-                          <input
-                            type="date"
+                          <DateInput
                             required
                             value={spendForm.spend_date}
                             onChange={(e) => setSpendForm({ ...spendForm, spend_date: e.target.value })}

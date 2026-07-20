@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, formatCurrency, formatDate, formatEventStyleLabel } from '../api';
-import { Tabs, useToast } from '../components/ui';
+import { Tabs, DateInput, useToast } from '../components/ui';
 import { PieChart, BarChart } from '../components/Charts';
 import { downloadExcel, downloadExcelMulti, downloadPdf } from '../utils/export';
 import { buildCeremonyCards, getCeremonyTheme } from '../utils/ceremonyThemes';
@@ -541,22 +541,13 @@ export default function EventDetail() {
                               autoFocus
                             />
                           </div>
-                          <div className="field">
+                          <div className="field field-date">
                             <label>Date</label>
-                            <input
-                              type="date"
+                            <DateInput
                               value={ceremonyEditForm.date}
                               onChange={(e) =>
                                 setCeremonyEditForm((f) => ({ ...f, date: e.target.value }))
                               }
-                              className="date-input-clickable"
-                              onClick={(e) => {
-                                try {
-                                  e.currentTarget.showPicker?.();
-                                } catch {
-                                  /* ignore */
-                                }
-                              }}
                             />
                           </div>
                           <div className="ceremony-card-edit-actions">

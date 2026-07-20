@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, formatCurrency, formatDate, todayISO, MONTHS } from '../api';
-import { Tabs, CategorySelect, DataTable, useToast } from '../components/ui';
+import { Tabs, CategorySelect, DataTable, DateInput, useToast } from '../components/ui';
 import { PieChart, categoryChartData } from '../components/Charts';
 import { downloadExcel, downloadExcelMulti, downloadPdf } from '../utils/export';
 
@@ -323,10 +323,9 @@ export default function DailyExpense() {
                     onChange={(e) => set('amount', e.target.value)}
                   />
                 </div>
-                <div className="field">
+                <div className="field field-date">
                   <label>Date</label>
-                  <input
-                    type="date"
+                  <DateInput
                     required
                     value={form.expense_date}
                     onChange={(e) => set('expense_date', e.target.value)}
