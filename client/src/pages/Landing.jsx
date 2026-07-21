@@ -79,9 +79,6 @@ export default function Landing() {
               <Link to="/signup" className="btn btn-primary landing-cta">
                 Get started
               </Link>
-              <Link to="/login" className="btn btn-ghost landing-cta-secondary">
-                Login
-              </Link>
               <a href="#features" className="btn btn-ghost landing-cta-secondary">
                 Explore features
               </a>
