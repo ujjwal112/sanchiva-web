@@ -83,6 +83,19 @@ body::after {
 }
 
 /* ── monopo iridescent atmosphere (hero/auth only) + paper canvas (app) ── */
+/* App layering: atmosphere behind, UI on top */
+.app-root {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+}
+
+.app-content {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
 .atmosphere-bg {
   --mx: 0;
   --my: 0;
@@ -217,12 +230,8 @@ body::after {
   display: none;
 }
 
-#root,
-.app-shell,
-.landing-page,
-.login-page {
-  position: relative;
-  z-index: 1;
+#root {
+  min-height: 100vh;
 }
 
 @keyframes iridescent-a {
@@ -600,6 +609,9 @@ button {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  color: var(--color-obsidian);
+  position: relative;
+  z-index: 1;
 }
 
 .landing-header {
@@ -712,6 +724,7 @@ button {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+  color: var(--color-paper);
 }
 
 .landing-eyebrow {
@@ -827,14 +840,14 @@ button {
   box-shadow: var(--glass-shadow) !important;
 }
 
-/* Feature cards sit on dark iridescent stage → light glass text */
+/* Feature cards on dark stage: keep dark text on light glass for readability */
 .landing-page .landing-feature-card h3 {
-  color: var(--color-paper) !important;
+  color: var(--color-obsidian) !important;
 }
 
 .landing-page .landing-feature-card .muted,
 .landing-page .landing-feature-card p {
-  color: rgba(255, 255, 255, 0.72) !important;
+  color: var(--color-felt-gray) !important;
 }
 
 .landing-feature-card h3 {
@@ -1200,6 +1213,8 @@ button {
   display: grid;
   place-items: center;
   padding: 1.5rem;
+  position: relative;
+  z-index: 1;
 }
 
 .login-card {

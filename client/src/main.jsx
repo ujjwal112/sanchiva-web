@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
-/* Letter design system tokens (design/variables.css) */
+/* Design tokens from /design folder */
 import '../../design/variables.css';
 import './index.css';
 
