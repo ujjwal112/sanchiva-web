@@ -623,9 +623,14 @@ button {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.85rem 1.5rem;
-  background: transparent;
-  backdrop-filter: none;
-  border-bottom: 1px solid transparent;
+  /* Solid-ish glass bar so scrolled content never bleeds through */
+  background: rgba(8, 10, 18, 0.72);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
 .landing-brand {
