@@ -73,53 +73,53 @@ export default function Signup() {
 
         <form className="auth-form" onSubmit={onSubmit}>
           <div className="field">
-            <label htmlFor="signup-name">Name</label>
             <input
               id="signup-name"
               autoComplete="name"
               required
               autoFocus
+              aria-label="Name"
               value={form.name}
               onChange={set('name')}
-              placeholder="Your name"
+              placeholder="Name"
             />
           </div>
           <div className="field">
-            <label htmlFor="signup-email">Email</label>
             <input
               id="signup-email"
               type="email"
               autoComplete="email"
               required
+              aria-label="Email"
               value={form.email}
               onChange={set('email')}
-              placeholder="you@example.com"
+              placeholder="Email"
             />
           </div>
           <div className="field">
-            <label htmlFor="signup-password">Password</label>
             <input
               id="signup-password"
               type="password"
               autoComplete="new-password"
               required
               minLength={8}
+              aria-label="Password"
               value={form.password}
               onChange={set('password')}
-              placeholder="At least 8 characters"
+              placeholder="Password (min 8 characters)"
             />
           </div>
           <div className="field">
-            <label htmlFor="signup-confirm">Confirm password</label>
             <input
               id="signup-confirm"
               type="password"
               autoComplete="new-password"
               required
               minLength={8}
+              aria-label="Confirm password"
               value={form.confirm_password}
               onChange={set('confirm_password')}
-              placeholder="Re-enter password"
+              placeholder="Confirm password"
             />
           </div>
           <button type="submit" className="btn btn-primary login-btn" disabled={submitting}>

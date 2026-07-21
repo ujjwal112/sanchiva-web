@@ -134,16 +134,16 @@ export default function Login() {
 
             <form className="auth-form" onSubmit={onEmailContinue}>
               <div className="field">
-                <label htmlFor="login-email">Email</label>
                 <input
                   id="login-email"
                   type="email"
                   autoComplete="email"
                   required
                   autoFocus
+                  aria-label="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder="Email"
                 />
               </div>
               <button type="submit" className="btn btn-primary login-btn">
@@ -178,16 +178,16 @@ export default function Login() {
 
             <form className="auth-form" onSubmit={onPasswordSubmit}>
               <div className="field">
-                <label htmlFor="login-password">Password</label>
                 <input
                   id="login-password"
                   type="password"
                   autoComplete="current-password"
                   required
                   autoFocus
+                  aria-label="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Your password"
+                  placeholder="Password"
                 />
               </div>
               <button type="submit" className="btn btn-primary login-btn" disabled={submitting}>
