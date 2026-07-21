@@ -42,6 +42,52 @@ export const DateInput = forwardRef(function DateInput({ className = '', onClick
   );
 });
 
+/**
+ * Password field with show/hide (peek) toggle.
+ */
+export const PasswordInput = forwardRef(function PasswordInput(
+  { className = '', id, ...props },
+  ref
+) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="password-input-wrap">
+      <input
+        ref={ref}
+        id={id}
+        type={visible ? 'text' : 'password'}
+        className={`password-input-field ${className}`.trim()}
+        {...props}
+      />
+      <button
+        type="button"
+        className="password-peek-btn"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? 'Hide password' : 'Show password'}
+        title={visible ? 'Hide password' : 'Show password'}
+      >
+        {visible ? (
+          /* eye-off */
+          <svg className="password-peek-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden>
+            <path
+              fill="currentColor"
+              d="M3.28 2.22 2.22 3.28l3.12 3.12A11.6 11.6 0 0 0 1 12c1.73 4.04 5.78 7 11 7 1.8 0 3.5-.36 5.04-1.02l3.68 3.68 1.06-1.06L3.28 2.22ZM12 17c-3.84 0-7.05-2.24-8.52-5 .53-1.18 1.35-2.24 2.38-3.1l1.64 1.64A4 4 0 0 0 12 16c.55 0 1.07-.11 1.54-.31l1.48 1.48A8.8 8.8 0 0 1 12 17Zm0-10a4 4 0 0 1 4 4c0 .45-.08.88-.22 1.28l1.54 1.54c.9-.92 1.58-2.05 1.98-3.32C17.8 7.24 15.1 5 12 5c-.95 0-1.86.18-2.7.5l1.48 1.48c.38-.12.79-.18 1.22-.18Z"
+            />
+          </svg>
+        ) : (
+          /* eye */
+          <svg className="password-peek-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden>
+            <path
+              fill="currentColor"
+              d="M12 5c-5.22 0-9.27 2.96-11 7 1.73 4.04 5.78 7 11 7s9.27-2.96 11-7c-1.73-4.04-5.78-7-11-7Zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+            />
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+});
+
 export function CategorySelect({ section, value, onChange, customValue, onCustomChange }) {
   const [cats, setCats] = useState([]);
 

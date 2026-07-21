@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
+import { PasswordInput } from '../components/ui';
 import { useAuth } from '../auth/AuthContext';
 
 export default function Signup() {
@@ -94,9 +95,8 @@ export default function Signup() {
             />
           </div>
           <div className="field">
-            <input
+            <PasswordInput
               id="signup-password"
-              type="password"
               autoComplete="new-password"
               required
               minLength={8}
@@ -107,9 +107,8 @@ export default function Signup() {
             />
           </div>
           <div className="field">
-            <input
+            <PasswordInput
               id="signup-confirm"
-              type="password"
               autoComplete="new-password"
               required
               minLength={8}

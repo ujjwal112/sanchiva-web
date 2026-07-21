@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import Logo from '../components/Logo';
+import { PasswordInput } from '../components/ui';
 import { useAuth } from '../auth/AuthContext';
 import { API_ORIGIN } from '../api';
 
@@ -178,9 +179,8 @@ export default function Login() {
 
             <form className="auth-form" onSubmit={onPasswordSubmit}>
               <div className="field">
-                <input
+                <PasswordInput
                   id="login-password"
-                  type="password"
                   autoComplete="current-password"
                   required
                   autoFocus
