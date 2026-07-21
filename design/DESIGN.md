@@ -1,61 +1,64 @@
-# Letter — Style Reference
-> Private gallery with iridescent vault artifacts. A black-walled showroom where serif headlines float above chrome sculptures on tinted gallery walls.
+# monopo saigon — Style Reference
+> Liquid iridescence behind editorial silence — a monochrome editorial gallery floating on molten light.
 
-**Theme:** mixed
+**Theme:** light
 
-Letter is a private-banking platform that reads like a gallery exhibition for high-net-worth finance. The visual system pivots between a deep ink-black hero stage and a bright editorial body, with 3D metallic and prismatic renders as the recurring sculptural accent. Typography is split into two deliberate registers: a wide grotesque for interface text and navigation, and a high-contrast serif at 80px for headlines that read like magazine cover titles. Color is used as architectural punctuation — three near-gray tinted panels (peach, mint, lavender) act as gallery walls, while teal, violet, and blue claim the action buttons as discrete brand moments. Components are square and confident: 2px corner radii, generous horizontal button padding, and zero decorative shadow — the renders and typography do all the emotional work.
+Monopo Saigon runs on radical monochrome discipline: pure black and white with whisper-thin grays, wrapped around massive Roobert typography that breathes across full-bleed canvases. The signature contrast lives between austere editorial restraint (sharp 0px corners on navigation and text links, generous whitespace, 4px-based rhythm) and a single expressive gesture — full-pill 75px-radius buttons that float like liquid over imagery. Hero environments lean into iridescent, fluid, chromatic atmospheres (greens dissolving into amber into deep oxblood) while the interface itself never picks up a hue, creating the feeling of a black-and-white editorial gallery floating on a river of liquid light. Type sets the temperature: weight 300 at 78px whispers, weight 400 at 225px fills the viewport, and weight 400 at 11px labels everything else with confident minimalism. Motion is expressive but patient — cubic-bezier(0.19, 1, 0.22, 1) ease curves stretching up to 1.25s transform transitions, letting elements glide rather than snap.
 
 ## Tokens — Colors
 
 | Name | Value | Token | Role |
 |------|-------|-------|------|
-| Vault Ink | `#191b1f` | `--color-vault-ink` | Hero background, dark surface stage, dark card panel — deep near-black with the faintest blue chill, warmer than pure black but harder than charcoal |
-| Paper White | `#ffffff` | `--color-paper-white` | Page canvas, light card surface, inverse text on dark backgrounds, outlined button fills |
-| Mist White | `#f6f9f9` | `--color-mist-white` | Soft section background, subtle card surface, secondary canvas — sits one step below pure white without grayness |
-| Fog Gray | `#9fabad` | `--color-fog-gray` | Muted helper text, secondary metadata, low-emphasis labels — a true middle gray with no chromatic bias |
-| Hairline | `#e6ebec` | `--color-hairline` | Borders, dividers, card outlines, button strokes at low contrast — barely-there separators that define structure without drawing the eye |
-| Obsidian | `#000000` | `--color-obsidian` | Primary text, headline ink, logo mark — the only true black in the system, reserved for maximum-contrast typography |
-| Peach Wall | `#fcede1` | `--color-peach-wall` | Hairline borders, dividers, input outlines, and card edges on light surfaces. |
-| Mint Wall | `#eefcef` | `--color-mint-wall` | Tinted card background — cool mint gallery wall, likely the investing/savings panel |
-| Lavender Wall | `#e6def0` | `--color-lavender-wall` | Tinted card background — soft lavender gallery wall for the credit or lending panel |
-| Deep Teal | `#186f64` | `--color-deep-teal` | Teal action color for filled buttons, selected navigation states, and focused conversion moments. |
-| Electric Violet | `#536eff` | `--color-electric-violet` | Violet action color for filled buttons, selected navigation states, and focused conversion moments. |
-| Royal Violet | `#644bc4` | `--color-royal-violet` | Secondary action buttons, hover state on violet CTAs, accent borders — deeper companion to Electric Violet for depth |
-| Sapphire Blue | `#154ea5` | `--color-sapphire-blue` | Blue action color for filled buttons, selected navigation states, and focused conversion moments. |
+| Obsidian | `#000000` | `--color-obsidian` | Primary text, SVG strokes, overlay fills — pure black carries all foreground information and graphic marks |
+| Paper | `#ffffff` | `--color-paper` | Light text on dark surfaces, inverse labels, and high-contrast captions. Do not promote it to the primary CTA color |
+| Inkstone | `#181818` | `--color-inkstone` | Footer body copy and secondary headings — softened black for long-form reading blocks |
+| Felt Gray | `#6d6d6d` | `--color-felt-gray` | Muted helper text, address blocks, legal copy — quiet annotations that recede without disappearing |
+| Slate Pill | `#636363` | `--color-slate-pill` | Filled neutral button background — the only solid fill used for actions like Accept |
+| Ash Mist | `#9a9a9a` | `--color-ash-mist` | Mid-tone neutral for disabled or low-contrast surfaces in the surface stack |
+| Pewter | `#808080` | `--color-pewter` | Secondary mid-tone neutral for hover or muted state layers |
+| Iridescent Fade | `linear-gradient(90deg, rgb(160, 224, 171), rgb(255, 172, 46) 50%, rgb(165, 45, 37))` | `--color-iridescent-fade` | Chromatic accent appearing only inside the hero gradient wash — molten oxblood anchor of the iridescent atmosphere, not used in interface controls |
 
 ## Tokens — Typography
 
-### Neufile Grotesk Extended — Body copy, navigation links, button text, card descriptions, footer text, and medium-weight subheads at 28px. This is the working sans — wide apertures and extended proportions give it an editorial, almost monospace rhythm at small sizes. Weight 400 for running text, weight 500 for subheads and emphasized UI labels. · `--font-neufile-grotesk-extended`
-- **Substitute:** Söhne, Inter, IBM Plex Sans
-- **Weights:** 400, 500
-- **Sizes:** 13px, 16px, 28px
-- **Line height:** 1.30, 1.40, 1.00, 2.00
-- **Role:** Body copy, navigation links, button text, card descriptions, footer text, and medium-weight subheads at 28px. This is the working sans — wide apertures and extended proportions give it an editorial, almost monospace rhythm at small sizes. Weight 400 for running text, weight 500 for subheads and emphasized UI labels.
+### Roobert — Primary typeface across all interface text, navigation, hero headlines, body, lists, and footers. The custom sans carries geometric clarity with humanist warmth; its wide weight range (300 whisper through 600 anchor) lets the system breathe from monumental 225px headlines down to 11px labels · `--font-roobert`
+- **Substitute:** Inter or Söhne — both share Roobert's geometric-humanist balance and clean aperture
+- **Weights:** 300, 400, 600
+- **Sizes:** 11px, 12px, 16px, 18px, 29px, 30px, 39px, 45px, 54px, 78px, 94px, 225px
+- **Line height:** 0.70–2.34 (tight 0.70–0.76 on display sizes, generous 1.58 on body)
+- **Role:** Primary typeface across all interface text, navigation, hero headlines, body, lists, and footers. The custom sans carries geometric clarity with humanist warmth; its wide weight range (300 whisper through 600 anchor) lets the system breathe from monumental 225px headlines down to 11px labels
 
-### Albra Sans — All headlines and display text. The serif/sans split is the system's defining typographic move: a high-contrast serif at 80px line-height 1.10 creates magazine-cover presence for the hero, while a 46px line-height 1.20 handles section titles. The 22px size at weight 600 works as a serif subhead — unusual and signature. Positive 0.020em letter-spacing on a serif is anti-convention (most serifs tighten at display sizes), here it breathes the letterforms open for gallery-label elegance. · `--font-albra-sans`
-- **Substitute:** GT Sectra, Tiempos Headline, Canela, Playfair Display
-- **Weights:** 600
-- **Sizes:** 22px, 46px, 80px
-- **Line height:** 1.10, 1.20
-- **Letter spacing:** 0.0200em
-- **Role:** All headlines and display text. The serif/sans split is the system's defining typographic move: a high-contrast serif at 80px line-height 1.10 creates magazine-cover presence for the hero, while a 46px line-height 1.20 handles section titles. The 22px size at weight 600 works as a serif subhead — unusual and signature. Positive 0.020em letter-spacing on a serif is anti-convention (most serifs tighten at display sizes), here it breathes the letterforms open for gallery-label elegance.
+### Raleway — Reserved for specific heading contexts where a slightly more elegant, narrower sans introduces contrast — appears sparingly as a counterpoint to Roobert's bolder presence · `--font-raleway`
+- **Substitute:** Montserrat or Jost
+- **Weights:** 400
+- **Sizes:** 54px
+- **Line height:** 1.39
+- **Role:** Reserved for specific heading contexts where a slightly more elegant, narrower sans introduces contrast — appears sparingly as a counterpoint to Roobert's bolder presence
+
+### system-ui — Micro UI labels, cookie banner body, fine print — browser default fallback ensuring legibility at the smallest scale without committing to a custom face · `--font-system-ui`
+- **Weights:** 400
+- **Sizes:** 9px, 16px
+- **Line height:** 1.15–1.32
+- **Role:** Micro UI labels, cookie banner body, fine print — browser default fallback ensuring legibility at the smallest scale without committing to a custom face
 
 ### Type Scale
 
 | Role | Size | Line Height | Letter Spacing | Token |
 |------|------|-------------|----------------|-------|
-| caption | 13px | 1.4 | — | `--text-caption` |
-| body | 16px | 1.4 | — | `--text-body` |
-| subheading | 22px | 1.2 | 0.44px | `--text-subheading` |
-| heading-sm | 28px | 1.3 | — | `--text-heading-sm` |
-| heading | 46px | 1.2 | 0.92px | `--text-heading` |
-| display | 80px | 1.1 | 1.6px | `--text-display` |
+| caption | 12px | 1.19 | — | `--text-caption` |
+| body-sm | 16px | 1.15 | — | `--text-body-sm` |
+| body | 18px | 1.21 | — | `--text-body` |
+| subheading | 39px | 1.19 | — | `--text-subheading` |
+| subheading-lg | 45px | 1.15 | — | `--text-subheading-lg` |
+| heading-sm | 54px | 1.39 | — | `--text-heading-sm` |
+| heading | 78px | 1.1 | — | `--text-heading` |
+| heading-lg | 94px | 0.76 | — | `--text-heading-lg` |
+| display | 225px | 1.25 | — | `--text-display` |
 
 ## Tokens — Spacing & Shapes
 
 **Base unit:** 4px
 
-**Density:** comfortable
+**Density:** spacious
 
 ### Spacing Scale
 
@@ -63,153 +66,173 @@ Letter is a private-banking platform that reads like a gallery exhibition for hi
 |------|-------|-------|
 | 8 | 8px | `--spacing-8` |
 | 12 | 12px | `--spacing-12` |
-| 16 | 16px | `--spacing-16` |
-| 24 | 24px | `--spacing-24` |
-| 32 | 32px | `--spacing-32` |
+| 28 | 28px | `--spacing-28` |
+| 40 | 40px | `--spacing-40` |
 | 48 | 48px | `--spacing-48` |
 | 64 | 64px | `--spacing-64` |
-| 72 | 72px | `--spacing-72` |
+| 68 | 68px | `--spacing-68` |
+| 152 | 152px | `--spacing-152` |
 
 ### Border Radius
 
 | Element | Value |
 |---------|-------|
-| tags | 2px |
+| tags | 75px |
 | cards | 0px |
-| inputs | 2px |
-| buttons | 2px |
+| images | 0px |
+| inputs | 0px |
+| buttons | 75px |
 
 ### Layout
 
-- **Page max-width:** 1200px
-- **Section gap:** 64-96px
-- **Card padding:** 32px
-- **Element gap:** 16px
+- **Page max-width:** 1078px
+- **Section gap:** 46px
+- **Card padding:** 34px
+- **Element gap:** 14px
 
 ## Components
 
-### Navigation Bar (Dark)
-**Role:** Primary navigation over hero
+### Ghost Pill Button (Dark Surface)
+**Role:** Primary action button used over iridescent or dark hero media
 
-Transparent dark bar (#191b1f) with white Neufile Grotesk Extended 13px nav links. Logo mark (white S-shape) left, 7 nav items spaced 23px horizontal padding, 'Join' as ghost button (white border, 2px radius) and 'Sign In' as text link on the far right. No background blur — sits on pure dark.
+Transparent background, 1px solid rgba(255,255,255,0.3) border, #ffffff text, 75px border-radius (full pill), 11px vertical and 33px horizontal padding, Roobert 16px weight 400. The translucent border dissolves into the iridescent background while the pill silhouette stays unmistakable.
 
-### Navigation Bar (Light)
-**Role:** Primary navigation on light sections
+### Ghost Pill Button (Light Surface)
+**Role:** Secondary action on white or light gray sections
 
-White background bar, #191b1f text and logo. Same structure as dark nav but inverted. 'Join' becomes a dark filled button (#191b1f fill, white text, 2px radius) and 'Sign In' remains text.
+Transparent background, 1px solid #000000 border, #000000 text, 75px border-radius, 11px vertical and 33px horizontal padding, Roobert 16px weight 400. Mirrors the dark-surface variant — same geometry, inverted palette.
 
-### Teal Filled Button
-**Role:** Primary action — invest, deposit
+### Filled Neutral Pill
+**Role:** Cookie consent and utilitarian confirmations
 
-Background #186f64, white text in Neufile Grotesk Extended 16px weight 500. 2px border radius. Padding 12px vertical, 27px horizontal. No shadow. The flagship CTA color — appears on 'Invest Now' actions.
+rgba(55,55,55,0.78) background (functionally Slate Pill #636363), #ffffff text, 1px solid #ffffff border, 75px border-radius, 11px vertical and 33px horizontal padding. The only solid-filled action in the system — used sparingly for compliance and consent, never for primary marketing CTAs.
 
-### Violet Filled Button
-**Role:** Secondary action — borrow, credit
+### Underline-Free Text Link
+**Role:** Inline navigation, menu items, language switcher, footer links
 
-Background #536eff, white text in Neufile Grotesk Extended 16px weight 500. 2px border radius. Padding 12px vertical, 27px horizontal. Appears on 'Borrow Now' actions.
+No background, no border, 0px radius. Roobert 12–16px weight 400, color shifts between #ffffff (on dark) and #000000 (on light). Underlines are absent — context and weight set the link apart from body copy. Generous line-height (1.36 at 11px, 1.19 at 12px) keeps stacked menus airy.
 
-### Blue Filled Button
-**Role:** Tertiary action — card, checking
+### Hero Display Headline
+**Role:** Full-viewport editorial title
 
-Background #154ea5, white text in Neufile Grotesk Extended 16px weight 500. 2px border radius. Padding 12px vertical, 27px horizontal. Appears on 'Get Your Card' actions.
+Roobert 225px weight 400, line-height 1.25, #ffffff over iridescent dark media. Letter-spacing normal. The headline is the hero — no subhead, no CTA, just one monumental phrase centered in the viewport breathing against fluid light.
 
-### Ghost Text Link
-**Role:** Tertiary action — learn more
+### Section Heading (Whisper Weight)
+**Role:** Atmospheric headline for manifesto or feature sections
 
-No background, no border. Dark text (#191b1f) in Neufile Grotesk Extended 16px. Sits immediately right of a filled button as a low-commitment alternative. Color-tinted to match its sibling filled button (teal link beside teal button, etc.).
+Roobert 78px weight 300, line-height 1.10. The 300-weight at this scale is anti-convention — most sites push 600–700 here. The whisper weight lets the headline feel like it is being spoken, not shouted, giving the editorial chamber its hushed authority.
 
-### Tinted Feature Card
-**Role:** Product/service showcase panel
+### Section Heading (Anchor Weight)
+**Role:** Bold editorial divider or statement
 
-Full-width or half-width card with a tinted near-gray background — Peach Wall (#fcede1), Mint Wall (#eefcef), or Lavender Wall (#e6def0). Zero border radius, no border, no shadow. Contains a serif Albra Sans 22px subhead, a 16px body description, a filled action button, a ghost link, and a large 3D render occupying the right or lower half. 32px internal padding. The tinted background is the card's only differentiator from the white page.
+Roobert 94px weight 400, line-height 0.76. The tight line-height (0.76) is dramatic — text lines almost touch, creating a dense typographic block that reads as art object. Used for large statement moments where the text itself is visual.
 
-### Dark Hero Stage
-**Role:** Above-the-fold hero section
+### Project Card / List Row
+**Role:** Featured work entry — paired image and title
 
-Full-bleed #191b1f background. Centered Albra Sans 80px display headline in white, 46px or 22px serif subhead below, and a large 3D metallic/chrome render with dramatic light flares occupying the lower 60% of the viewport. No border, no card treatment — the dark background IS the surface. Generous vertical padding (96-128px top, 64-96px bottom).
+Transparent background, 0px border-radius, no shadow. Image bleeds full-width within the 1078px container; title sits below in Roobert 16–18px weight 400. No card chrome — the card is content, not a container. Spacing between rows controlled by 14–46px gaps depending on section density.
 
-### Split Content Section
-**Role:** Body content with paired 3D render
+### Language Switcher
+**Role:** Top-bar locale selector (EN / VN / 中文)
 
-Two-column layout, roughly 50/50. Left column: Albra Sans 46px heading, 16px body text, optional CTA. Right column: 3D render (iridescent card, liquid-metal form, chrome sphere) with generous breathing room. Background alternates between white and #f6f9f9 between sections.
+Three inline text links in Roobert 12px weight 400, color #ffffff or #000000 depending on surface, 0px radius, separated by visual whitespace rather than dividers. Active locale carries the same color but slightly heavier visual weight through spacing alone.
 
-### 3D Abstract Render
-**Role:** Signature visual element
+### Rotating Scroll Indicator
+**Role:** Bottom-left circular badge prompting downward exploration
 
-Full-color 3D renders with metallic, prismatic, or iridescent surfaces. Floating in space with dramatic directional lighting — lens flares, caustic light patterns, and subsurface scattering. Treatment: sharp edges, no rounded masks, overlapping light bloom. Each render is a one-off composition, not a reusable component, but they share a consistent material language: polished chrome, dichroic glass, and liquid metal. This is the brand's most distinctive visual asset.
+Circular SVG badge with text tracing the circumference ('SCROLL DOWN · SCROLL DOWN'), rotating continuously at slow tempo. Sits at 0,0 of the bottom-left corner with small offset. Ink black stroke on transparent fill — a typographic punctuation mark, not a button.
+
+### Footer Address Block
+**Role:** Studio contact information
+
+Roobert 11px weight 400 line-height 1.36, #6d6d6d Felt Gray text. Tight 8px top margins between lines create a compact address stack that recedes into the page. No dividers or labels — the muted gray does the work.
+
+### Cookie Banner
+**Role:** Compliance notice with single accept action
+
+Fixed bottom bar, rgba(55,55,55,0.78) Slate Pill background, white body text in system-ui 9–16px, paired with Filled Neutral Pill 'Accept' button. Minimal copy, single action, no settings — the banner respects attention by asking for nothing beyond consent.
+
+### Top Navigation Bar
+**Role:** Persistent header with logo, locale, and menu
+
+Fixed transparent header 66px tall. Logo wordmark top-left (Roobert 16px weight 400 'monopo saigon'), language switcher centered, menu stack right-aligned (WORK / MANIFESTO / SAIGON SOULS / TEAM / CONTACT at 11–12px weight 400). No background fill — the header is invisible until content scrolls behind it.
+
+### Iridescent Hero Backdrop
+**Role:** Atmospheric media behind hero headlines
+
+Full-viewport organic gradient or video: soft sage green (rgb 160,224,171) dissolving through molten amber (rgb 255,172,46) into deep oxblood (rgb 165,45,37). Applied as a flowing, liquid texture — never as a flat gradient. This is the only chromatic surface in the entire system and exists only behind text, never as UI fill.
 
 ## Do's and Don'ts
 
 ### Do
-- Use Albra Sans serif for all headlines and display text — never substitute a sans-serif for headings; the serif/sans split is the system's identity
-- Keep button corner radius at 2px — the near-square edges read as architectural confidence, not friendliness
-- Use 80px Albra Sans for hero headlines only; section titles cap at 46px
-- Pair every filled colored button with an adjacent ghost text link in the matching brand color — teal button + teal link, violet button + violet link
-- Let 3D renders float in negative space without containers, borders, or rounded masks — the raw edges of the render ARE the visual frame
-- Use tinted card backgrounds (#fcede1, #eefcef, #e6def0) for product panels; reserve #ffffff and #f6f9f9 for structural sections
-- Maintain 27px horizontal button padding — this generous horizontal breathing is what makes the buttons feel premium rather than functional
+- Set display headlines at 225px Roobert weight 400 and let them own the viewport — never crowd them with subheads or CTAs
+- Use the 75px pill radius exclusively for buttons and tags — keep all other elements (cards, images, inputs) at 0px radius for sharp editorial contrast
+- Reserve color for one iridescent hero backdrop per page — keep all interface text, borders, and fills strictly in the black/white/gray scale
+- Use weight 300 at 78px for manifesto and atmospheric headlines to create whisper authority — never push above weight 400 at this scale
+- Set line-height to 0.70–0.76 on display sizes above 78px to let lines lock together as typographic art objects
+- Apply cubic-bezier(0.19, 1, 0.22, 1) easing to transform and color transitions with durations of 0.8–1.25s for patient, gliding motion
+- Keep all interactive text links at 0px radius with no underlines — let spacing, color, and context signal affordance
 
 ### Don't
-- Never use shadows, drop shadows, or box-shadows on cards, buttons, or sections — the system is flat and lets background color and 3D renders do the depth work
-- Don't introduce additional border radii beyond 2px — no rounded cards, no pill buttons, no circular avatars
-- Don't use the brand colors (#186f64, #536eff, #644bc4, #154ea5) for body text, borders, or backgrounds — they are reserved for action moments and headlines only
-- Never set headlines in a sans-serif — the serif Albra Sans is non-negotiable for the editorial voice
-- Don't use the tinted card backgrounds (#fcede1, #eefcef, #e6def0) for body text or large surface areas — they are gallery walls for 3D renders, not page backgrounds
-- Don't apply gradients to UI components — gradients appear only in 3D renders and the hero light burst, not in buttons, cards, or backgrounds
-- Avoid tight letter-spacing on serif headlines — the 0.020em positive tracking is deliberate and creates the gallery-label feel
+- Never introduce a chromatic UI color — black, white, and gray are the interface palette; the iridescent gradient is media only
+- Never use box-shadow or elevation on cards, buttons, or images — the system relies on flat surfaces and hairline 1px borders
+- Never set border-radius between 1px and 74px — the system jumps from sharp 0px to full 75px pill, no intermediate rounding
+- Never use bold or heavy weights (600+) above 45px — large sizes should whisper at 300 or speak at 400, never shout
+- Never center-align body copy in address blocks, lists, or project descriptions — left-align with 8–14px line gaps for editorial flow
+- Never add gradients to buttons, badges, or UI controls — gradients belong only in the hero atmospheric media
+- Never use Raleway for body or navigation — it is a heading accent only, and even there it appears sparingly
+- Never fill the canvas with imagery — the system is text-dominant with one hero-sized visual gesture per page
 
 ## Surfaces
 
 | Level | Name | Value | Purpose |
 |-------|------|-------|---------|
-| 0 | Vault Ink | `#191b1f` | Hero stage, dark section backgrounds, dark nav — the deepest surface |
-| 1 | Paper White | `#ffffff` | Page canvas, light cards, primary content surface |
-| 2 | Mist White | `#f6f9f9` | Alternating section background, subtle elevation above white |
-| 3 | Tinted Gallery Walls | `#fcede1` | Product panel backgrounds — peach, mint, lavender variants act as gallery walls for 3D renders |
+| 1 | Paper | `#ffffff` | Primary canvas — most sections sit on pure white |
+| 2 | Slate Pill | `#636363` | Filled button surface for cookie consent and neutral actions |
+| 3 | Obsidian | `#000000` | Dark overlay and inverse section — full-bleed dark bands behind iridescent media |
+| 4 | Ash Mist | `#9a9a9a` | Quiet mid-tone layer for inset panels or disabled zones |
 
 ## Elevation
 
-The system is intentionally shadowless. Depth is created through surface color contrast (white → #f6f9f9 → tinted walls → #191b1f) and through 3D renders that carry their own internal lighting. No box-shadows, no drop shadows, no glows on UI elements. This flat treatment is a luxury signal — the confidence to not use visual crutches.
+The system deliberately avoids shadow elevation. Surfaces are distinguished by color inversion (white to black bands) and hairline 1px borders rather than stacked shadows. The lone 'elevation' gesture is the translucent slate pill on the cookie banner, which uses background opacity rather than shadow to separate from content.
 
 ## Imagery
 
-3D abstract renders are the dominant visual asset — polished chrome spheres, iridescent prismatic card forms, liquid-metal organic shapes, and faceted geometric crystals. Treatment: full-color, high-contrast, with dramatic directional lighting (caustic light patterns, lens flares, subsurface glow on metallic surfaces). Renders are never masked or placed in containers — they float in raw negative space with sharp edges. No photography, no illustration, no flat icons. Icon style: minimal outlined line icons in nav and UI chrome, monochrome white or #191b1f, thin consistent stroke weight. Role: the 3D renders are explanatory content (visualizing abstract financial concepts as physical artifacts) and brand atmosphere simultaneously. Density: text-dominant overall, but each major section features one large hero render that commands 40-60% of the viewport.
+Imagery is theatrical and singular: one massive iridescent fluid texture dominates the hero — organic greens dissolving through amber into oxblood like oil on water or molten glass. It reads as full-bleed atmospheric media, possibly video or shader-driven canvas, and occupies the entire viewport as a singular sensory moment rather than a repeated pattern. Project showcases use contained editorial photography (tight product crops, campaign stills) presented without frames or borders — the image is the content. No illustration, no icons beyond tiny UI glyphs, no decorative shapes. Iconography is minimal or absent; the rotating circular text badge functions as the system's only typographic ornament. Overall density: text-dominant with one hero-sized visual gesture, then long quiet editorial stretches of typography and product imagery.
 
 ## Layout
 
-Max-width ~1200px centered container. Hero is full-bleed dark with centered headline stack (display → subhead → no button above fold), then transitions to a rhythm of alternating light sections. Pattern: dark hero → white split section → tinted card row (2-column grid) → white split section → tinted card row. Sections use generous vertical padding (64-96px) for gallery-walk pacing. Content arrangement: 50/50 split layouts pairing text with 3D renders, with text consistently on the left and renders on the right. Tinted feature cards form a 2-column grid for product panels. Navigation: sticky top bar that transitions from dark (on hero) to light (on scroll). No sidebar, no mega-menu.
+Layout is max-width contained at 1078px, centered, with full-bleed dark hero sections breaking the container. The hero is full-viewport: centered monumental headline (Un i ted, Unbound) floating over iridescent media, minimal navigation floating at top, single rotating badge at bottom-left. Body sections follow a spacious editorial rhythm — generous 46px section gaps create breathing room between blocks, alternating between white and dark (black with white type) bands. Content arrangement is asymmetric: text-left/image-right and image-left/text-right alternations dominate, with no centered stacks outside the hero. Card grids appear as single-column project lists rather than multi-column grids — each project gets the full width with its image and title. Navigation is a transparent top bar with logo left, locale center, menu right — no sticky color shift, no shadow, just invisible persistence. The footer is a compact three-column address block (Tokyo, Saigon, London) with quiet 11px copy. Overall: editorial magazine pacing in a digital frame.
 
 ## Agent Prompt Guide
 
 **Quick Color Reference**
-- text (primary): #191b1f
+- text primary: #000000
+- text muted: #6d6d6d
 - background: #ffffff
-- soft background: #f6f9f9
-- border/hairline: #e6ebec
-- brand accent (teal): #186f64
-- brand accent (violet): #536eff
-- brand accent (blue): #154ea5
-- primary action: #186f64 (filled action)
+- dark overlay / inverse section: #000000
+- border (light surface): #000000
+- border (dark surface): rgba(255,255,255,0.3)
+- accent: none — the only chromatic color is the iridescent hero gradient, which is media only
+- primary action: no distinct CTA color
 
 **3 Example Component Prompts**
+No distinct primary action color was observed; use the extracted neutral button treatments instead of inventing a filled CTA color.
 
-1. **Dark Hero Section**: Full-bleed #191b1f background. Centered Albra Sans 80px weight 600 display headline in #ffffff, letter-spacing 1.6px, line-height 1.1. Below: Albra Sans 22px weight 600 subhead in #ffffff at 70% opacity, line-height 1.2. Large 3D metallic render with chrome and prismatic lighting occupying the lower 60% of the viewport, no border, no container, raw edges. 128px top padding, 96px bottom padding.
+2. Build a project list row: transparent background, 0px radius, no shadow. Full-bleed image at the top within the 1078px container, sharp corners. Project title below in Roobert 16px weight 400, color #000000. 46px gap to the next row. No card chrome, no borders, no padding around the content itself.
 
-2. **Tinted Feature Card (Peach)**: Full-width panel with #fcede1 background, zero border-radius, no border, no shadow. 32px padding. Left half: Albra Sans 22px weight 600 heading in #191b1f, 16px Neufile Grotesk Extended weight 400 body text in #191b1f, teal filled button (#186f64, white text, 2px radius, 12px 27px padding), teal ghost text link beside it. Right half: 3D liquid-metal render, no container.
+3. Build a Ghost Pill Button on a light surface: transparent background, 1px solid #000000 border, 75px border-radius, 11px padding-top and padding-bottom, 33px padding-left and padding-right. Label in Roobert 16px weight 400, color #000000. No hover fill — animate border opacity and letter-spacing on transition with cubic-bezier(0.19, 1, 0.22, 1) over 0.8s.
 
-3. **Teal Filled Button**: Background #186f64, white text in Neufile Grotesk Extended 16px weight 500. 2px border-radius. Padding 12px vertical, 27px horizontal. No shadow, no gradient. Adjacent ghost text link in matching #186f64, no background, no border.
+## Motion Personality
 
-## Material Language
-
-The 3D renders share a consistent material vocabulary that functions as the brand's secondary color system: polished chrome, dichroic glass, liquid metal, and iridescent prismatic surfaces. These are rendered with dramatic directional lighting — single key light with lens flare, caustic light patterns on adjacent surfaces, and subtle subsurface glow. Each render is a one-off composition, but the material treatment is the system: objects that look like museum artifacts displayed under gallery spotlights. Never matte, never flat-shaded, never cartoonish.
+Motion is expressive but unhurried — the system treats transitions as slow camera moves rather than UI snaps. The signature curve is cubic-bezier(0.19, 1, 0.22, 1) (a gentle ease-out) applied to transform, color, and opacity at 0.8s and 1.25s durations. Shorter easing uses plain 'ease' at 0.4s for color and opacity micro-transitions. A rotating animation runs continuously on the scroll-indicator badge at slow tempo. Transforms dominate over positional animation — elements glide, slide, and reveal through transform rather than repositioning layout. The 1.25s duration on transforms (69 occurrences) signals that the studio prefers patience over responsiveness; nothing should feel abrupt. Border transitions (6 occurrences) and flex-basis shifts are rare and reserved for layout reveals, not micro-interactions.
 
 ## Similar Brands
 
-- **Mercury** — Serif headlines paired with sans-serif body, restrained color palette with single accent moments, luxury private-banking tone, near-zero border radii
-- **Arc** — Dramatic dark-to-light section transitions, premium typography mixing serif display with sans body, generous whitespace as luxury signal
-- **Linear** — Dark hero stage transitioning to clean light sections, precise typographic hierarchy, product panels with distinct color identity
-- **Ramp** — Clean financial UI with generous horizontal button padding, flat surfaces without shadows, restrained chromatic palette
-- **Stripe** — Editorial typography treatment applied to financial product, gallery-like section rhythm, confidence through typographic restraint rather than visual effects
+- **Resn** — Same liquid iridescent hero treatment behind monochrome editorial typography and full-pill ghost buttons
+- **Active Theory** — Same immersive full-bleed dark hero with single monumental headline and restrained monochrome chrome around it
+- **Locomotive** — Same editorial agency rhythm — oversized whisper-weight headlines, generous 46px+ section gaps, and zero shadow elevation
+- **Pentagram** — Same austere black-and-white editorial system with sharp 0px corners and custom geometric sans (Roobert echoing Pentagram's house faces)
 
 ## Quick Start
 
@@ -218,77 +241,79 @@ The 3D renders share a consistent material vocabulary that functions as the bran
 ```css
 :root {
   /* Colors */
-  --color-vault-ink: #191b1f;
-  --color-paper-white: #ffffff;
-  --color-mist-white: #f6f9f9;
-  --color-fog-gray: #9fabad;
-  --color-hairline: #e6ebec;
   --color-obsidian: #000000;
-  --color-peach-wall: #fcede1;
-  --color-mint-wall: #eefcef;
-  --color-lavender-wall: #e6def0;
-  --color-deep-teal: #186f64;
-  --color-electric-violet: #536eff;
-  --color-royal-violet: #644bc4;
-  --color-sapphire-blue: #154ea5;
+  --color-paper: #ffffff;
+  --color-inkstone: #181818;
+  --color-felt-gray: #6d6d6d;
+  --color-slate-pill: #636363;
+  --color-ash-mist: #9a9a9a;
+  --color-pewter: #808080;
+  --color-iridescent-fade: #a02d25;
+  --gradient-iridescent-fade: linear-gradient(90deg, rgb(160, 224, 171), rgb(255, 172, 46) 50%, rgb(165, 45, 37));
 
   /* Typography — Font Families */
-  --font-neufile-grotesk-extended: 'Neufile Grotesk Extended', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-albra-sans: 'Albra Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-roobert: 'Roobert', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-raleway: 'Raleway', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-system-ui: 'system-ui', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   /* Typography — Scale */
-  --text-caption: 13px;
-  --leading-caption: 1.4;
-  --text-body: 16px;
-  --leading-body: 1.4;
-  --text-subheading: 22px;
-  --leading-subheading: 1.2;
-  --tracking-subheading: 0.44px;
-  --text-heading-sm: 28px;
-  --leading-heading-sm: 1.3;
-  --text-heading: 46px;
-  --leading-heading: 1.2;
-  --tracking-heading: 0.92px;
-  --text-display: 80px;
-  --leading-display: 1.1;
-  --tracking-display: 1.6px;
+  --text-caption: 12px;
+  --leading-caption: 1.19;
+  --text-body-sm: 16px;
+  --leading-body-sm: 1.15;
+  --text-body: 18px;
+  --leading-body: 1.21;
+  --text-subheading: 39px;
+  --leading-subheading: 1.19;
+  --text-subheading-lg: 45px;
+  --leading-subheading-lg: 1.15;
+  --text-heading-sm: 54px;
+  --leading-heading-sm: 1.39;
+  --text-heading: 78px;
+  --leading-heading: 1.1;
+  --text-heading-lg: 94px;
+  --leading-heading-lg: 0.76;
+  --text-display: 225px;
+  --leading-display: 1.25;
 
   /* Typography — Weights */
+  --font-weight-light: 300;
   --font-weight-regular: 400;
-  --font-weight-medium: 500;
   --font-weight-semibold: 600;
 
   /* Spacing */
   --spacing-unit: 4px;
   --spacing-8: 8px;
   --spacing-12: 12px;
-  --spacing-16: 16px;
-  --spacing-24: 24px;
-  --spacing-32: 32px;
+  --spacing-28: 28px;
+  --spacing-40: 40px;
   --spacing-48: 48px;
   --spacing-64: 64px;
-  --spacing-72: 72px;
+  --spacing-68: 68px;
+  --spacing-152: 152px;
 
   /* Layout */
-  --page-max-width: 1200px;
-  --section-gap: 64-96px;
-  --card-padding: 32px;
-  --element-gap: 16px;
+  --page-max-width: 1078px;
+  --section-gap: 46px;
+  --card-padding: 34px;
+  --element-gap: 14px;
 
   /* Border Radius */
-  --radius-sm: 2px;
+  --radius-lg: 10px;
+  --radius-full: 75.024px;
 
   /* Named Radii */
-  --radius-tags: 2px;
+  --radius-tags: 75px;
   --radius-cards: 0px;
-  --radius-inputs: 2px;
-  --radius-buttons: 2px;
+  --radius-images: 0px;
+  --radius-inputs: 0px;
+  --radius-buttons: 75px;
 
   /* Surfaces */
-  --surface-vault-ink: #191b1f;
-  --surface-paper-white: #ffffff;
-  --surface-mist-white: #f6f9f9;
-  --surface-tinted-gallery-walls: #fcede1;
+  --surface-paper: #ffffff;
+  --surface-slate-pill: #636363;
+  --surface-obsidian: #000000;
+  --surface-ash-mist: #9a9a9a;
 }
 ```
 
@@ -297,52 +322,52 @@ The 3D renders share a consistent material vocabulary that functions as the bran
 ```css
 @theme {
   /* Colors */
-  --color-vault-ink: #191b1f;
-  --color-paper-white: #ffffff;
-  --color-mist-white: #f6f9f9;
-  --color-fog-gray: #9fabad;
-  --color-hairline: #e6ebec;
   --color-obsidian: #000000;
-  --color-peach-wall: #fcede1;
-  --color-mint-wall: #eefcef;
-  --color-lavender-wall: #e6def0;
-  --color-deep-teal: #186f64;
-  --color-electric-violet: #536eff;
-  --color-royal-violet: #644bc4;
-  --color-sapphire-blue: #154ea5;
+  --color-paper: #ffffff;
+  --color-inkstone: #181818;
+  --color-felt-gray: #6d6d6d;
+  --color-slate-pill: #636363;
+  --color-ash-mist: #9a9a9a;
+  --color-pewter: #808080;
+  --color-iridescent-fade: #a02d25;
 
   /* Typography */
-  --font-neufile-grotesk-extended: 'Neufile Grotesk Extended', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-albra-sans: 'Albra Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-roobert: 'Roobert', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-raleway: 'Raleway', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-system-ui: 'system-ui', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   /* Typography — Scale */
-  --text-caption: 13px;
-  --leading-caption: 1.4;
-  --text-body: 16px;
-  --leading-body: 1.4;
-  --text-subheading: 22px;
-  --leading-subheading: 1.2;
-  --tracking-subheading: 0.44px;
-  --text-heading-sm: 28px;
-  --leading-heading-sm: 1.3;
-  --text-heading: 46px;
-  --leading-heading: 1.2;
-  --tracking-heading: 0.92px;
-  --text-display: 80px;
-  --leading-display: 1.1;
-  --tracking-display: 1.6px;
+  --text-caption: 12px;
+  --leading-caption: 1.19;
+  --text-body-sm: 16px;
+  --leading-body-sm: 1.15;
+  --text-body: 18px;
+  --leading-body: 1.21;
+  --text-subheading: 39px;
+  --leading-subheading: 1.19;
+  --text-subheading-lg: 45px;
+  --leading-subheading-lg: 1.15;
+  --text-heading-sm: 54px;
+  --leading-heading-sm: 1.39;
+  --text-heading: 78px;
+  --leading-heading: 1.1;
+  --text-heading-lg: 94px;
+  --leading-heading-lg: 0.76;
+  --text-display: 225px;
+  --leading-display: 1.25;
 
   /* Spacing */
   --spacing-8: 8px;
   --spacing-12: 12px;
-  --spacing-16: 16px;
-  --spacing-24: 24px;
-  --spacing-32: 32px;
+  --spacing-28: 28px;
+  --spacing-40: 40px;
   --spacing-48: 48px;
   --spacing-64: 64px;
-  --spacing-72: 72px;
+  --spacing-68: 68px;
+  --spacing-152: 152px;
 
   /* Border Radius */
-  --radius-sm: 2px;
+  --radius-lg: 10px;
+  --radius-full: 75.024px;
 }
 ```

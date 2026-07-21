@@ -24,18 +24,18 @@ ChartJS.register(
   Filler
 );
 
-/* Letter design chart palette */
+/* monopo monochrome chart palette */
 const PALETTE = [
-  '#186f64',
-  '#536eff',
-  '#154ea5',
-  '#644bc4',
-  '#9fabad',
-  '#191b1f',
-  '#e6def0',
-  '#fcede1',
-  '#eefcef',
-  '#4a8f84',
+  '#000000',
+  '#181818',
+  '#636363',
+  '#6d6d6d',
+  '#808080',
+  '#9a9a9a',
+  '#b8b8b8',
+  '#404040',
+  '#2a2a2a',
+  '#cfcfcf',
 ];
 
 const baseOptions = {
