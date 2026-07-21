@@ -1499,8 +1499,8 @@ button {
   box-shadow: var(--glass-shadow);
   padding: 28px 30px;
   position: relative;
-  overflow: hidden;
-  isolation: isolate;
+  overflow: visible;
+  isolation: auto;
   transition: border-color 0.8s var(--ease-glide), transform 0.8s var(--ease-glide),
     box-shadow 0.8s var(--ease-glide), background 0.8s var(--ease-glide);
   animation: rise-in 0.9s var(--ease-glide) both;
@@ -2193,120 +2193,53 @@ table.data-table tbody tr:hover {
   border-style: dashed;
 }
 
-/* ── Liquid glass controls: date + custom select ── */
+/* ── Liquid glass controls: custom date calendar + select ── */
 .glass-control {
   position: relative;
   width: 100%;
-  isolation: isolate;
+}
+
+.field {
+  overflow: visible;
+}
+
+.form-grid,
+.card,
+.download-panel {
+  overflow: visible;
 }
 
 .glass-control-field,
-.field .glass-control-field,
-.field select,
-.field input[type='date'] {
+.field .glass-control-field {
   width: 100%;
   min-height: 46px;
   appearance: none;
   -webkit-appearance: none;
-  background: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 180%));
   -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 180%));
-  border: 1px solid rgba(255, 255, 255, 0.58);
-  outline: 1px solid rgba(0, 0, 0, 0.06);
-  outline-offset: -1px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 16px;
   padding: 0.7rem 2.6rem 0.7rem 1rem;
   color: var(--color-obsidian, #000);
   font: inherit;
   font-weight: 400;
-  box-shadow: var(--glass-shadow, 0 8px 28px rgba(0, 0, 0, 0.06), 0 1px 0 rgba(255, 255, 255, 0.7) inset);
-  transition: background 0.8s var(--ease-glide, ease), border-color 0.8s var(--ease-glide, ease),
-    box-shadow 0.8s var(--ease-glide, ease);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08), 0 1px 0 rgba(255, 255, 255, 0.85) inset;
+  transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
 }
 
-.glass-control-field:hover,
-.field select:hover,
-.field input[type='date']:hover {
-  background: rgba(255, 255, 255, 0.55);
-  border-color: rgba(255, 255, 255, 0.75);
+.glass-control-field:hover {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.9);
 }
 
 .glass-control-field:focus,
-.field select:focus,
-.field input[type='date']:focus {
+.glass-select-trigger:focus-visible {
   outline: none;
-  background: rgba(255, 255, 255, 0.62);
-  border-color: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05), 0 1px 0 rgba(255, 255, 255, 0.85) inset,
-    0 8px 28px rgba(0, 0, 0, 0.06);
-}
-
-/* Date */
-.glass-date {
-  display: block;
-}
-
-.glass-date .glass-control-field {
-  cursor: pointer;
-  color-scheme: light;
-}
-
-.glass-date .glass-control-affix {
-  position: absolute;
-  top: 50%;
-  right: 0.85rem;
-  transform: translateY(-50%);
-  color: var(--color-felt-gray, #6d6d6d);
-  pointer-events: none;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-}
-
-.field-date {
-  position: relative;
-}
-
-.field-date .date-input-clickable,
-input[type='date'].date-input-clickable {
-  cursor: pointer;
-  color-scheme: light;
-  position: relative;
-}
-
-/* Hide native calendar glyph; we draw our own */
-.field-date input[type='date']::-webkit-calendar-picker-indicator,
-input[type='date'].date-input-clickable::-webkit-calendar-picker-indicator,
-.glass-date input[type='date']::-webkit-calendar-picker-indicator {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.field-date input[type='date']:not(:valid),
-.field-date input[type='date'][value=''],
-input[type='date'].date-input-clickable:not(:valid),
-input[type='date'].date-input-clickable[value=''] {
-  color: var(--text-muted);
-}
-
-.field-date input[type='date']:valid,
-input[type='date'].date-input-clickable:valid {
-  color: var(--text);
-}
-
-/* Custom glass select */
-.glass-select {
-  z-index: 1;
-}
-
-.glass-select.is-open {
-  z-index: 40;
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06), 0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 10px 28px rgba(0, 0, 0, 0.08);
 }
 
 .glass-select-trigger {
@@ -2334,71 +2267,247 @@ input[type='date'].date-input-clickable:valid {
 .glass-select-chevron {
   flex-shrink: 0;
   color: var(--color-felt-gray, #6d6d6d);
-  transition: transform 0.45s var(--ease-glide, ease);
+  transition: transform 0.35s ease;
 }
 
 .glass-select-chevron.is-open {
   transform: rotate(180deg);
 }
 
-.glass-select-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  right: 0;
-  margin: 0;
-  padding: 0.4rem;
-  list-style: none;
-  max-height: 240px;
-  overflow-y: auto;
-  z-index: 50;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 180%));
-  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 180%));
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  box-shadow: var(--glass-shadow-hover, 0 16px 40px rgba(0, 0, 0, 0.12), 0 1px 0 rgba(255, 255, 255, 0.8) inset);
-  animation: rise-in 0.35s var(--ease-glide, ease);
+.glass-control-icon {
+  flex-shrink: 0;
+  color: var(--color-felt-gray, #6d6d6d);
 }
 
-.glass-select-menu::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 10%;
-  right: 10%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
-  pointer-events: none;
+/* Portal glass menus + calendar — fixed to body, never clipped by cards */
+.glass-select-menu,
+.glass-select-menu--fixed,
+.glass-select-menu--portal {
+  margin: 0;
+  padding: 0.5rem;
+  list-style: none;
+  max-height: min(280px, 50vh);
+  overflow-y: auto;
+  border-radius: 18px;
+  background: linear-gradient(
+      155deg,
+      rgba(255, 255, 255, 0.72) 0%,
+      rgba(255, 255, 255, 0.42) 45%,
+      rgba(255, 255, 255, 0.55) 100%
+    ),
+    rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(40px) saturate(190%);
+  -webkit-backdrop-filter: blur(40px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  outline: 1px solid rgba(0, 0, 0, 0.06);
+  outline-offset: -1px;
+  box-shadow:
+    0 24px 56px rgba(0, 0, 0, 0.18),
+    0 2px 0 rgba(255, 255, 255, 0.95) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.04) inset;
+  animation: rise-in 0.22s var(--ease-glide, ease);
+  color: var(--color-obsidian, #000);
 }
 
 .glass-select-option {
-  position: relative;
-  z-index: 1;
-  padding: 0.65rem 0.85rem;
+  padding: 0.72rem 0.95rem;
   border-radius: 12px;
   cursor: pointer;
   color: var(--color-obsidian, #000);
   font-size: 0.92rem;
-  transition: background 0.25s ease, color 0.25s ease;
+  transition: background 0.18s ease, color 0.18s ease;
 }
 
 .glass-select-option:hover {
   background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
 .glass-select-option.is-active {
-  background: rgba(0, 0, 0, 0.78);
+  background: rgba(0, 0, 0, 0.88);
   color: #fff;
+  box-shadow: none;
 }
 
-/* Native select fallback chevron */
-.field select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='%236d6d6d'%3E%3Cpath d='M6.7 9.3a1 1 0 0 1 1.4 0L12 13.17l3.9-3.88a1 1 0 1 1 1.4 1.42l-4.6 4.58a1 1 0 0 1-1.4 0L6.7 10.7a1 1 0 0 1 0-1.4Z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.85rem center;
-  background-size: 16px;
+.glass-select-option.is-empty {
+  color: var(--color-felt-gray, #6d6d6d);
+  cursor: default;
+}
+
+.glass-select.is-open,
+.glass-date.is-open {
+  z-index: 80;
+}
+
+/* Custom glass calendar (portaled) */
+.glass-date-trigger {
+  padding-right: 2.75rem;
+}
+
+.glass-calendar,
+.glass-calendar--portal {
+  width: min(320px, calc(100vw - 16px));
+  padding: 1rem;
+  border-radius: 22px;
+  background: linear-gradient(
+      155deg,
+      rgba(255, 255, 255, 0.78) 0%,
+      rgba(255, 255, 255, 0.4) 42%,
+      rgba(255, 255, 255, 0.58) 100%
+    ),
+    rgba(248, 248, 252, 0.72);
+  backdrop-filter: blur(44px) saturate(190%);
+  -webkit-backdrop-filter: blur(44px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  outline: 1px solid rgba(0, 0, 0, 0.06);
+  outline-offset: -1px;
+  box-shadow:
+    0 28px 64px rgba(0, 0, 0, 0.2),
+    0 2px 0 rgba(255, 255, 255, 0.98) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.04) inset;
+  animation: rise-in 0.22s var(--ease-glide, ease);
+  color: var(--color-obsidian, #000);
+  font-family: var(--font, inherit);
+}
+
+.glass-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.glass-cal-title {
+  font-size: 0.98rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--color-obsidian, #000);
+}
+
+.glass-cal-nav {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--color-obsidian, #000);
+  font-size: 1.25rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
   cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.glass-cal-nav:hover {
+  background: rgba(255, 255, 255, 0.85);
+  transform: scale(1.04);
+}
+
+.glass-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.2rem;
+  margin-bottom: 0.4rem;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--color-felt-gray, #6d6d6d);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.glass-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.28rem;
+}
+
+.glass-cal-cell {
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-obsidian, #000);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.glass-cal-cell.is-empty {
+  cursor: default;
+  pointer-events: none;
+}
+
+.glass-cal-cell:hover:not(.is-disabled):not(.is-empty) {
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+}
+
+.glass-cal-cell.is-today:not(.is-selected) {
+  box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.4);
+  font-weight: 500;
+}
+
+.glass-cal-cell.is-selected {
+  background: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  font-weight: 500;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.glass-cal-cell.is-disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
+
+.glass-cal-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.glass-cal-link {
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  padding: 0.4rem 0.75rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-obsidian, #000);
+  cursor: pointer;
+  border-radius: 999px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
+  transition: background 0.18s ease;
+}
+
+.glass-cal-link:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* Native select fallback (if any remain) */
+.field select {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 16px;
+  padding: 0.7rem 2.4rem 0.7rem 1rem;
+  background: rgba(255, 255, 255, 0.55)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='%236d6d6d'%3E%3Cpath d='M6.7 9.3a1 1 0 0 1 1.4 0L12 13.17l3.9-3.88a1 1 0 1 1 1.4 1.42l-4.6 4.58a1 1 0 0 1-1.4 0L6.7 10.7a1 1 0 0 1 0-1.4Z'/%3E%3C/svg%3E")
+    no-repeat right 0.85rem center / 16px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.06), 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+  cursor: pointer;
+  appearance: none;
 }
 
 .field select option {

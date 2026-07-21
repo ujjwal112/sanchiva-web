@@ -1,6 +1,26 @@
-import { forwardRef, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../api';
 import { downloadExcel, downloadPdf, filterByMonthYear, filterByMonthYearFields } from '../utils/export';
+
+/** Place a fixed popup under (or above) an anchor element. */
+function placeFixedPopup(anchorEl, preferredHeight = 320) {
+  if (!anchorEl) return {};
+  const r = anchorEl.getBoundingClientRect();
+  const spaceBelow = window.innerHeight - r.bottom;
+  const openUp = spaceBelow < preferredHeight && r.top > spaceBelow;
+  const left = Math.min(Math.max(8, r.left), window.innerWidth - Math.max(r.width, 160) - 8);
+  const width = Math.min(Math.max(r.width, 160), window.innerWidth - 16);
+  return {
+    position: 'fixed',
+    left: `${left}px`,
+    width: `${width}px`,
+    zIndex: 100000,
+    ...(openUp
+      ? { bottom: `${window.innerHeight - r.top + 8}px`, top: 'auto' }
+      : { top: `${r.bottom + 8}px`, bottom: 'auto' }),
+  };
+}
 
 export function Tabs({ tabs, active, onChange }) {
   return (
@@ -44,45 +64,238 @@ function ChevronIcon({ open }) {
   );
 }
 
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function toISODate(d) {
+  if (!d || Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function parseISODate(s) {
+  if (!s || !/^\d{4}-\d{2}-\d{2}/.test(String(s))) return null;
+  const [y, m, d] = String(s).slice(0, 10).split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+function formatDisplayDate(s) {
+  const dt = parseISODate(s);
+  if (!dt) return '';
+  return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
 /**
- * Liquid-glass date field — click anywhere to open picker.
+ * Liquid-glass custom date field + calendar popup (not native OS picker).
+ * Calendar is portaled to document.body so card overflow / backdrop-filter never clips it.
  */
-export const DateInput = forwardRef(function DateInput({ className = '', onClick, ...props }, ref) {
-  const localRef = useRef(null);
-  const setRefs = (node) => {
-    localRef.current = node;
-    if (typeof ref === 'function') ref(node);
-    else if (ref) ref.current = node;
+export const DateInput = forwardRef(function DateInput(
+  { className = '', value = '', onChange, onClick, disabled, required, id, name, min, max, ...props },
+  ref
+) {
+  const rootRef = useRef(null);
+  const calRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [popupStyle, setPopupStyle] = useState({});
+  const selected = parseISODate(value);
+  const [view, setView] = useState(() => selected || new Date());
+
+  useEffect(() => {
+    if (selected) setView(new Date(selected.getFullYear(), selected.getMonth(), 1));
+  }, [value]);
+
+  // Keep form compatibility for parent ref
+  useEffect(() => {
+    if (typeof ref === 'function') ref(rootRef.current);
+    else if (ref) ref.current = rootRef.current;
+  }, [ref]);
+
+  const reposition = () => {
+    setPopupStyle({
+      ...placeFixedPopup(rootRef.current, 360),
+      width: `${Math.min(320, window.innerWidth - 16)}px`,
+    });
   };
 
-  const openPicker = (e) => {
-    try {
-      (localRef.current || e.currentTarget)?.showPicker?.();
-    } catch {
-      /* unsupported */
-    }
-    onClick?.(e);
+  useLayoutEffect(() => {
+    if (!open) return;
+    reposition();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      const t = e.target;
+      if (rootRef.current?.contains(t) || calRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    const onReposition = () => reposition();
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', onReposition);
+    window.addEventListener('scroll', onReposition, true);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onReposition);
+      window.removeEventListener('scroll', onReposition, true);
+    };
+  }, [open]);
+
+  const year = view.getFullYear();
+  const month = view.getMonth();
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const minD = parseISODate(min);
+  const maxD = parseISODate(max);
+  const todayIso = toISODate(new Date());
+
+  const isDisabledDay = (y, m, d) => {
+    const dt = new Date(y, m, d);
+    if (minD && dt < minD) return true;
+    if (maxD && dt > maxD) return true;
+    return false;
   };
+
+  const emit = (iso) => {
+    onChange?.({ target: { value: iso, name: name || id || '' } });
+    setOpen(false);
+  };
+
+  const pickDay = (d) => {
+    if (isDisabledDay(year, month, d)) return;
+    emit(`${year}-${pad2(month + 1)}-${pad2(d)}`);
+  };
+
+  const pickToday = () => {
+    const t = new Date();
+    const iso = toISODate(t);
+    if (isDisabledDay(t.getFullYear(), t.getMonth(), t.getDate())) return;
+    setView(new Date(t.getFullYear(), t.getMonth(), 1));
+    emit(iso);
+  };
+
+  const shiftMonth = (delta) => {
+    setView((v) => new Date(v.getFullYear(), v.getMonth() + delta, 1));
+  };
+
+  const calendar =
+    open &&
+    typeof document !== 'undefined' &&
+    createPortal(
+      <div
+        ref={calRef}
+        className="glass-calendar glass-calendar--portal"
+        role="dialog"
+        aria-label="Calendar"
+        style={popupStyle}
+      >
+        <div className="glass-calendar-header">
+          <button type="button" className="glass-cal-nav" onClick={() => shiftMonth(-1)} aria-label="Previous month">
+            ‹
+          </button>
+          <div className="glass-cal-title">
+            {MONTH_NAMES[month]} {year}
+          </div>
+          <button type="button" className="glass-cal-nav" onClick={() => shiftMonth(1)} aria-label="Next month">
+            ›
+          </button>
+        </div>
+        <div className="glass-cal-weekdays">
+          {WEEKDAYS.map((w) => (
+            <span key={w}>{w}</span>
+          ))}
+        </div>
+        <div className="glass-cal-grid">
+          {cells.map((d, i) =>
+            d == null ? (
+              <span key={`e-${i}`} className="glass-cal-cell is-empty" />
+            ) : (
+              <button
+                key={`${year}-${month}-${d}`}
+                type="button"
+                className={[
+                  'glass-cal-cell',
+                  value === `${year}-${pad2(month + 1)}-${pad2(d)}` ? 'is-selected' : '',
+                  todayIso === `${year}-${pad2(month + 1)}-${pad2(d)}` ? 'is-today' : '',
+                  isDisabledDay(year, month, d) ? 'is-disabled' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                disabled={isDisabledDay(year, month, d)}
+                onClick={() => pickDay(d)}
+              >
+                {d}
+              </button>
+            )
+          )}
+        </div>
+        <div className="glass-cal-footer">
+          <button type="button" className="glass-cal-link" onClick={pickToday}>
+            Today
+          </button>
+          <button
+            type="button"
+            className="glass-cal-link"
+            onClick={() => {
+              onChange?.({ target: { value: '', name: name || id || '' } });
+              setOpen(false);
+            }}
+          >
+            Clear
+          </button>
+        </div>
+      </div>,
+      document.body
+    );
 
   return (
-    <div className="glass-control glass-date">
-      <input
-        ref={setRefs}
-        type="date"
-        className={`date-input-clickable glass-control-field ${className}`.trim()}
-        onClick={openPicker}
-        onFocus={openPicker}
-        {...props}
-      />
-      <span className="glass-control-affix" aria-hidden>
+    <div
+      ref={rootRef}
+      className={`glass-control glass-date ${open ? 'is-open' : ''} ${className}`.trim()}
+    >
+      <input type="hidden" name={name} value={value || ''} required={required} readOnly />
+      <button
+        type="button"
+        id={id}
+        className="glass-select-trigger glass-control-field glass-date-trigger"
+        disabled={disabled}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={props['aria-label'] || 'Pick a date'}
+        onClick={(e) => {
+          if (disabled) return;
+          setOpen((v) => !v);
+          onClick?.(e);
+        }}
+      >
+        <span className={`glass-select-value${!value ? ' is-placeholder' : ''}`}>
+          {value ? formatDisplayDate(value) : 'Select date'}
+        </span>
         <CalendarIcon />
-      </span>
+      </button>
+      {calendar}
     </div>
   );
 });
 
 /**
  * Liquid-glass custom dropdown (styled panel, not native OS menu).
+ * Menu is portaled to document.body so it never clips inside glass cards.
  * options: string[] | { value, label }[]
  */
 export function GlassSelect({
@@ -97,11 +310,13 @@ export function GlassSelect({
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+  const menuRef = useRef(null);
   const listId = useId();
+  const [menuStyle, setMenuStyle] = useState({});
 
   const items = useMemo(
     () =>
-      options.map((o) =>
+      (options || []).map((o) =>
         typeof o === 'object' && o != null
           ? { value: String(o.value), label: o.label ?? String(o.value) }
           : { value: String(o), label: String(o) }
@@ -112,19 +327,35 @@ export function GlassSelect({
   const selected = items.find((i) => i.value === String(value ?? ''));
   const display = selected?.label || placeholder;
 
+  const placeMenu = () => {
+    setMenuStyle(placeFixedPopup(rootRef.current, 280));
+  };
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    placeMenu();
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const onDoc = (e) => {
-      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
+      const t = e.target;
+      if (rootRef.current?.contains(t) || menuRef.current?.contains(t)) return;
+      setOpen(false);
     };
     const onKey = (e) => {
       if (e.key === 'Escape') setOpen(false);
     };
+    const onReposition = () => placeMenu();
     document.addEventListener('mousedown', onDoc);
     document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', onReposition);
+    window.addEventListener('scroll', onReposition, true);
     return () => {
       document.removeEventListener('mousedown', onDoc);
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onReposition);
+      window.removeEventListener('scroll', onReposition, true);
     };
   }, [open]);
 
@@ -132,6 +363,37 @@ export function GlassSelect({
     onChange?.(v);
     setOpen(false);
   };
+
+  const menu =
+    open &&
+    typeof document !== 'undefined' &&
+    createPortal(
+      <ul
+        ref={menuRef}
+        id={listId}
+        className="glass-select-menu glass-select-menu--portal"
+        role="listbox"
+        style={menuStyle}
+      >
+        {items.map((item) => (
+          <li
+            key={item.value}
+            role="option"
+            aria-selected={selected?.value === item.value}
+            className={`glass-select-option${selected?.value === item.value ? ' is-active' : ''}`}
+            onClick={() => pick(item.value)}
+          >
+            {item.label}
+          </li>
+        ))}
+        {!items.length && (
+          <li className="glass-select-option is-empty" aria-disabled>
+            No options
+          </li>
+        )}
+      </ul>,
+      document.body
+    );
 
   return (
     <div
@@ -152,31 +414,7 @@ export function GlassSelect({
         <span className={`glass-select-value${!selected ? ' is-placeholder' : ''}`}>{display}</span>
         <ChevronIcon open={open} />
       </button>
-      {open && (
-        <ul id={listId} className="glass-select-menu" role="listbox">
-          {placeholder && (
-            <li
-              role="option"
-              aria-selected={!selected}
-              className={`glass-select-option${!selected ? ' is-active' : ''}`}
-              onClick={() => pick('')}
-            >
-              {placeholder}
-            </li>
-          )}
-          {items.map((item) => (
-            <li
-              key={item.value}
-              role="option"
-              aria-selected={selected?.value === item.value}
-              className={`glass-select-option${selected?.value === item.value ? ' is-active' : ''}`}
-              onClick={() => pick(item.value)}
-            >
-              {item.label}
-            </li>
-          ))}
-        </ul>
-      )}
+      {menu}
     </div>
   );
 }
