@@ -64,10 +64,7 @@ export default function Signup() {
           <Logo size={64} />
           <h1>Create account</h1>
         </div>
-        <p className="muted login-sub">
-          Sign up with your name, email, and password. Prefer Google? Use{' '}
-          <Link to="/login">Login</Link> with Google (that creates your account too).
-        </p>
+        <p className="muted login-sub">Join Sanchiva</p>
 
         {message && <div className="login-error">{message}</div>}
 
