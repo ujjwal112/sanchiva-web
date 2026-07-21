@@ -24,17 +24,18 @@ ChartJS.register(
   Filler
 );
 
+/* Forest-mint chart palette (DESIGN.md) */
 const PALETTE = [
-  '#7c6cff',
-  '#22d3ee',
-  '#f472b6',
-  '#34d399',
-  '#fbbf24',
-  '#60a5fa',
-  '#a78bfa',
-  '#fb7185',
-  '#2dd4bf',
-  '#c084fc',
+  '#97fcd7',
+  '#33998c',
+  '#23524c',
+  '#b0c5c1',
+  '#1c3f38',
+  '#5ecfb8',
+  '#0f3933',
+  '#7ad9c4',
+  '#4a8f84',
+  '#c8ebe2',
 ];
 
 const baseOptions = {
