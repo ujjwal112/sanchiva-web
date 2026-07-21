@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import AtmosphereBackground from './components/AtmosphereBackground';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import DailyExpense from './pages/DailyExpense';
@@ -17,6 +18,7 @@ import AuthCallback from './pages/AuthCallback';
 export default function App() {
   return (
     <AuthProvider>
+      <AtmosphereBackground intensity="full" />
       <Routes>
         {/* Public */}
         <Route path="/" element={<Landing />} />
