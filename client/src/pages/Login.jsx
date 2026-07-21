@@ -13,7 +13,10 @@ export default function Login() {
   const [guestLoading, setGuestLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
-  const [form, setForm] = useState({ email: '', password: '' });
+  /** email → password (custom login is two steps) */
+  const [step, setStep] = useState('email');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
     fetch(`${API_ORIGIN}/api/auth/providers`)
@@ -29,8 +32,6 @@ export default function Login() {
   }, [error]);
 
   if (!loading && isAuthenticated) return <Navigate to="/dashboard" replace />;
-
-  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const onGoogle = () => {
     setMessage('');
@@ -56,18 +57,40 @@ export default function Login() {
     }
   };
 
-  const onSubmit = async (e) => {
+  const onEmailContinue = (e) => {
     e.preventDefault();
     setMessage('');
-    if (!form.email.trim() || !form.password) {
-      setMessage('Enter email and password');
+    const value = email.trim();
+    if (!value) {
+      setMessage('Please enter your email');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setMessage('Enter a valid email address');
+      return;
+    }
+    setEmail(value);
+    setStep('password');
+  };
+
+  const backToEmail = () => {
+    setMessage('');
+    setPassword('');
+    setStep('email');
+  };
+
+  const onPasswordSubmit = async (e) => {
+    e.preventDefault();
+    setMessage('');
+    if (!password) {
+      setMessage('Please enter your password');
       return;
     }
     setSubmitting(true);
     try {
       await loginWithPassword({
-        email: form.email.trim(),
-        password: form.password,
+        email: email.trim(),
+        password,
       });
       navigate('/dashboard', { replace: true });
     } catch (err) {
@@ -88,63 +111,97 @@ export default function Login() {
           <h1>Sanchiva</h1>
         </div>
 
-        <p className="muted login-sub">Login with Google or your email &amp; password.</p>
+        <p className="muted login-sub">
+          {step === 'email'
+            ? 'Login with Google or enter your email to continue.'
+            : 'Enter your password to sign in.'}
+        </p>
 
         {message && <div className="login-error">{message}</div>}
 
-        <div className="login-buttons">
-          <button type="button" className="btn login-btn login-google" onClick={onGoogle}>
-            <span className="login-btn-icon">G</span>
-            Continue with Google
-          </button>
+        {step === 'email' && (
+          <>
+            <div className="login-buttons">
+              <button type="button" className="btn login-btn login-google" onClick={onGoogle}>
+                <span className="login-btn-icon">G</span>
+                Continue with Google
+              </button>
 
-          <div className="login-divider">
-            <span>or email</span>
-          </div>
-        </div>
+              <div className="login-divider">
+                <span>or email</span>
+              </div>
+            </div>
 
-        <form className="auth-form" onSubmit={onSubmit}>
-          <div className="field">
-            <label htmlFor="login-email">Email</label>
-            <input
-              id="login-email"
-              type="email"
-              autoComplete="email"
-              required
-              value={form.email}
-              onChange={set('email')}
-              placeholder="you@example.com"
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="login-password">Password</label>
-            <input
-              id="login-password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={form.password}
-              onChange={set('password')}
-              placeholder="Your password"
-            />
-          </div>
-          <button type="submit" className="btn btn-primary login-btn" disabled={submitting}>
-            {submitting ? 'Signing in…' : 'Login'}
-          </button>
-        </form>
+            <form className="auth-form" onSubmit={onEmailContinue}>
+              <div className="field">
+                <label htmlFor="login-email">Email</label>
+                <input
+                  id="login-email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  autoFocus
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                />
+              </div>
+              <button type="submit" className="btn btn-primary login-btn">
+                Continue
+              </button>
+            </form>
 
-        <div className="login-divider" style={{ marginTop: '1rem' }}>
-          <span>or</span>
-        </div>
+            <div className="login-divider" style={{ marginTop: '1rem' }}>
+              <span>or</span>
+            </div>
 
-        <button type="button" className="btn login-btn login-guest" disabled={guestLoading} onClick={onGuest}>
-          <span className="login-btn-icon">👤</span>
-          {guestLoading ? 'Starting guest session…' : 'Continue as Guest'}
-        </button>
+            <button type="button" className="btn login-btn login-guest" disabled={guestLoading} onClick={onGuest}>
+              <span className="login-btn-icon">👤</span>
+              {guestLoading ? 'Starting guest session…' : 'Continue as Guest'}
+            </button>
 
-        <p className="auth-switch muted">
-          New here? <Link to="/signup">Create an account</Link>
-        </p>
+            <p className="auth-switch muted">
+              New here? <Link to="/signup">Create an account</Link>
+            </p>
+          </>
+        )}
+
+        {step === 'password' && (
+          <>
+            <div className="auth-email-chip">
+              <span className="muted">Signing in as</span>
+              <strong>{email}</strong>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={backToEmail}>
+                Change
+              </button>
+            </div>
+
+            <form className="auth-form" onSubmit={onPasswordSubmit}>
+              <div className="field">
+                <label htmlFor="login-password">Password</label>
+                <input
+                  id="login-password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  autoFocus
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Your password"
+                />
+              </div>
+              <button type="submit" className="btn btn-primary login-btn" disabled={submitting}>
+                {submitting ? 'Signing in…' : 'Login'}
+              </button>
+            </form>
+
+            <p className="auth-switch muted">
+              <button type="button" className="auth-text-btn" onClick={backToEmail}>
+                ← Back to email
+              </button>
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

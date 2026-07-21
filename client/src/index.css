@@ -654,6 +654,39 @@ button {
   text-decoration: underline;
 }
 
+.auth-email-chip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  margin-bottom: 0.85rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  font-size: 0.9rem;
+}
+
+.auth-email-chip strong {
+  flex: 1;
+  min-width: 0;
+  word-break: break-all;
+}
+
+.auth-text-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent-2);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.auth-text-btn:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 800px) {
   .landing-hero,
   .landing-about-block {
