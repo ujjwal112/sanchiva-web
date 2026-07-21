@@ -1,13 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { useAuth } from '../auth/AuthContext';
-import { API_ORIGIN } from '../api';
 
 export default function Signup() {
-  const { isAuthenticated, loading, loginWithProvider, registerWithPassword } = useAuth();
+  const { isAuthenticated, loading, registerWithPassword } = useAuth();
   const navigate = useNavigate();
-  const [googleEnabled, setGoogleEnabled] = useState(false);
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -17,29 +15,9 @@ export default function Signup() {
     confirm_password: '',
   });
 
-  useEffect(() => {
-    fetch(`${API_ORIGIN}/api/auth/providers`)
-      .then((r) => r.json())
-      .then((data) => setGoogleEnabled(!!data.google))
-      .catch(() => {
-        setMessage('Could not reach auth server. Wait for the site to wake up and try again.');
-      });
-  }, []);
-
   if (!loading && isAuthenticated) return <Navigate to="/dashboard" replace />;
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
-
-  const onGoogle = () => {
-    setMessage('');
-    if (!googleEnabled) {
-      setMessage(
-        'Google signup is not configured yet. Use email & password, or add Google OAuth on the server (see AUTH_SETUP.md).'
-      );
-      return;
-    }
-    loginWithProvider('google');
-  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -86,20 +64,12 @@ export default function Signup() {
           <Logo size={64} />
           <h1>Create account</h1>
         </div>
-        <p className="muted login-sub">Sign up with Google or email &amp; password.</p>
+        <p className="muted login-sub">
+          Sign up with your name, email, and password. Prefer Google? Use{' '}
+          <Link to="/login">Login</Link> with Google — that creates your account too.
+        </p>
 
         {message && <div className="login-error">{message}</div>}
-
-        <div className="login-buttons">
-          <button type="button" className="btn login-btn login-google" onClick={onGoogle}>
-            <span className="login-btn-icon">G</span>
-            Sign up with Google
-          </button>
-
-          <div className="login-divider">
-            <span>or email</span>
-          </div>
-        </div>
 
         <form className="auth-form" onSubmit={onSubmit}>
           <div className="field">
@@ -108,6 +78,7 @@ export default function Signup() {
               id="signup-name"
               autoComplete="name"
               required
+              autoFocus
               value={form.name}
               onChange={set('name')}
               placeholder="Your name"
