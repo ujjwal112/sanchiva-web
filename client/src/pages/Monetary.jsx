@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, formatCurrency, formatDate, todayISO, MONTHS } from '../api';
-import { Tabs, CategorySelect, DataTable, DateInput, useToast, MonthYearFilters } from '../components/ui';
+import { Tabs, CategorySelect, DataTable, DateInput, GlassSelect, useToast, MonthYearFilters } from '../components/ui';
 import { PieChart, BarChart, categoryChartData } from '../components/Charts';
 
 const emptyIncome = {
@@ -294,16 +294,12 @@ export default function Monetary() {
                     </div>
                     <div className="field">
                       <label>Month</label>
-                      <select
-                        value={incomeForm.month}
-                        onChange={(e) => setIncomeForm({ ...incomeForm, month: e.target.value })}
-                      >
-                        {MONTHS.map((m, i) => (
-                          <option key={m} value={i + 1}>
-                            {m}
-                          </option>
-                        ))}
-                      </select>
+                      <GlassSelect
+                        value={String(incomeForm.month)}
+                        onChange={(v) => setIncomeForm({ ...incomeForm, month: v })}
+                        placeholder="Month"
+                        options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+                      />
                     </div>
                     <div className="field">
                       <label>Year</label>

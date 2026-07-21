@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api, formatEventStyleLabel } from '../api';
-import { Tabs, DateInput, useToast } from '../components/ui';
+import { Tabs, DateInput, GlassSelect, useToast } from '../components/ui';
 
 const EVENT_TYPES = [
   { id: 'wedding', label: 'Wedding', icon: '💍' },
@@ -326,18 +326,13 @@ export default function Events() {
               <div className="wizard-answer-panel card" ref={wizardAnswerRef}>
                 {currentQ.type === 'select' && (
                   <div className="field">
-                    <select
-                      ref={answerInputRef}
+                    <GlassSelect
                       value={currentAnswer}
-                      onChange={(e) => setCurrentAnswer(e.target.value)}
-                    >
-                      <option value="">Select…</option>
-                      {(currentQ.options || []).map((o) => (
-                        <option key={o} value={o}>
-                          {o}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setCurrentAnswer}
+                      placeholder="Select…"
+                      options={currentQ.options || []}
+                      aria-label={currentQ.label || 'Select'}
+                    />
                   </div>
                 )}
                 {currentQ.type === 'multiselect' && (

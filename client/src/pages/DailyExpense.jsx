@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, formatCurrency, formatDate, todayISO, MONTHS } from '../api';
-import { Tabs, CategorySelect, DataTable, DateInput, useToast } from '../components/ui';
+import { Tabs, CategorySelect, DataTable, DateInput, GlassSelect, useToast } from '../components/ui';
 import { PieChart, categoryChartData } from '../components/Charts';
 import { downloadExcel, downloadExcelMulti, downloadPdf } from '../utils/export';
 
@@ -393,23 +393,24 @@ export default function DailyExpense() {
                   <div className="data-filter-bar__filters">
                     <div className="field">
                       <label>Month</label>
-                      <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-                        {MONTHS.map((m, i) => (
-                          <option key={m} value={i + 1}>
-                            {m}
-                          </option>
-                        ))}
-                      </select>
+                      <GlassSelect
+                        value={String(month)}
+                        onChange={(v) => setMonth(Number(v))}
+                        placeholder="Month"
+                        options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+                      />
                     </div>
                     <div className="field">
                       <label>Year</label>
-                      <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
-                        {Array.from({ length: 7 }, (_, i) => new Date().getFullYear() - i).map((y) => (
-                          <option key={y} value={y}>
-                            {y}
-                          </option>
-                        ))}
-                      </select>
+                      <GlassSelect
+                        value={String(year)}
+                        onChange={(v) => setYear(Number(v))}
+                        placeholder="Year"
+                        options={Array.from({ length: 7 }, (_, i) => {
+                          const y = new Date().getFullYear() - i;
+                          return { value: String(y), label: String(y) };
+                        })}
+                      />
                     </div>
                   </div>
                 </div>
@@ -420,14 +421,16 @@ export default function DailyExpense() {
                 <div className="data-filter-bar__download-stack">
                   <div className="field data-filter-bar__format">
                     <label>File type</label>
-                    <select
+                    <GlassSelect
                       value={exportFormat}
-                      onChange={(e) => setExportFormat(e.target.value)}
+                      onChange={setExportFormat}
                       aria-label="Download file type"
-                    >
-                      <option value="excel">Excel (.xlsx)</option>
-                      <option value="pdf">PDF (.pdf)</option>
-                    </select>
+                      placeholder="File type"
+                      options={[
+                        { value: 'excel', label: 'Excel (.xlsx)' },
+                        { value: 'pdf', label: 'PDF (.pdf)' },
+                      ]}
+                    />
                   </div>
                   <div className="data-filter-bar__btns">
                     <button

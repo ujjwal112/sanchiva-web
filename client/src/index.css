@@ -2178,7 +2178,76 @@ table.data-table tbody tr:hover {
   border-style: dashed;
 }
 
-/* Date fields: whole textbox opens the calendar (not only the icon) */
+/* ── Liquid glass controls: date + custom select ── */
+.glass-control {
+  position: relative;
+  width: 100%;
+  isolation: isolate;
+}
+
+.glass-control-field,
+.field .glass-control-field,
+.field select,
+.field input[type='date'] {
+  width: 100%;
+  min-height: 46px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 180%));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 180%));
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  outline: 1px solid rgba(0, 0, 0, 0.06);
+  outline-offset: -1px;
+  border-radius: 16px;
+  padding: 0.7rem 2.6rem 0.7rem 1rem;
+  color: var(--color-obsidian, #000);
+  font: inherit;
+  font-weight: 400;
+  box-shadow: var(--glass-shadow, 0 8px 28px rgba(0, 0, 0, 0.06), 0 1px 0 rgba(255, 255, 255, 0.7) inset);
+  transition: background 0.8s var(--ease-glide, ease), border-color 0.8s var(--ease-glide, ease),
+    box-shadow 0.8s var(--ease-glide, ease);
+}
+
+.glass-control-field:hover,
+.field select:hover,
+.field input[type='date']:hover {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(255, 255, 255, 0.75);
+}
+
+.glass-control-field:focus,
+.field select:focus,
+.field input[type='date']:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.62);
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05), 0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 8px 28px rgba(0, 0, 0, 0.06);
+}
+
+/* Date */
+.glass-date {
+  display: block;
+}
+
+.glass-date .glass-control-field {
+  cursor: pointer;
+  color-scheme: light;
+}
+
+.glass-date .glass-control-affix {
+  position: absolute;
+  top: 50%;
+  right: 0.85rem;
+  transform: translateY(-50%);
+  color: var(--color-felt-gray, #6d6d6d);
+  pointer-events: none;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+}
+
 .field-date {
   position: relative;
 }
@@ -2186,13 +2255,14 @@ table.data-table tbody tr:hover {
 .field-date .date-input-clickable,
 input[type='date'].date-input-clickable {
   cursor: pointer;
-  color-scheme: dark;
+  color-scheme: light;
   position: relative;
 }
 
-/* Stretch native indicator so click on text area still hits the picker control */
+/* Hide native calendar glyph; we draw our own */
 .field-date input[type='date']::-webkit-calendar-picker-indicator,
-input[type='date'].date-input-clickable::-webkit-calendar-picker-indicator {
+input[type='date'].date-input-clickable::-webkit-calendar-picker-indicator,
+.glass-date input[type='date']::-webkit-calendar-picker-indicator {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -2203,7 +2273,6 @@ input[type='date'].date-input-clickable::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
 
-/* Keep empty date field readable */
 .field-date input[type='date']:not(:valid),
 .field-date input[type='date'][value=''],
 input[type='date'].date-input-clickable:not(:valid),
@@ -2214,6 +2283,112 @@ input[type='date'].date-input-clickable[value=''] {
 .field-date input[type='date']:valid,
 input[type='date'].date-input-clickable:valid {
   color: var(--text);
+}
+
+/* Custom glass select */
+.glass-select {
+  z-index: 1;
+}
+
+.glass-select.is-open {
+  z-index: 40;
+}
+
+.glass-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.glass-select-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.glass-select-value.is-placeholder {
+  color: var(--color-felt-gray, #6d6d6d);
+}
+
+.glass-select-chevron {
+  flex-shrink: 0;
+  color: var(--color-felt-gray, #6d6d6d);
+  transition: transform 0.45s var(--ease-glide, ease);
+}
+
+.glass-select-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.glass-select-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.4rem;
+  list-style: none;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 50;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 180%));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 180%));
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: var(--glass-shadow-hover, 0 16px 40px rgba(0, 0, 0, 0.12), 0 1px 0 rgba(255, 255, 255, 0.8) inset);
+  animation: rise-in 0.35s var(--ease-glide, ease);
+}
+
+.glass-select-menu::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+  pointer-events: none;
+}
+
+.glass-select-option {
+  position: relative;
+  z-index: 1;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--color-obsidian, #000);
+  font-size: 0.92rem;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+.glass-select-option:hover {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.glass-select-option.is-active {
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+}
+
+/* Native select fallback chevron */
+.field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='%236d6d6d'%3E%3Cpath d='M6.7 9.3a1 1 0 0 1 1.4 0L12 13.17l3.9-3.88a1 1 0 1 1 1.4 1.42l-4.6 4.58a1 1 0 0 1-1.4 0L6.7 10.7a1 1 0 0 1 0-1.4Z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 16px;
+  cursor: pointer;
+}
+
+.field select option {
+  background: #fff;
+  color: #000;
 }
 
 .event-type-card {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, formatCurrency, formatDate, formatEventStyleLabel } from '../api';
-import { Tabs, DateInput, useToast } from '../components/ui';
+import { Tabs, DateInput, GlassSelect, useToast } from '../components/ui';
 import { PieChart, BarChart } from '../components/Charts';
 import { downloadExcel, downloadExcelMulti, downloadPdf } from '../utils/export';
 import { buildCeremonyCards, getCeremonyTheme } from '../utils/ceremonyThemes';
@@ -875,22 +875,17 @@ export default function EventDetail() {
             </div>
             <div className="field">
               <label>Ceremony</label>
-              <select
+              <GlassSelect
                 value={guestForm.ceremony || guestCeremonyTab || ''}
-                onChange={(e) => {
-                  setGuestForm({ ...guestForm, ceremony: e.target.value });
-                  setGuestCeremonyTab(e.target.value);
+                onChange={(v) => {
+                  setGuestForm({ ...guestForm, ceremony: v });
+                  setGuestCeremonyTab(v);
                 }}
                 disabled={!ceremonyTabs.length}
-                required
-              >
-                {!ceremonyTabs.length && <option value="">No ceremonies</option>}
-                {ceremonyTabs.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+                placeholder={ceremonyTabs.length ? 'Select ceremony' : 'No ceremonies'}
+                options={ceremonyTabs}
+                aria-label="Ceremony"
+              />
             </div>
             <div className="field">
               <label>Count</label>
@@ -903,14 +898,17 @@ export default function EventDetail() {
             </div>
             <div className="field">
               <label>RSVP</label>
-              <select
+              <GlassSelect
                 value={guestForm.rsvp}
-                onChange={(e) => setGuestForm({ ...guestForm, rsvp: e.target.value })}
-              >
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-                <option value="maybe">Maybe</option>
-              </select>
+                onChange={(v) => setGuestForm({ ...guestForm, rsvp: v })}
+                placeholder="RSVP"
+                options={[
+                  { value: 'yes', label: 'Yes' },
+                  { value: 'no', label: 'No' },
+                  { value: 'maybe', label: 'Maybe' },
+                ]}
+                aria-label="RSVP"
+              />
             </div>
             <div className="form-actions" style={{ alignItems: 'end' }}>
               <button className="btn btn-primary" type="submit" disabled={!ceremonyTabs.length}>

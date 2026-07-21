@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useMemo, useState } from 'react';
+import { forwardRef, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import { downloadExcel, downloadPdf, filterByMonthYear, filterByMonthYearFields } from '../utils/export';
 
@@ -19,28 +19,167 @@ export function Tabs({ tabs, active, onChange }) {
   );
 }
 
+function CalendarIcon() {
+  return (
+    <svg className="glass-control-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v12A2.5 2.5 0 0 1 19.5 21h-15A2.5 2.5 0 0 1 2 18.5v-12A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 8h-15v8.5a.5.5 0 0 0 .5.5h14a.5.5 0 0 0 .5-.5V10Zm-15-4v2h15V6.5a.5.5 0 0 0-.5-.5H18v1a1 1 0 1 1-2 0V6H8v1a1 1 0 0 1-2 0V6H4.5a.5.5 0 0 0-.5.5Z"
+      />
+    </svg>
+  );
+}
+
+function ChevronIcon({ open }) {
+  return (
+    <svg
+      className={`glass-control-icon glass-select-chevron${open ? ' is-open' : ''}`}
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden
+    >
+      <path fill="currentColor" d="M6.7 9.3a1 1 0 0 1 1.4 0L12 13.17l3.9-3.88a1 1 0 1 1 1.4 1.42l-4.6 4.58a1 1 0 0 1-1.4 0L6.7 10.7a1 1 0 0 1 0-1.4Z" />
+    </svg>
+  );
+}
+
 /**
- * Date input: clicking anywhere on the textbox opens the calendar
- * (not only the native calendar icon).
+ * Liquid-glass date field — click anywhere to open picker.
  */
 export const DateInput = forwardRef(function DateInput({ className = '', onClick, ...props }, ref) {
+  const localRef = useRef(null);
+  const setRefs = (node) => {
+    localRef.current = node;
+    if (typeof ref === 'function') ref(node);
+    else if (ref) ref.current = node;
+  };
+
+  const openPicker = (e) => {
+    try {
+      (localRef.current || e.currentTarget)?.showPicker?.();
+    } catch {
+      /* unsupported */
+    }
+    onClick?.(e);
+  };
+
   return (
-    <input
-      ref={ref}
-      type="date"
-      className={`date-input-clickable ${className}`.trim()}
-      onClick={(e) => {
-        try {
-          e.currentTarget.showPicker?.();
-        } catch {
-          /* unsupported or already open */
-        }
-        onClick?.(e);
-      }}
-      {...props}
-    />
+    <div className="glass-control glass-date">
+      <input
+        ref={setRefs}
+        type="date"
+        className={`date-input-clickable glass-control-field ${className}`.trim()}
+        onClick={openPicker}
+        onFocus={openPicker}
+        {...props}
+      />
+      <span className="glass-control-affix" aria-hidden>
+        <CalendarIcon />
+      </span>
+    </div>
   );
 });
+
+/**
+ * Liquid-glass custom dropdown (styled panel, not native OS menu).
+ * options: string[] | { value, label }[]
+ */
+export function GlassSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Select…',
+  className = '',
+  disabled = false,
+  id,
+  'aria-label': ariaLabel,
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  const listId = useId();
+
+  const items = useMemo(
+    () =>
+      options.map((o) =>
+        typeof o === 'object' && o != null
+          ? { value: String(o.value), label: o.label ?? String(o.value) }
+          : { value: String(o), label: String(o) }
+      ),
+    [options]
+  );
+
+  const selected = items.find((i) => i.value === String(value ?? ''));
+  const display = selected?.label || placeholder;
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const pick = (v) => {
+    onChange?.(v);
+    setOpen(false);
+  };
+
+  return (
+    <div
+      ref={rootRef}
+      className={`glass-control glass-select ${open ? 'is-open' : ''} ${className}`.trim()}
+    >
+      <button
+        type="button"
+        id={id}
+        className="glass-select-trigger glass-control-field"
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-label={ariaLabel || placeholder}
+        onClick={() => !disabled && setOpen((v) => !v)}
+      >
+        <span className={`glass-select-value${!selected ? ' is-placeholder' : ''}`}>{display}</span>
+        <ChevronIcon open={open} />
+      </button>
+      {open && (
+        <ul id={listId} className="glass-select-menu" role="listbox">
+          {placeholder && (
+            <li
+              role="option"
+              aria-selected={!selected}
+              className={`glass-select-option${!selected ? ' is-active' : ''}`}
+              onClick={() => pick('')}
+            >
+              {placeholder}
+            </li>
+          )}
+          {items.map((item) => (
+            <li
+              key={item.value}
+              role="option"
+              aria-selected={selected?.value === item.value}
+              className={`glass-select-option${selected?.value === item.value ? ' is-active' : ''}`}
+              onClick={() => pick(item.value)}
+            >
+              {item.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 /**
  * Password field with show/hide (peek) toggle.
@@ -107,14 +246,13 @@ export function CategorySelect({ section, value, onChange, customValue, onCustom
     <>
       <div className="field">
         <label>Category / Type</label>
-        <select value={value} onChange={(e) => onChange(e.target.value)}>
-          <option value="">Select…</option>
-          {cats.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+        <GlassSelect
+          value={value}
+          onChange={onChange}
+          placeholder="Select…"
+          options={cats}
+          aria-label="Category / Type"
+        />
       </div>
       {value === 'Other' && (
         <div className="field">
@@ -261,32 +399,38 @@ export function DataTable({
               <>
                 <div className="field">
                   <label>Scope</label>
-                  <select value={dlScope} onChange={(e) => setDlScope(e.target.value)}>
-                    <option value="all">All data</option>
-                    <option value="filtered">Filter by month & year</option>
-                  </select>
+                  <GlassSelect
+                    value={dlScope}
+                    onChange={setDlScope}
+                    placeholder="Scope"
+                    options={[
+                      { value: 'all', label: 'All data' },
+                      { value: 'filtered', label: 'Filter by month & year' },
+                    ]}
+                  />
                 </div>
                 {dlScope === 'filtered' && (
                   <>
                     <div className="field">
                       <label>Month</label>
-                      <select value={dlMonth} onChange={(e) => setDlMonth(Number(e.target.value))}>
-                        {Array.from({ length: 12 }, (_, i) => (
-                          <option key={i + 1} value={i + 1}>
-                            {new Date(2000, i, 1).toLocaleString('en', { month: 'long' })}
-                          </option>
-                        ))}
-                      </select>
+                      <GlassSelect
+                        value={String(dlMonth)}
+                        onChange={(v) => setDlMonth(Number(v))}
+                        placeholder="Month"
+                        options={Array.from({ length: 12 }, (_, i) => ({
+                          value: String(i + 1),
+                          label: new Date(2000, i, 1).toLocaleString('en', { month: 'long' }),
+                        }))}
+                      />
                     </div>
                     <div className="field">
                       <label>Year</label>
-                      <select value={dlYear} onChange={(e) => setDlYear(Number(e.target.value))}>
-                        {years.map((y) => (
-                          <option key={y} value={y}>
-                            {y}
-                          </option>
-                        ))}
-                      </select>
+                      <GlassSelect
+                        value={String(dlYear)}
+                        onChange={(v) => setDlYear(Number(v))}
+                        placeholder="Year"
+                        options={years.map((y) => ({ value: String(y), label: String(y) }))}
+                      />
                     </div>
                   </>
                 )}
@@ -294,10 +438,15 @@ export function DataTable({
             )}
             <div className="field">
               <label>File type</label>
-              <select value={dlFormat} onChange={(e) => setDlFormat(e.target.value)}>
-                <option value="excel">Excel (.xlsx)</option>
-                <option value="pdf">PDF (.pdf)</option>
-              </select>
+              <GlassSelect
+                value={dlFormat}
+                onChange={setDlFormat}
+                placeholder="File type"
+                options={[
+                  { value: 'excel', label: 'Excel (.xlsx)' },
+                  { value: 'pdf', label: 'PDF (.pdf)' },
+                ]}
+              />
             </div>
           </div>
           <div className="form-actions" style={{ marginTop: '0.75rem' }}>
@@ -429,23 +578,24 @@ export function MonthYearFilters({ month, year, onMonth, onYear }) {
     <div className="filters">
       <div className="field">
         <label>Month</label>
-        <select value={month} onChange={(e) => onMonth(Number(e.target.value))}>
-          {Array.from({ length: 12 }, (_, i) => (
-            <option key={i + 1} value={i + 1}>
-              {new Date(2000, i, 1).toLocaleString('en', { month: 'long' })}
-            </option>
-          ))}
-        </select>
+        <GlassSelect
+          value={String(month)}
+          onChange={(v) => onMonth(Number(v))}
+          placeholder="Month"
+          options={Array.from({ length: 12 }, (_, i) => ({
+            value: String(i + 1),
+            label: new Date(2000, i, 1).toLocaleString('en', { month: 'long' }),
+          }))}
+        />
       </div>
       <div className="field">
         <label>Year</label>
-        <select value={year} onChange={(e) => onYear(Number(e.target.value))}>
-          {years.map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </select>
+        <GlassSelect
+          value={String(year)}
+          onChange={(v) => onYear(Number(v))}
+          placeholder="Year"
+          options={years.map((y) => ({ value: String(y), label: String(y) }))}
+        />
       </div>
     </div>
   );

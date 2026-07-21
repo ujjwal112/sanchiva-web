@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, formatCurrency, formatDate, todayISO, MONTHS } from '../api';
-import { Tabs, CategorySelect, DataTable, DateInput, useToast } from '../components/ui';
+import { Tabs, CategorySelect, DataTable, DateInput, GlassSelect, useToast } from '../components/ui';
 import { PieChart, BarChart, MultiBarChart, categoryChartData } from '../components/Charts';
 
 const emptyLoan = {
@@ -362,16 +362,12 @@ export default function LoansCredit() {
                     </div>
                     <div className="field">
                       <label>EMI close month</label>
-                      <select
-                        value={loanForm.emi_close_month}
-                        onChange={(e) => setLoanForm({ ...loanForm, emi_close_month: e.target.value })}
-                      >
-                        {MONTHS.map((m, i) => (
-                          <option key={m} value={i + 1}>
-                            {m}
-                          </option>
-                        ))}
-                      </select>
+                      <GlassSelect
+                        value={String(loanForm.emi_close_month)}
+                        onChange={(v) => setLoanForm({ ...loanForm, emi_close_month: v })}
+                        placeholder="Month"
+                        options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+                      />
                     </div>
                     <div className="field">
                       <label>EMI close year</label>
@@ -394,26 +390,24 @@ export default function LoansCredit() {
                     </div>
                     <div className="field">
                       <label>Loan status</label>
-                      <select
+                      <GlassSelect
                         value={loanForm.status}
-                        onChange={(e) => setLoanForm({ ...loanForm, status: e.target.value })}
-                      >
-                        <option value="ongoing">Ongoing</option>
-                        <option value="closed">Closed</option>
-                      </select>
+                        onChange={(v) => setLoanForm({ ...loanForm, status: v })}
+                        placeholder="Status"
+                        options={[
+                          { value: 'ongoing', label: 'Ongoing' },
+                          { value: 'closed', label: 'Closed' },
+                        ]}
+                      />
                     </div>
                     <div className="field">
                       <label>Start month</label>
-                      <select
-                        value={loanForm.start_month}
-                        onChange={(e) => setLoanForm({ ...loanForm, start_month: e.target.value })}
-                      >
-                        {MONTHS.map((m, i) => (
-                          <option key={m} value={i + 1}>
-                            {m}
-                          </option>
-                        ))}
-                      </select>
+                      <GlassSelect
+                        value={String(loanForm.start_month)}
+                        onChange={(v) => setLoanForm({ ...loanForm, start_month: v })}
+                        placeholder="Month"
+                        options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+                      />
                     </div>
                     <div className="field">
                       <label>Start year</label>
@@ -690,16 +684,12 @@ export default function LoansCredit() {
                         </div>
                         <div className="field">
                           <label>Start month</label>
-                          <select
-                            value={emiForm.start_month}
-                            onChange={(e) => setEmiForm({ ...emiForm, start_month: e.target.value })}
-                          >
-                            {MONTHS.map((m, i) => (
-                              <option key={m} value={i + 1}>
-                                {m}
-                              </option>
-                            ))}
-                          </select>
+                          <GlassSelect
+                            value={String(emiForm.start_month)}
+                            onChange={(v) => setEmiForm({ ...emiForm, start_month: v })}
+                            placeholder="Month"
+                            options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+                          />
                         </div>
                         <div className="field">
                           <label>Start year</label>
@@ -711,16 +701,12 @@ export default function LoansCredit() {
                         </div>
                         <div className="field">
                           <label>End month</label>
-                          <select
-                            value={emiForm.end_month}
-                            onChange={(e) => setEmiForm({ ...emiForm, end_month: e.target.value })}
-                          >
-                            {MONTHS.map((m, i) => (
-                              <option key={m} value={i + 1}>
-                                {m}
-                              </option>
-                            ))}
-                          </select>
+                          <GlassSelect
+                            value={String(emiForm.end_month)}
+                            onChange={(v) => setEmiForm({ ...emiForm, end_month: v })}
+                            placeholder="Month"
+                            options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+                          />
                         </div>
                         <div className="field">
                           <label>End year</label>
