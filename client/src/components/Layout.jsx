@@ -5,7 +5,7 @@ import Logo from './Logo';
 import UserMenu from './UserMenu';
 
 const titles = {
-  '/': { title: 'Dashboard', sub: 'Overview of expenses, loans & money flow' },
+  '/dashboard': { title: 'Dashboard', sub: 'Overview of expenses, loans & money flow' },
   '/daily-expense': { title: 'Daily Expense', sub: 'Log spends and review week / month insights' },
   '/loans-credit': { title: 'Loans & Credit Cards', sub: 'EMIs, loan progress and card spends' },
   '/monetary': { title: 'Monetary', sub: 'Income, assets and money given to people' },
@@ -20,7 +20,7 @@ function titleForPath(pathname) {
   if (pathname.startsWith('/events/') && pathname !== '/events') {
     return { title: 'Event details', sub: 'Overview, charts, todos and guests' };
   }
-  return titles[pathname] || titles['/'];
+  return titles[pathname] || titles['/dashboard'];
 }
 
 export default function Layout() {

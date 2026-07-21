@@ -44,7 +44,7 @@ export default function UserMenu() {
             onClick={() => {
               setOpen(false);
               logout().then(() => {
-                window.location.href = '/login';
+                window.location.href = '/';
               });
             }}
           >

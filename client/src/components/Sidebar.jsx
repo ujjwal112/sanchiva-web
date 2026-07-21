@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import Logo from './Logo';
 
 const links = [
-  { to: '/', label: 'Dashboard', icon: '◈', end: true },
+  { to: '/dashboard', label: 'Dashboard', icon: '◈', end: true },
   { to: '/daily-expense', label: 'Daily Expense', icon: '₹' },
   { to: '/loans-credit', label: 'Loans / Credit Card', icon: '◫' },
   { to: '/monetary', label: 'Monetary', icon: '◎' },

@@ -16,7 +16,7 @@ export default function AuthCallback() {
       return;
     }
     completeLogin(access, refresh)
-      .then(() => navigate('/', { replace: true }))
+      .then(() => navigate('/dashboard', { replace: true }))
       .catch((e) => setError(e.message || 'Login failed'));
   }, [params, completeLogin, navigate]);
 

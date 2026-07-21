@@ -129,10 +129,11 @@ npm run dev
 
 | Service | URL |
 |---------|-----|
-| UI | http://localhost:5173 |
+| UI (landing) | http://localhost:5173 |
+| Login | http://localhost:5173/login |
+| Dashboard (after login) | http://localhost:5173/dashboard |
 | API health | http://localhost:5000/api/health |
 | **Swagger** | http://localhost:5000/api/docs |
-| Login | http://localhost:5173/login |
 | Events | http://localhost:5173/events |
 | Event detail | http://localhost:5173/events/:id |
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { useAuth } from '../auth/AuthContext';
 import { API_ORIGIN } from '../api';
@@ -26,7 +26,7 @@ export default function Login() {
     if (error) setMessage('Login failed. Please try again.');
   }, [error]);
 
-  if (!loading && isAuthenticated) return <Navigate to="/" replace />;
+  if (!loading && isAuthenticated) return <Navigate to="/dashboard" replace />;
 
   const onGoogle = () => {
     setMessage('');
@@ -44,7 +44,7 @@ export default function Login() {
     setGuestLoading(true);
     try {
       await loginAsGuest();
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (e) {
       setMessage(e.message || 'Guest login failed');
     } finally {
@@ -55,6 +55,9 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-card card">
+        <Link to="/" className="login-back-link">
+          ← Back to home
+        </Link>
         <div className="login-brand">
           <Logo size={72} />
           <h1>Sanchiva</h1>
