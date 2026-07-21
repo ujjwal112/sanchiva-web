@@ -2,9 +2,9 @@ import { useId } from 'react';
 
 /**
  * Sanchiva logo
- * Meaning: collection, accumulation, preservation, savings — wealth gathered over time.
+ * Meaning: collection, accumulation, preservation, savings, wealth gathered over time.
  * Visual: a protective circle (one place / vault) holding ascending layers of value
- * that gather into a bright core — everything that matters, collected and organized.
+ * that gather into a bright core, everything that matters, collected and organized.
  */
 export default function Logo({
   size = 40,
@@ -57,14 +57,14 @@ export default function Logo({
         </filter>
       </defs>
 
-      {/* Outer vault ring — preservation / one place */}
+      {/* Outer vault ring, preservation / one place */}
       <circle cx="32" cy="32" r="28" stroke={`url(#${id}-ring)`} strokeWidth="2.5" opacity="0.95" />
       <circle cx="32" cy="32" r="24.5" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
 
       {/* Soft inner glow */}
       <circle cx="32" cy="30" r="16" fill={`url(#${id}-glow)`} />
 
-      {/* Ascending value layers — accumulation / savings over time */}
+      {/* Ascending value layers, accumulation / savings over time */}
       <g filter={`url(#${id}-soft)`}>
         {/* Bottom layer (foundation of savings) */}
         <ellipse cx="32" cy="42" rx="14" ry="4.2" fill={`url(#${id}-layer)`} opacity="0.55" />
@@ -74,7 +74,7 @@ export default function Logo({
         <ellipse cx="32" cy="30.5" rx="8" ry="3" fill={`url(#${id}-layer)`} opacity="0.9" />
       </g>
 
-      {/* Collecting paths — streams gathering into the core */}
+      {/* Collecting paths, streams gathering into the core */}
       <path
         d="M18 38 C22 34, 24 30, 28 26"
         stroke={`url(#${id}-ring)`}
@@ -90,7 +90,7 @@ export default function Logo({
         opacity="0.7"
       />
 
-      {/* Bright core — everything valuable, organized */}
+      {/* Bright core, everything valuable, organized */}
       <circle cx="32" cy="24" r="5.5" fill={`url(#${id}-core)`} />
       <circle cx="30.5" cy="22.5" r="1.8" fill="rgba(255,255,255,0.75)" />
 

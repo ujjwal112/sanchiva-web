@@ -12,7 +12,7 @@ const titles = {
   '/events': { title: 'Events', sub: 'Create events and manage your list' },
   '/about': {
     title: 'About Sanchiva',
-    sub: 'Everything that matters — one place',
+    sub: 'Everything that matters, one place',
   },
 };
 

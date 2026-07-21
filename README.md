@@ -1,8 +1,8 @@
 # Sanchiva
 
-**Everything that matters — one place.**
+**Everything that matters, one place.**
 
-Sanchiva is a personal finance web app for tracking daily expenses, loans, credit cards, income, assets, money lent to people, and life events — with secure login and per-user data.
+Sanchiva is a personal finance web app for tracking daily expenses, loans, credit cards, income, assets, money lent to people, and life events, with secure login and per-user data.
 
 | | |
 |--|--|
@@ -16,12 +16,12 @@ Sanchiva is a personal finance web app for tracking daily expenses, loans, credi
 ## Features
 
 ### App modules
-- **Dashboard** — KPIs, charts, month spend, loans, assets overview  
-- **Daily Expense** — entry + live list, week/month views, Excel & PDF export  
-- **Loans / Credit Cards** — loans, card spends, card EMIs + summaries  
-- **Monetary** — salary/income, assets (FD, MF, crypto…), money lent  
-- **Events** — smart wizard, event detail page, todos, ceremony guests, exports  
-- **About** — app info, developed by, copyright  
+- **Dashboard**, KPIs, charts, month spend, loans, assets overview  
+- **Daily Expense**, entry + live list, week/month views, Excel & PDF export  
+- **Loans / Credit Cards**, loans, card spends, card EMIs + summaries  
+- **Monetary**, salary/income, assets (FD, MF, crypto…), money lent  
+- **Events**, smart wizard, event detail page, todos, ceremony guests, exports  
+- **About**, app info, developed by, copyright  
 
 ### Events module (detail)
 
@@ -47,22 +47,22 @@ Separate page with section tabs and **← My Events** on the right of the tab ro
 
 **Ceremony overview cards**  
 Color and quote follow the ceremony type, for example:  
-- **Tilak** — saffron / orange  
-- **Haldi** — turmeric gold  
-- **Mehendi** — green  
-- **Sangeet** — purple  
-- **Engagement** — rose  
-- **Main Wedding** — deep red  
-- **Reception** — blue  
+- **Tilak**, saffron / orange  
+- **Haldi**, turmeric gold  
+- **Mehendi**, green  
+- **Sangeet**, purple  
+- **Engagement**, rose  
+- **Main Wedding**, deep red  
+- **Reception**, blue  
 
 ### Authentication & sessions
-- **Landing page** (`/`) — product info with **Login** and **Sign up**  
-- **Sign up** (`/signup`) — Google **or** name + email + password + confirm password  
-- **Login** (`/login`) — Google **or** email + password; optional **Guest** try-out  
+- **Landing page** (`/`), product info with **Login** and **Sign up**  
+- **Sign up** (`/signup`), Google **or** name + email + password + confirm password  
+- **Login** (`/login`), Google **or** email + password; optional **Guest** try-out  
 - First Google use creates the account; later Google logins open the same account  
 - **Access token** (JWT, short-lived) + **refresh token** (rotated, stored hashed)  
 - Top-right user menu (name → **Logout**)  
-- **Per-user data** — each logged-in user only sees their own records  
+- **Per-user data**, each logged-in user only sees their own records  
 - Guest logout **deletes all guest data** for that session  
 
 ### API documentation (Swagger)
@@ -197,10 +197,10 @@ Base path: `/api`
 Full interactive list: **Swagger** → `/api/docs`
 
 ### Event detail response (highlights)
-- `ceremony_details` — `[{ name, date, quote, theme }]` for overview cards  
-- `ceremonies` — ordered list of real ceremony names (no “General”)  
-- `guestsByCeremony` / `ceremonyCounts` — guest lists and headcounts per ceremony  
-- `items` / `guests` / `summary` — todos, guests, budget rollup  
+- `ceremony_details`, `[{ name, date, quote, theme }]` for overview cards  
+- `ceremonies`, ordered list of real ceremony names (no “General”)  
+- `guestsByCeremony` / `ceremonyCounts`, guest lists and headcounts per ceremony  
+- `items` / `guests` / `summary`, todos, guests, budget rollup  
 
 ---
 

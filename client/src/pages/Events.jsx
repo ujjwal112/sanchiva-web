@@ -173,7 +173,7 @@ export default function Events() {
     setChat((c) => [
       ...c,
       { role: 'ai', text: currentQ.label },
-      { role: 'user', text: Array.isArray(value) ? value.join(', ') : String(value || '—') },
+      { role: 'user', text: Array.isArray(value) ? value.join(', ') : String(value || '-') },
     ]);
     setAnswers(nextAnswers);
     setMultiSel([]);
@@ -488,7 +488,7 @@ export default function Events() {
           {!events.length && (
             <div className="empty">
               <span className="emoji">✦</span>
-              No events yet — create one with the Create Event tab.
+              No events yet. Create one with the Create Event tab.
             </div>
           )}
           <div className="events-list-items events-list-items-wide">

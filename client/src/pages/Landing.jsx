@@ -31,7 +31,7 @@ const FEATURES = [
   {
     icon: '🔒',
     title: 'Secure & personal',
-    text: 'Google or Guest login. Your data stays private to your account — guest data wipes on logout.',
+    text: 'Google or Guest login. Your data stays private to your account. Guest data wipes on logout.',
   },
 ];
 
@@ -68,16 +68,16 @@ export default function Landing() {
             <p className="landing-eyebrow">Personal finance · Life events</p>
             <h1>
               Everything that matters
-              <span className="landing-hero-accent"> — one place.</span>
+              <span className="landing-hero-accent">, one place.</span>
             </h1>
             <p className="landing-lead muted">
               Sanchiva helps you collect, track, and protect what counts: daily expenses, loans,
-              credit cards, income, assets, money lent, and big life events — all in a calm modern
+              credit cards, income, assets, money lent, and big life events, all in a calm modern
               workspace.
             </p>
             <div className="landing-hero-actions">
               <Link to="/signup" className="btn btn-primary landing-cta">
-                Get started — Sign up
+                Get started
               </Link>
               <Link to="/login" className="btn btn-ghost landing-cta-secondary">
                 Login
@@ -98,7 +98,7 @@ export default function Landing() {
             <p className="landing-eyebrow">What you can do</p>
             <h2>One app for money and moments</h2>
             <p className="muted">
-              Built so nothing important slips through — from this month’s groceries to your wedding
+              Built so nothing important slips through, from this month’s groceries to your wedding
               guest list.
             </p>
           </div>
@@ -122,7 +122,7 @@ export default function Landing() {
               <h2>Collection · Accumulation · Preservation</h2>
               <p className="muted">
                 The name <strong>Sanchiva</strong> echoes collection, accumulation, preservation, and
-                savings — wealth and values gathered over time. The product is designed as a personal
+                savings: wealth and values gathered over time. The product is designed as a personal
                 vault: charts and exports when you need insight, and event planning when life gets
                 bigger than a spreadsheet.
               </p>
@@ -136,7 +136,7 @@ export default function Landing() {
             <div className="landing-cta-panel">
               <Logo size={56} />
               <h3>Ready to start?</h3>
-              <p className="muted">Create an account or log in — Google or email &amp; password.</p>
+              <p className="muted">Create an account or log in with Google or email and password.</p>
               <div className="landing-cta-panel-actions">
                 <Link to="/signup" className="btn btn-primary">
                   Sign up

@@ -174,7 +174,7 @@ export default function EventDetail() {
       token_paid: item.token_paid ?? '',
       vendor_name: item.vendor_name || '',
     });
-    // Form sits above the list — scroll so user can edit task name + fields
+    // Form sits above the list, scroll so user can edit task name + fields
     requestAnimationFrame(() => {
       document.getElementById('todo-entry-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
@@ -237,7 +237,7 @@ export default function EventDetail() {
         columns: todoCols,
         rows,
         filename: fname,
-        title: `${detail.name} — Todo / bookings list`,
+        title: `${detail.name}, Todo / bookings list`,
       });
       show('Todo PDF downloaded');
     }
@@ -402,13 +402,13 @@ export default function EventDetail() {
         ],
         rows: summaryRows.map((r) => ({ ceremony: r.ceremony, headcount: r.headcount })),
         filename: `${fname}_summary`,
-        title: `${detail.name} — Guest count by ceremony`,
+        title: `${detail.name}, Guest count by ceremony`,
       });
       downloadPdf({
         columns: guestCols,
         rows: allGuests,
         filename: `${fname}_all`,
-        title: `${detail.name} — Full guest list`,
+        title: `${detail.name}, Full guest list`,
       });
       show('PDF downloaded');
     }
@@ -646,7 +646,7 @@ export default function EventDetail() {
             {editingTodo && (
               <div className="todo-edit-banner">
                 <span>
-                  Editing task: <strong>{editingTodo.title || 'Untitled'}</strong> — change the task name and other fields below, then click Update todo.
+                  Editing task: <strong>{editingTodo.title || 'Untitled'}</strong>. Change the task name and other fields below, then click Update todo.
                 </span>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={resetItemForm}>
                   Cancel edit
@@ -751,7 +751,7 @@ export default function EventDetail() {
                         {it.category}
                       </span>
                     </td>
-                    <td>{it.vendor_name || '—'}</td>
+                    <td>{it.vendor_name || '-'}</td>
                     <td>{formatCurrency(it.planned_amount)}</td>
                     <td>{formatCurrency(it.token_paid)}</td>
                     <td>{formatCurrency(it.remaining_amount)}</td>
@@ -770,7 +770,7 @@ export default function EventDetail() {
                 {!items.length && (
                   <tr>
                     <td colSpan={7} className="muted" style={{ textAlign: 'center' }}>
-                      No tasks yet — add one above.
+                      No tasks yet. Add one above.
                     </td>
                   </tr>
                 )}
@@ -951,7 +951,7 @@ export default function EventDetail() {
                 {pagedGuests.map((g) => (
                   <tr key={g.id}>
                     <td>{g.name}</td>
-                    <td>{g.side || '—'}</td>
+                    <td>{g.side || '-'}</td>
                     <td>{g.count}</td>
                     <td>
                       <span className="badge">{g.rsvp}</span>
@@ -971,7 +971,7 @@ export default function EventDetail() {
                 {!pagedGuests.length && (
                   <tr>
                     <td colSpan={5} className="muted" style={{ textAlign: 'center' }}>
-                      No guests yet for this ceremony — add one above.
+                      No guests yet for this ceremony. Add one above.
                     </td>
                   </tr>
                 )}

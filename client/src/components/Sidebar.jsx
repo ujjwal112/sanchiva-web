@@ -46,7 +46,7 @@ export default function Sidebar({ open, onClose }) {
           <div className="sidebar-footer__logo">
             <Logo size={28} />
           </div>
-          <p className="sidebar-footer__motto">Everything that matters — one place.</p>
+          <p className="sidebar-footer__motto">Everything that matters, one place.</p>
           <p className="muted sidebar-footer__by">Developed by Ujjwal Gupta</p>
         </div>
       </aside>

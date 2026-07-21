@@ -153,7 +153,7 @@ export async function createLocalUser({ name, email, password }) {
     throw err;
   }
 
-  // Soft check: same email via Google — guide them to Google login
+  // Soft check: same email via Google, guide them to Google login
   const { rows: oauthHit } = await query(
     `SELECT id, provider FROM users WHERE LOWER(email) = $1 AND provider = 'google' LIMIT 1`,
     [emailNorm]

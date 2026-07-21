@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Sanchiva API",
-    "description": "Sanchiva — Everything that matters, one place. REST API for expenses, loans, monetary data, and events.\n\n## Authentication\nMost endpoints require a JWT **Bearer** access token.\n\n1. Call **POST /api/auth/register** or **POST /api/auth/login** (email) or **POST /api/auth/guest** (or sign in via Google OAuth in the app) to get `access_token`.\n2. Click **Authorize** (lock icon, top right).\n3. Paste the access token only (Swagger adds the word Bearer for you).\n4. Click **Authorize** → **Close**, then try protected endpoints.\n\n**Developed by Ujjwal Gupta**",
+    "description": "Sanchiva, Everything that matters, one place. REST API for expenses, loans, monetary data, and events.\n\n## Authentication\nMost endpoints require a JWT **Bearer** access token.\n\n1. Call **POST /api/auth/register** or **POST /api/auth/login** (email) or **POST /api/auth/guest** (or sign in via Google OAuth in the app) to get `access_token`.\n2. Click **Authorize** (lock icon, top right).\n3. Paste the access token only (Swagger adds the word Bearer for you).\n4. Click **Authorize** → **Close**, then try protected endpoints.\n\n**Developed by Ujjwal Gupta**",
     "version": "1.0.0"
   },
   "servers": [

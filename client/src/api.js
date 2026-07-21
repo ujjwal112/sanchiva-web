@@ -91,7 +91,7 @@ export function formatCurrency(n) {
 }
 
 export function formatDate(d) {
-  if (!d) return '—';
+  if (!d) return '-';
   const x = new Date(d);
   return x.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
@@ -108,7 +108,7 @@ export function formatEventStyleLabel(eventType, subType) {
     : '';
   if (style && typeLabel) return `${style} ${typeLabel}`;
   if (style) return style;
-  return typeLabel || '—';
+  return typeLabel || '-';
 }
 
 export const MONTHS = [

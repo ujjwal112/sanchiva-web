@@ -66,7 +66,7 @@ export default function Signup() {
         </div>
         <p className="muted login-sub">
           Sign up with your name, email, and password. Prefer Google? Use{' '}
-          <Link to="/login">Login</Link> with Google — that creates your account too.
+          <Link to="/login">Login</Link> with Google (that creates your account too).
         </p>
 
         {message && <div className="login-error">{message}</div>}

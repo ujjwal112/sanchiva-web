@@ -468,7 +468,7 @@ export default function DailyExpense() {
             <PieChart {...categoryChartData(currentMonthCard?.byCategory || {})} doughnut />
           </div>
 
-          {/* Weekly slider — current month only, 2 cards at a time */}
+          {/* Weekly slider, current month only, 2 cards at a time */}
           <div className="week-slider-section">
             <div className="flex-between" style={{ marginBottom: '0.85rem' }}>
               <div>

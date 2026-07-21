@@ -9,7 +9,7 @@ export default function About() {
         </div>
         <div>
           <h3 className="about-hero__name">Sanchiva</h3>
-          <p className="about-hero__motto">“Everything that matters — one place.”</p>
+          <p className="about-hero__motto">“Everything that matters, one place.”</p>
           <p className="muted about-hero__tag">
             Collection · Accumulation · Preservation · Savings · Wealth gathered over time
           </p>
@@ -21,7 +21,7 @@ export default function About() {
           <h3>About the app</h3>
           <p>
             <strong>Sanchiva</strong> is your personal finance and life-value companion. It helps you track daily
-            spends, loans and credit cards, income and assets, money lent to people, and even life events —
+            spends, loans and credit cards, income and assets, money lent to people, and even life events,
             so nothing important slips through the cracks.
           </p>
           <p>
@@ -35,19 +35,19 @@ export default function About() {
           <h3>What you can do</h3>
           <ul className="about-list">
             <li>
-              <strong>Dashboard</strong> — charts and KPIs across your money flow
+              <strong>Dashboard:</strong> charts and KPIs across your money flow
             </li>
             <li>
-              <strong>Daily Expense</strong> — entry, week/month views, Excel &amp; PDF exports
+              <strong>Daily Expense:</strong> entry, week/month views, Excel &amp; PDF exports
             </li>
             <li>
-              <strong>Loans / Credit Card</strong> — EMIs, progress, card spends
+              <strong>Loans / Credit Card:</strong> EMIs, progress, card spends
             </li>
             <li>
-              <strong>Monetary</strong> — income, assets, money lent
+              <strong>Monetary:</strong> income, assets, money lent
             </li>
             <li>
-              <strong>Events</strong> — plan weddings, birthdays &amp; more with smart checklists
+              <strong>Events:</strong> plan weddings, birthdays and more with smart checklists
             </li>
           </ul>
         </div>
@@ -60,7 +60,7 @@ export default function About() {
             <p className="muted about-creator__label">Developed by</p>
             <h3>Ujjwal Gupta</h3>
             <p className="muted">
-              Designed and built to help people collect, preserve, and grow what matters — one place at a time.
+              Designed and built to help people collect, preserve, and grow what matters, one place at a time.
             </p>
           </div>
         </div>

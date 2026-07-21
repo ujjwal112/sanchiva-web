@@ -324,7 +324,7 @@ button {
   width: 100%;
 }
 
-/* —— Public landing page —— */
+/* ,  Public landing page ,  */
 .landing-page {
   min-height: 100vh;
   display: flex;
@@ -1625,7 +1625,7 @@ input[type='date'].date-input-clickable:valid {
   width: 100%;
 }
 
-/* Only as wide as the 4 section tabs — do not stretch empty space */
+/* Only as wide as the 4 section tabs, do not stretch empty space */
 .event-detail-tabs-row .tabs {
   flex: 0 0 auto;
   width: fit-content;
@@ -2048,7 +2048,7 @@ input[type='date'].date-input-clickable:valid {
   align-items: end;
 }
 
-/* Daily expense data — filter + download toolbar */
+/* Daily expense data, filter + download toolbar */
 .data-filter-bar {
   margin-bottom: 1.15rem;
   padding: 1.15rem 1.25rem !important;

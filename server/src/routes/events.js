@@ -193,7 +193,7 @@ export function buildEventTemplate(eventType, answers = {}) {
   return items;
 }
 
-/** AI-style question flow for event creation — must be before /:id */
+/** AI-style question flow for event creation, must be before /:id */
 router.get('/meta/wizard-questions/:eventType', (req, res) => {
   const type = (req.params.eventType || '').toLowerCase();
   const common = [
@@ -521,7 +521,7 @@ router.put('/:id/ceremonies', async (req, res) => {
 
     let idx = details.findIndex((d) => d.name === oldName);
     if (idx < 0) {
-      // Ceremony only on guests — add a detail entry so it becomes editable
+      // Ceremony only on guests, add a detail entry so it becomes editable
       details.push({
         name: oldName,
         date: null,

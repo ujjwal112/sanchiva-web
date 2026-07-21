@@ -203,7 +203,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-/** Guest login — no OAuth; data wiped on logout */
+/** Guest login, no OAuth; data wiped on logout */
 router.post('/guest', async (_req, res) => {
   try {
     const user = await createGuestUser();

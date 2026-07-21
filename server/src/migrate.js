@@ -126,7 +126,7 @@ export async function runMigrations() {
     console.warn('  ! custom_categories unique index:', e.message);
   }
 
-  // Indexes that require user_id — only after column exists
+  // Indexes that require user_id, only after column exists
   const indexes = [
     `CREATE INDEX IF NOT EXISTS idx_refresh_user ON refresh_tokens(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_daily_expenses_user_date ON daily_expenses(user_id, expense_date)`,

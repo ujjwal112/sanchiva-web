@@ -2,7 +2,7 @@
   "name": "sanchiva-web",
   "version": "1.0.0",
   "private": true,
-  "description": "Sanchiva — Everything that matters, one place. React + Express + PostgreSQL",
+  "description": "Sanchiva, Everything that matters, one place. React + Express + PostgreSQL",
   "scripts": {
     "install:all": "npm install --prefix server && npm install --prefix client",
     "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
