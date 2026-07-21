@@ -82,6 +82,32 @@ export function AuthProvider({ children }) {
     return data.user;
   }, []);
 
+  const loginWithPassword = useCallback(async ({ email, password }) => {
+    const res = await fetch(`${API_ORIGIN}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Login failed');
+    setTokens(data.access_token, data.refresh_token);
+    setUser(data.user);
+    return data.user;
+  }, []);
+
+  const registerWithPassword = useCallback(async ({ name, email, password, confirm_password }) => {
+    const res = await fetch(`${API_ORIGIN}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password, confirm_password }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Signup failed');
+    setTokens(data.access_token, data.refresh_token);
+    setUser(data.user);
+    return data.user;
+  }, []);
+
   const completeLogin = (access, refresh) => {
     setTokens(access, refresh);
     return loadMe();
@@ -95,11 +121,13 @@ export function AuthProvider({ children }) {
       isGuest: user?.provider === 'guest',
       loginWithProvider,
       loginAsGuest,
+      loginWithPassword,
+      registerWithPassword,
       completeLogin,
       logout,
       refreshUser: loadMe,
     }),
-    [user, loading, logout, loadMe, loginAsGuest]
+    [user, loading, logout, loadMe, loginAsGuest, loginWithPassword, registerWithPassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

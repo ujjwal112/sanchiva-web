@@ -11,6 +11,7 @@ import Events from './pages/Events';
 import EventDetail from './pages/EventDetail';
 import About from './pages/About';
 import Login from './pages/Login';
+import Signup from './pages/Signup';
 import AuthCallback from './pages/AuthCallback';
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
         {/* Public */}
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
 
         {/* App (requires login) */}

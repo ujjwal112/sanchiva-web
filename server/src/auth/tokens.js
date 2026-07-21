@@ -1,6 +1,9 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
+
+const BCRYPT_ROUNDS = 12;
 
 const ACCESS_TTL = process.env.JWT_ACCESS_TTL || '15m';
 const REFRESH_TTL_DAYS = Number(process.env.JWT_REFRESH_DAYS || 30);
@@ -95,6 +98,130 @@ export async function getUserById(id) {
     [uid]
   );
   return rows[0] || null;
+}
+
+export function publicUser(user) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    picture: user.picture || null,
+    provider: user.provider,
+    created_at: user.created_at,
+  };
+}
+
+export async function hashPassword(password) {
+  return bcrypt.hash(String(password), BCRYPT_ROUNDS);
+}
+
+export async function verifyPassword(password, passwordHash) {
+  if (!passwordHash) return false;
+  return bcrypt.compare(String(password), passwordHash);
+}
+
+/** Create local email/password user (provider = local) */
+export async function createLocalUser({ name, email, password }) {
+  const emailNorm = String(email || '')
+    .trim()
+    .toLowerCase();
+  const displayName = String(name || '').trim() || emailNorm.split('@')[0] || 'User';
+  if (!emailNorm || !password) {
+    const err = new Error('Email and password are required');
+    err.status = 400;
+    throw err;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) {
+    const err = new Error('Enter a valid email address');
+    err.status = 400;
+    throw err;
+  }
+  if (String(password).length < 8) {
+    const err = new Error('Password must be at least 8 characters');
+    err.status = 400;
+    throw err;
+  }
+
+  const { rows: taken } = await query(
+    `SELECT id, provider FROM users WHERE provider = 'local' AND LOWER(email) = $1 LIMIT 1`,
+    [emailNorm]
+  );
+  if (taken[0]) {
+    const err = new Error('An account with this email already exists. Please log in.');
+    err.status = 409;
+    throw err;
+  }
+
+  // Soft check: same email via Google — guide them to Google login
+  const { rows: oauthHit } = await query(
+    `SELECT id, provider FROM users WHERE LOWER(email) = $1 AND provider = 'google' LIMIT 1`,
+    [emailNorm]
+  );
+  if (oauthHit[0]) {
+    const err = new Error(
+      'This email is already registered with Google. Please use Continue with Google to sign in.'
+    );
+    err.status = 409;
+    throw err;
+  }
+
+  const password_hash = await hashPassword(password);
+  const { rows } = await query(
+    `INSERT INTO users (email, name, picture, provider, provider_id, password_hash)
+     VALUES ($1, $2, NULL, 'local', $3, $4) RETURNING id, email, name, picture, provider, created_at`,
+    [emailNorm, displayName, emailNorm, password_hash]
+  );
+  return rows[0];
+}
+
+/** Authenticate local user by email + password */
+export async function authenticateLocalUser(email, password) {
+  const emailNorm = String(email || '')
+    .trim()
+    .toLowerCase();
+  if (!emailNorm || !password) {
+    const err = new Error('Email and password are required');
+    err.status = 400;
+    throw err;
+  }
+
+  const { rows } = await query(
+    `SELECT * FROM users WHERE provider = 'local' AND LOWER(email) = $1 LIMIT 1`,
+    [emailNorm]
+  );
+  const user = rows[0];
+  if (!user) {
+    // If they only have Google, give a clearer error
+    const { rows: google } = await query(
+      `SELECT id FROM users WHERE LOWER(email) = $1 AND provider = 'google' LIMIT 1`,
+      [emailNorm]
+    );
+    if (google[0]) {
+      const err = new Error('This email uses Google sign-in. Please continue with Google.');
+      err.status = 401;
+      throw err;
+    }
+    const err = new Error('Invalid email or password');
+    err.status = 401;
+    throw err;
+  }
+
+  const ok = await verifyPassword(password, user.password_hash);
+  if (!ok) {
+    const err = new Error('Invalid email or password');
+    err.status = 401;
+    throw err;
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    picture: user.picture,
+    provider: user.provider,
+    created_at: user.created_at,
+  };
 }
 
 /** Create a one-time guest user for exploring the app */

@@ -5,13 +5,15 @@ import { useAuth } from '../auth/AuthContext';
 import { API_ORIGIN } from '../api';
 
 export default function Login() {
-  const { isAuthenticated, loading, loginWithProvider, loginAsGuest } = useAuth();
+  const { isAuthenticated, loading, loginWithProvider, loginAsGuest, loginWithPassword } = useAuth();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const error = params.get('error');
   const [googleEnabled, setGoogleEnabled] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const [form, setForm] = useState({ email: '', password: '' });
 
   useEffect(() => {
     fetch(`${API_ORIGIN}/api/auth/providers`)
@@ -28,11 +30,13 @@ export default function Login() {
 
   if (!loading && isAuthenticated) return <Navigate to="/dashboard" replace />;
 
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
   const onGoogle = () => {
     setMessage('');
     if (!googleEnabled) {
       setMessage(
-        'Google login is not configured yet. Use Continue as Guest, or add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on Render (see AUTH_SETUP.md).'
+        'Google login is not configured yet. Use email login, Guest, or add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on Render (see AUTH_SETUP.md).'
       );
       return;
     }
@@ -52,9 +56,30 @@ export default function Login() {
     }
   };
 
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setMessage('');
+    if (!form.email.trim() || !form.password) {
+      setMessage('Enter email and password');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await loginWithPassword({
+        email: form.email.trim(),
+        password: form.password,
+      });
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      setMessage(err.message || 'Login failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="login-page">
-      <div className="login-card card">
+      <div className="login-card card auth-card-wide">
         <Link to="/" className="login-back-link">
           ← Back to home
         </Link>
@@ -63,7 +88,7 @@ export default function Login() {
           <h1>Sanchiva</h1>
         </div>
 
-        <p className="muted login-sub">Sign in to access your world securely.</p>
+        <p className="muted login-sub">Login with Google or your email &amp; password.</p>
 
         {message && <div className="login-error">{message}</div>}
 
@@ -74,14 +99,52 @@ export default function Login() {
           </button>
 
           <div className="login-divider">
-            <span>or</span>
+            <span>or email</span>
           </div>
-
-          <button type="button" className="btn login-btn login-guest" disabled={guestLoading} onClick={onGuest}>
-            <span className="login-btn-icon">👤</span>
-            {guestLoading ? 'Starting guest session…' : 'Continue as Guest'}
-          </button>
         </div>
+
+        <form className="auth-form" onSubmit={onSubmit}>
+          <div className="field">
+            <label htmlFor="login-email">Email</label>
+            <input
+              id="login-email"
+              type="email"
+              autoComplete="email"
+              required
+              value={form.email}
+              onChange={set('email')}
+              placeholder="you@example.com"
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="login-password">Password</label>
+            <input
+              id="login-password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={form.password}
+              onChange={set('password')}
+              placeholder="Your password"
+            />
+          </div>
+          <button type="submit" className="btn btn-primary login-btn" disabled={submitting}>
+            {submitting ? 'Signing in…' : 'Login'}
+          </button>
+        </form>
+
+        <div className="login-divider" style={{ marginTop: '1rem' }}>
+          <span>or</span>
+        </div>
+
+        <button type="button" className="btn login-btn login-guest" disabled={guestLoading} onClick={onGuest}>
+          <span className="login-btn-icon">👤</span>
+          {guestLoading ? 'Starting guest session…' : 'Continue as Guest'}
+        </button>
+
+        <p className="auth-switch muted">
+          New here? <Link to="/signup">Create an account</Link>
+        </p>
       </div>
     </div>
   );

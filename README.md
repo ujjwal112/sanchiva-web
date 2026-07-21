@@ -56,8 +56,10 @@ Color and quote follow the ceremony type, for example:
 - **Reception** — blue  
 
 ### Authentication & sessions
-- Login with **Google** (primary social) and optional Facebook / Microsoft when configured  
-- **Guest login** — try the app as **Guest User** without social accounts  
+- **Landing page** (`/`) — product info with **Login** and **Sign up**  
+- **Sign up** (`/signup`) — Google **or** name + email + password + confirm password  
+- **Login** (`/login`) — Google **or** email + password; optional **Guest** try-out  
+- First Google use creates the account; later Google logins open the same account  
 - **Access token** (JWT, short-lived) + **refresh token** (rotated, stored hashed)  
 - Top-right user menu (name → **Logout**)  
 - **Per-user data** — each logged-in user only sees their own records  
@@ -130,6 +132,7 @@ npm run dev
 | Service | URL |
 |---------|-----|
 | UI (landing) | http://localhost:5173 |
+| Sign up | http://localhost:5173/signup |
 | Login | http://localhost:5173/login |
 | Dashboard (after login) | http://localhost:5173/dashboard |
 | API health | http://localhost:5000/api/health |
@@ -181,7 +184,7 @@ Base path: `/api`
 
 | Area | Examples |
 |------|----------|
-| Auth | `POST /auth/guest`, `GET /auth/google`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me` |
+| Auth | `POST /auth/register`, `POST /auth/login`, `POST /auth/guest`, `GET /auth/google`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me` |
 | Dashboard | `GET /dashboard` |
 | Expenses | `GET/POST /expenses`, `PUT/DELETE /expenses/:id`, week/month summaries |
 | Loans | `GET/POST /loans`, `GET /loans/summary` |

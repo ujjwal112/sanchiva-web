@@ -52,9 +52,14 @@ export default function Landing() {
             <span className="muted">Everything that matters</span>
           </div>
         </Link>
-        <Link to="/login" className="btn btn-primary landing-login-btn">
-          Login
-        </Link>
+        <div className="landing-header-actions">
+          <Link to="/login" className="btn btn-ghost landing-login-btn">
+            Login
+          </Link>
+          <Link to="/signup" className="btn btn-primary landing-login-btn">
+            Sign up
+          </Link>
+        </div>
       </header>
 
       <main className="landing-main">
@@ -71,8 +76,11 @@ export default function Landing() {
               workspace.
             </p>
             <div className="landing-hero-actions">
-              <Link to="/login" className="btn btn-primary landing-cta">
-                Get started — Login
+              <Link to="/signup" className="btn btn-primary landing-cta">
+                Get started — Sign up
+              </Link>
+              <Link to="/login" className="btn btn-ghost landing-cta-secondary">
+                Login
               </Link>
               <a href="#features" className="btn btn-ghost landing-cta-secondary">
                 Explore features
@@ -128,10 +136,15 @@ export default function Landing() {
             <div className="landing-cta-panel">
               <Logo size={56} />
               <h3>Ready to start?</h3>
-              <p className="muted">Sign in securely and open your dashboard in seconds.</p>
-              <Link to="/login" className="btn btn-primary">
-                Login to Sanchiva
-              </Link>
+              <p className="muted">Create an account or log in — Google or email &amp; password.</p>
+              <div className="landing-cta-panel-actions">
+                <Link to="/signup" className="btn btn-primary">
+                  Sign up
+                </Link>
+                <Link to="/login" className="btn btn-ghost">
+                  Login
+                </Link>
+              </div>
             </div>
           </div>
         </section>
@@ -147,9 +160,14 @@ export default function Landing() {
             © {new Date().getFullYear()} Sanchiva. Developed by <strong>Ujjwal Gupta</strong>. All
             rights reserved.
           </p>
-          <Link to="/login" className="landing-footer-login">
-            Login
-          </Link>
+          <div className="landing-footer-links">
+            <Link to="/signup" className="landing-footer-login">
+              Sign up
+            </Link>
+            <Link to="/login" className="landing-footer-login">
+              Login
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

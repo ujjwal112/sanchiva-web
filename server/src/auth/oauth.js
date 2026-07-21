@@ -12,6 +12,9 @@ import {
   getUserById,
   createGuestUser,
   deleteGuestUserCompletely,
+  createLocalUser,
+  authenticateLocalUser,
+  publicUser,
 } from './tokens.js';
 import { requireAuth } from './middleware.js';
 
@@ -155,7 +158,49 @@ router.get('/providers', (_req, res) => {
     facebook: providerEnabled('facebook'),
     microsoft: providerEnabled('microsoft'),
     guest: true,
+    local: true,
   });
+});
+
+function tokenResponse(user, accessToken, refreshToken) {
+  return {
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    token_type: 'Bearer',
+    expires_in: 900,
+    user: publicUser(user),
+  };
+}
+
+/** Email/password signup */
+router.post('/register', async (req, res) => {
+  try {
+    const { name, email, password, confirm_password: confirmPassword } = req.body || {};
+    if (confirmPassword != null && String(password) !== String(confirmPassword)) {
+      return res.status(400).json({ error: 'Password and confirm password do not match' });
+    }
+    const user = await createLocalUser({ name, email, password });
+    const accessToken = signAccessToken(user);
+    const refreshToken = await issueRefreshToken(user.id);
+    res.status(201).json(tokenResponse(user, accessToken, refreshToken));
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({ error: err.message || 'Signup failed' });
+  }
+});
+
+/** Email/password login */
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    const user = await authenticateLocalUser(email, password);
+    const accessToken = signAccessToken(user);
+    const refreshToken = await issueRefreshToken(user.id);
+    res.json(tokenResponse(user, accessToken, refreshToken));
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({ error: err.message || 'Login failed' });
+  }
 });
 
 /** Guest login — no OAuth; data wiped on logout */
@@ -167,20 +212,7 @@ router.post('/guest', async (_req, res) => {
     }
     const accessToken = signAccessToken(user);
     const refreshToken = await issueRefreshToken(user.id);
-    res.status(201).json({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      token_type: 'Bearer',
-      expires_in: 900,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name || 'Guest User',
-        picture: user.picture,
-        provider: user.provider,
-        created_at: user.created_at,
-      },
-    });
+    res.status(201).json(tokenResponse(user, accessToken, refreshToken));
   } catch (err) {
     const msg = err.message || 'Guest login failed';
     if (/relation .* does not exist/i.test(msg)) {
