@@ -24,18 +24,18 @@ ChartJS.register(
   Filler
 );
 
-/* Forest-mint chart palette (DESIGN.md) */
+/* Letter design chart palette */
 const PALETTE = [
-  '#97fcd7',
-  '#33998c',
-  '#23524c',
-  '#b0c5c1',
-  '#1c3f38',
-  '#5ecfb8',
-  '#0f3933',
-  '#7ad9c4',
+  '#186f64',
+  '#536eff',
+  '#154ea5',
+  '#644bc4',
+  '#9fabad',
+  '#191b1f',
+  '#e6def0',
+  '#fcede1',
+  '#eefcef',
   '#4a8f84',
-  '#c8ebe2',
 ];
 
 const baseOptions = {

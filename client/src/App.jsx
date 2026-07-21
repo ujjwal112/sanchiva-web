@@ -18,7 +18,7 @@ import AuthCallback from './pages/AuthCallback';
 export default function App() {
   return (
     <AuthProvider>
-      <AtmosphereBackground intensity="full" />
+      <AtmosphereBackground />
       <Routes>
         {/* Public */}
         <Route path="/" element={<Landing />} />
