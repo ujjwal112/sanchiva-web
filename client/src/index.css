@@ -11,6 +11,7 @@
   --warning: #8a7040;
   --danger: #8a3030;
   --sidebar-w: 260px;
+  --sidebar-w-collapsed: 78px;
   --radius: 20px;
   --radius-sm: 14px;
   --radius-pill: var(--radius-buttons, 75px);
@@ -336,6 +337,11 @@ button {
     var(--color-paper);
 }
 
+/* Collapsible shell width drives both sidebar and main offset */
+.app-shell.sidebar-collapsed {
+  --sidebar-w: var(--sidebar-w-collapsed);
+}
+
 /* Sidebar: landing-page iridescent stage (not foggy black glass) */
 .sidebar {
   width: var(--sidebar-w);
@@ -366,9 +372,15 @@ button {
   display: flex;
   flex-direction: column;
   z-index: 40;
-  transition: transform 0.8s var(--ease-glide);
+  transition: width 0.35s var(--ease-glide), transform 0.35s var(--ease-glide),
+    padding 0.35s var(--ease-glide);
   color: #fff;
   overflow: hidden;
+}
+
+.sidebar.is-collapsed {
+  padding: 1rem 0.55rem;
+  align-items: center;
 }
 
 .sidebar::before {
@@ -396,7 +408,27 @@ button {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.5rem 0.75rem 1.25rem;
+  padding: 0.5rem 0.35rem 1.1rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.brand-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: opacity 0.2s ease, width 0.2s ease;
+}
+
+.sidebar.is-collapsed .brand {
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.35rem 0 0.85rem;
+}
+
+.sidebar.is-collapsed .brand-text {
+  display: none;
 }
 
 .brand-logo,
@@ -420,6 +452,32 @@ button {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.72);
   font-weight: 400;
+}
+
+.sidebar-collapse-btn {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.sidebar-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.sidebar.is-collapsed .sidebar-collapse-btn {
+  width: 100%;
+  max-width: 46px;
 }
 
 .sanchiva-logo-mark {
@@ -446,6 +504,7 @@ button {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+  width: 100%;
 }
 
 .nav-item a,
@@ -458,13 +517,39 @@ button {
   border-radius: 14px;
   color: rgba(255, 255, 255, 0.88);
   background: transparent;
-  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease,
+    padding 0.25s ease;
   text-align: left;
   border: 1px solid transparent;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.nav-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sidebar.is-collapsed .nav-item a,
+.sidebar.is-collapsed .nav-item button.nav-link {
+  justify-content: center;
+  padding: 0.85rem 0.4rem;
+  gap: 0;
+}
+
+.sidebar.is-collapsed .nav-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .nav-item a:hover,
@@ -493,6 +578,11 @@ button {
   flex-shrink: 0;
 }
 
+.sidebar.is-collapsed .nav-icon {
+  width: auto;
+  font-size: 1.15rem;
+}
+
 .main {
   margin-left: var(--sidebar-w);
   flex: 1;
@@ -501,6 +591,7 @@ button {
   animation: fade-in 0.8s var(--ease-glide);
   color: var(--color-obsidian);
   background: transparent;
+  transition: margin-left 0.35s var(--ease-glide);
 }
 
 .main h2 {
@@ -1453,7 +1544,8 @@ button {
 }
 
 .menu-toggle {
-  display: none;
+  display: grid;
+  place-items: center;
   width: 42px;
   height: 42px;
   border-radius: 12px;
@@ -1461,6 +1553,14 @@ button {
   border: 1px solid var(--glass-border);
   color: var(--text);
   font-size: 1.2rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.menu-toggle:hover {
+  background: var(--glass-strong);
+  border-color: rgba(255, 255, 255, 0.75);
 }
 
 /* Liquid glass (Apple-like frosted material) */
@@ -1640,20 +1740,82 @@ button {
   .grid-4 {
     grid-template-columns: 1fr;
   }
-  .sidebar {
-    transform: translateX(-105%);
+
+  /* Mobile: full drawer — ignore desktop collapse width */
+  .app-shell,
+  .app-shell.sidebar-collapsed {
+    --sidebar-w: 260px;
   }
+
+  .sidebar {
+    width: min(280px, 86vw);
+    transform: translateX(-105%);
+    padding: 1.25rem 1rem;
+    align-items: stretch;
+  }
+
+  .sidebar.is-collapsed {
+    padding: 1.25rem 1rem;
+    align-items: stretch;
+  }
+
   .sidebar.open {
     transform: translateX(0);
   }
+
+  /* On mobile always show full labels when open */
+  .sidebar.is-collapsed .brand-text,
+  .sidebar.is-collapsed .nav-label,
+  .sidebar.is-collapsed .sidebar-footer__motto,
+  .sidebar.is-collapsed .sidebar-footer__by {
+    display: block;
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    clip: auto;
+    overflow: visible;
+  }
+
+  .sidebar.is-collapsed .nav-label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    clip: auto;
+    overflow: visible;
+    white-space: nowrap;
+  }
+
+  .sidebar.is-collapsed .brand {
+    flex-direction: row;
+    gap: 0.75rem;
+  }
+
+  .sidebar.is-collapsed .nav-item a {
+    justify-content: flex-start;
+    padding: 0.78rem 0.95rem;
+    gap: 0.75rem;
+  }
+
+  .sidebar.is-collapsed .sidebar-footer {
+    padding: 0.95rem !important;
+    display: block;
+  }
+
+  .sidebar.is-collapsed .sidebar-footer__logo {
+    margin-bottom: 0.5rem;
+  }
+
+  .sidebar-collapse-btn {
+    display: none;
+  }
+
   .main {
     margin-left: 0;
     padding: 1rem;
   }
-  .menu-toggle {
-    display: grid;
-    place-items: center;
-  }
+
   .overlay {
     position: fixed;
     inset: 0;
@@ -3234,6 +3396,7 @@ table.data-table tbody tr:hover {
 .sidebar-footer {
   margin-top: auto;
   padding: 0.95rem !important;
+  width: 100%;
   background: rgba(255, 255, 255, 0.12) !important;
   backdrop-filter: blur(16px) saturate(160%) !important;
   -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
@@ -3243,6 +3406,23 @@ table.data-table tbody tr:hover {
     0 10px 28px rgba(0, 0, 0, 0.25),
     0 1px 0 rgba(255, 255, 255, 0.2) inset !important;
   color: #fff !important;
+  transition: padding 0.25s ease;
+}
+
+.sidebar.is-collapsed .sidebar-footer {
+  padding: 0.55rem !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar.is-collapsed .sidebar-footer__motto,
+.sidebar.is-collapsed .sidebar-footer__by {
+  display: none;
+}
+
+.sidebar.is-collapsed .sidebar-footer__logo {
+  margin-bottom: 0;
 }
 
 .sidebar-footer::before {
