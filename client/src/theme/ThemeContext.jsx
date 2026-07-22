@@ -10,11 +10,8 @@ function readTheme() {
   } catch {
     /* ignore */
   }
-  // Prefer system preference on first visit
-  if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    return 'dark';
-  }
-  return 'light';
+  // Default for the logged-in app: dark theme
+  return 'dark';
 }
 
 function applyTheme(theme) {
