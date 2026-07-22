@@ -4326,22 +4326,47 @@ table.data-table tbody tr:hover {
   gap: 0.35rem;
 }
 
+/* Light liquid glass toast — readable on the app canvas */
 .toast {
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
-  padding: 0.85rem 1.2rem;
-  border-radius: 12px;
-  background: rgba(20, 28, 50, 0.9);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(12px);
-  z-index: 100;
+  max-width: min(360px, calc(100vw - 2rem));
+  padding: 0.9rem 1.25rem;
+  border-radius: 16px;
+  background: linear-gradient(
+      155deg,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(255, 255, 255, 0.82) 50%,
+      rgba(255, 255, 255, 0.9) 100%
+    ),
+    rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.98);
+  outline: 1px solid rgba(0, 0, 0, 0.08);
+  outline-offset: -1px;
+  backdrop-filter: blur(24px) saturate(170%);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  color: #0a0a0a;
+  font-size: 0.92rem;
+  font-weight: 500;
+  line-height: 1.4;
+  z-index: 100000;
   animation: rise-in 0.3s ease;
-  box-shadow: var(--shadow);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.14),
+    0 1px 0 rgba(255, 255, 255, 1) inset;
 }
 
 .toast.error {
-  border-color: rgba(251, 113, 133, 0.5);
+  background: linear-gradient(
+      155deg,
+      rgba(255, 241, 242, 0.98) 0%,
+      rgba(255, 228, 230, 0.95) 100%
+    ),
+    #fff1f2;
+  border-color: rgba(244, 63, 94, 0.35);
+  outline-color: rgba(190, 18, 60, 0.12);
+  color: #9f1239;
 }
 
 .checkbox-row {
