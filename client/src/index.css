@@ -1294,26 +1294,13 @@ button {
   }
 }
 
-.landing-feature-card h3 {
-  margin: 0 0 0.15rem;
-  font-size: 1.08rem;
-  font-weight: 500;
-  color: #fff !important;
-}
-
-.landing-feature-card p {
-  margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
 .landing-page .landing-feature-card h3 {
   color: #fff !important;
 }
 
 .landing-page .landing-feature-card .muted,
 .landing-page .landing-feature-card p {
-  color: rgba(255, 255, 255, 0.68) !important;
+  color: rgba(255, 255, 255, 0.72) !important;
 }
 
 .landing-about-block {
