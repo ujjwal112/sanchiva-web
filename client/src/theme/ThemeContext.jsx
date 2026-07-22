@@ -1,0 +1,69 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+
+const THEME_KEY = 'sanchiva.theme';
+const ThemeContext = createContext(null);
+
+function readTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'dark' || saved === 'light') return saved;
+  } catch {
+    /* ignore */
+  }
+  // Prefer system preference on first visit
+  if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark';
+  }
+  return 'light';
+}
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  root.setAttribute('data-theme', theme);
+  root.classList.toggle('theme-dark', theme === 'dark');
+  root.classList.toggle('theme-light', theme === 'light');
+}
+
+export function ThemeProvider({ children }) {
+  const [theme, setThemeState] = useState(() => {
+    const t = readTheme();
+    // Apply ASAP so first paint is correct when possible
+    if (typeof document !== 'undefined') applyTheme(t);
+    return t;
+  });
+
+  useEffect(() => {
+    applyTheme(theme);
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      /* ignore */
+    }
+  }, [theme]);
+
+  const setTheme = useCallback((next) => {
+    setThemeState(next === 'dark' ? 'dark' : 'light');
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setThemeState((t) => (t === 'dark' ? 'light' : 'dark'));
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      theme,
+      isDark: theme === 'dark',
+      setTheme,
+      toggleTheme,
+    }),
+    [theme, setTheme, toggleTheme]
+  );
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+
+export function useTheme() {
+  const ctx = useContext(ThemeContext);
+  if (!ctx) throw new Error('useTheme must be used within ThemeProvider');
+  return ctx;
+}

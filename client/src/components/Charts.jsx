@@ -11,6 +11,7 @@ import {
   Filler,
 } from 'chart.js';
 import { Pie, Doughnut, Bar, Line } from 'react-chartjs-2';
+import { useTheme } from '../theme/ThemeContext';
 
 ChartJS.register(
   ArcElement,
@@ -66,59 +67,83 @@ function softAt(i) {
 
 const fontFamily = "'Inter', system-ui, sans-serif";
 
-const baseOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: 'bottom',
-      labels: {
-        color: '#3a3a3a',
-        boxWidth: 11,
-        boxHeight: 11,
-        borderRadius: 3,
-        useBorderRadius: true,
-        padding: 14,
-        font: { family: fontFamily, size: 11, weight: '500' },
+function isAppDark() {
+  if (typeof document === 'undefined') return false;
+  return document.documentElement.getAttribute('data-theme') === 'dark';
+}
+
+function chartChrome() {
+  const dark = isAppDark();
+  return {
+    legend: dark ? 'rgba(255,255,255,0.78)' : '#3a3a3a',
+    ticks: dark ? 'rgba(255,255,255,0.62)' : '#5a5a5a',
+    grid: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0, 0, 0, 0.06)',
+    pieBorder: dark ? 'rgba(20, 18, 22, 0.85)' : 'rgba(255, 255, 255, 0.92)',
+  };
+}
+
+function baseOptions() {
+  const c = chartChrome();
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          color: c.legend,
+          boxWidth: 11,
+          boxHeight: 11,
+          borderRadius: 3,
+          useBorderRadius: true,
+          padding: 14,
+          font: { family: fontFamily, size: 11, weight: '500' },
+        },
+      },
+      tooltip: {
+        backgroundColor: 'rgba(28, 24, 26, 0.88)',
+        titleColor: '#fff',
+        bodyColor: 'rgba(255,255,255,0.88)',
+        borderColor: 'rgba(255,255,255,0.18)',
+        borderWidth: 1,
+        padding: 12,
+        cornerRadius: 12,
+        titleFont: { family: fontFamily, size: 12, weight: '600' },
+        bodyFont: { family: fontFamily, size: 11 },
+        displayColors: true,
+        boxPadding: 4,
       },
     },
-    tooltip: {
-      backgroundColor: 'rgba(28, 24, 26, 0.88)',
-      titleColor: '#fff',
-      bodyColor: 'rgba(255,255,255,0.88)',
-      borderColor: 'rgba(255,255,255,0.18)',
-      borderWidth: 1,
-      padding: 12,
-      cornerRadius: 12,
-      titleFont: { family: fontFamily, size: 12, weight: '600' },
-      bodyFont: { family: fontFamily, size: 11 },
-      displayColors: true,
-      boxPadding: 4,
-    },
-  },
-};
+  };
+}
 
-const scaleOpts = {
-  ticks: {
-    color: '#5a5a5a',
-    font: { family: fontFamily, size: 11 },
-    padding: 6,
-  },
-  grid: {
-    color: 'rgba(0, 0, 0, 0.06)',
-    drawBorder: false,
-  },
-  border: { display: false },
-};
+function scaleOpts() {
+  const c = chartChrome();
+  return {
+    ticks: {
+      color: c.ticks,
+      font: { family: fontFamily, size: 11 },
+      padding: 6,
+    },
+    grid: {
+      color: c.grid,
+      drawBorder: false,
+    },
+    border: { display: false },
+  };
+}
 
 export function PieChart({ labels = [], values = [], doughnut = false }) {
+  const { theme } = useTheme();
+  const chrome = chartChrome();
+  const base = baseOptions();
   const data = {
     labels,
     datasets: [
       {
         data: values,
         backgroundColor: labels.map((_, i) => softAt(i)),
-        borderColor: 'rgba(255, 255, 255, 0.92)',
+        borderColor: chrome.pieBorder,
         borderWidth: 3,
         hoverOffset: 10,
         hoverBorderColor: '#fff',
@@ -127,32 +152,30 @@ export function PieChart({ labels = [], values = [], doughnut = false }) {
     ],
   };
   const options = {
-    ...baseOptions,
+    ...base,
     cutout: doughnut ? '58%' : undefined,
     plugins: {
-      ...baseOptions.plugins,
+      ...base.plugins,
       legend: {
-        ...baseOptions.plugins.legend,
+        ...base.plugins.legend,
         labels: {
-          ...baseOptions.plugins.legend.labels,
-          generateLabels: (chart) => {
-            const ds = chart.data.datasets[0];
-            return (chart.data.labels || []).map((label, i) => ({
+          ...base.plugins.legend.labels,
+          generateLabels: (chart) =>
+            (chart.data.labels || []).map((label, i) => ({
               text: String(label),
               fillStyle: colorAt(i),
               strokeStyle: colorAt(i),
               hidden: false,
               index: i,
-              fontColor: '#3a3a3a',
-            }));
-          },
+              fontColor: chrome.legend,
+            })),
         },
       },
     },
   };
   const Comp = doughnut ? Doughnut : Pie;
   return (
-    <div className="chart-box">
+    <div className="chart-box" key={theme}>
       {labels.length ? (
         <Comp data={data} options={options} />
       ) : (
@@ -163,6 +186,7 @@ export function PieChart({ labels = [], values = [], doughnut = false }) {
 }
 
 export function BarChart({ labels = [], values = [], label = 'Amount', horizontal = false }) {
+  const { theme } = useTheme();
   const data = {
     labels,
     datasets: [
@@ -179,16 +203,17 @@ export function BarChart({ labels = [], values = [], label = 'Amount', horizonta
       },
     ],
   };
+  const scales = scaleOpts();
   const options = {
-    ...baseOptions,
+    ...baseOptions(),
     indexAxis: horizontal ? 'y' : 'x',
     scales: {
-      x: scaleOpts,
-      y: scaleOpts,
+      x: scales,
+      y: scales,
     },
   };
   return (
-    <div className="chart-box">
+    <div className="chart-box" key={theme}>
       {labels.length ? (
         <Bar data={data} options={options} />
       ) : (
@@ -199,6 +224,7 @@ export function BarChart({ labels = [], values = [], label = 'Amount', horizonta
 }
 
 export function MultiBarChart({ labels = [], datasets = [] }) {
+  const { theme } = useTheme();
   const data = {
     labels,
     datasets: datasets.map((ds, i) => ({
@@ -213,12 +239,13 @@ export function MultiBarChart({ labels = [], datasets = [] }) {
       maxBarThickness: 36,
     })),
   };
+  const scales = scaleOpts();
   const options = {
-    ...baseOptions,
-    scales: { x: scaleOpts, y: scaleOpts },
+    ...baseOptions(),
+    scales: { x: scales, y: scales },
   };
   return (
-    <div className="chart-box">
+    <div className="chart-box" key={theme}>
       {labels.length ? (
         <Bar data={data} options={options} />
       ) : (
@@ -229,6 +256,7 @@ export function MultiBarChart({ labels = [], datasets = [] }) {
 }
 
 export function LineChart({ labels = [], values = [], label = 'Total' }) {
+  const { theme } = useTheme();
   const data = {
     labels,
     datasets: [
@@ -259,12 +287,13 @@ export function LineChart({ labels = [], values = [], label = 'Total' }) {
       },
     ],
   };
+  const scales = scaleOpts();
   const options = {
-    ...baseOptions,
-    scales: { x: scaleOpts, y: scaleOpts },
+    ...baseOptions(),
+    scales: { x: scales, y: scales },
   };
   return (
-    <div className="chart-box">
+    <div className="chart-box" key={theme}>
       {labels.length ? (
         <Line data={data} options={options} />
       ) : (

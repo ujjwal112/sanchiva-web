@@ -1,18 +1,21 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useTheme } from '../theme/ThemeContext';
 
 /**
  * Letter design atmosphere — soft gallery wall washes on light pages,
- * vault-ink stage on landing / auth.
+ * vault-ink stage on landing / auth / dark app theme.
  */
 export default function AtmosphereBackground() {
   const { pathname } = useLocation();
+  const { isDark: themeDark } = useTheme();
   const rootRef = useRef(null);
-  const dark =
+  const publicDark =
     pathname === '/' ||
     pathname === '/login' ||
     pathname === '/signup' ||
     pathname.startsWith('/auth');
+  const dark = publicDark || themeDark;
 
   useEffect(() => {
     const el = rootRef.current;

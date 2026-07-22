@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Logo from './Logo';
 import UserMenu from './UserMenu';
+import ThemeToggle from './ThemeToggle';
 
 const titles = {
   '/dashboard': { title: 'Dashboard', sub: 'Overview of expenses, loans & money flow' },
@@ -84,6 +85,7 @@ export default function Layout() {
             </div>
           </div>
           <div className="topbar-right">
+            <ThemeToggle />
             <UserMenu />
           </div>
         </div>
