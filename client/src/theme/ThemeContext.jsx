@@ -42,11 +42,28 @@ export function ThemeProvider({ children }) {
   }, [theme]);
 
   const setTheme = useCallback((next) => {
-    setThemeState(next === 'dark' ? 'dark' : 'light');
+    const t = next === 'dark' ? 'dark' : 'light';
+    // Apply DOM theme immediately so CSS + any readers stay in sync on the same click
+    applyTheme(t);
+    try {
+      localStorage.setItem(THEME_KEY, t);
+    } catch {
+      /* ignore */
+    }
+    setThemeState(t);
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setThemeState((t) => (t === 'dark' ? 'light' : 'dark'));
+    setThemeState((prev) => {
+      const t = prev === 'dark' ? 'light' : 'dark';
+      applyTheme(t);
+      try {
+        localStorage.setItem(THEME_KEY, t);
+      } catch {
+        /* ignore */
+      }
+      return t;
+    });
   }, []);
 
   const value = useMemo(

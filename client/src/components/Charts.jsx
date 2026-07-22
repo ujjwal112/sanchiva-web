@@ -67,23 +67,19 @@ function softAt(i) {
 
 const fontFamily = "'Inter', system-ui, sans-serif";
 
-function isAppDark() {
-  if (typeof document === 'undefined') return false;
-  return document.documentElement.getAttribute('data-theme') === 'dark';
-}
-
-function chartChrome() {
-  const dark = isAppDark();
+/** Use theme from React context — not DOM — so charts update in the same render as the toggle. */
+function chartChrome(theme) {
+  const dark = theme === 'dark';
   return {
-    legend: dark ? 'rgba(255,255,255,0.78)' : '#3a3a3a',
-    ticks: dark ? 'rgba(255,255,255,0.62)' : '#5a5a5a',
-    grid: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0, 0, 0, 0.06)',
-    pieBorder: dark ? 'rgba(20, 18, 22, 0.85)' : 'rgba(255, 255, 255, 0.92)',
+    legend: dark ? 'rgba(255,255,255,0.88)' : '#1a1a1a',
+    ticks: dark ? 'rgba(255,255,255,0.72)' : '#3a3a3a',
+    grid: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0, 0, 0, 0.08)',
+    pieBorder: dark ? 'rgba(20, 18, 22, 0.9)' : 'rgba(255, 255, 255, 0.95)',
   };
 }
 
-function baseOptions() {
-  const c = chartChrome();
+function baseOptions(theme) {
+  const c = chartChrome(theme);
   return {
     responsive: true,
     maintainAspectRatio: false,
@@ -101,10 +97,10 @@ function baseOptions() {
         },
       },
       tooltip: {
-        backgroundColor: 'rgba(28, 24, 26, 0.88)',
+        backgroundColor: 'rgba(28, 24, 26, 0.92)',
         titleColor: '#fff',
-        bodyColor: 'rgba(255,255,255,0.88)',
-        borderColor: 'rgba(255,255,255,0.18)',
+        bodyColor: 'rgba(255,255,255,0.9)',
+        borderColor: 'rgba(255,255,255,0.2)',
         borderWidth: 1,
         padding: 12,
         cornerRadius: 12,
@@ -117,8 +113,8 @@ function baseOptions() {
   };
 }
 
-function scaleOpts() {
-  const c = chartChrome();
+function scaleOpts(theme) {
+  const c = chartChrome(theme);
   return {
     ticks: {
       color: c.ticks,
@@ -135,8 +131,8 @@ function scaleOpts() {
 
 export function PieChart({ labels = [], values = [], doughnut = false }) {
   const { theme } = useTheme();
-  const chrome = chartChrome();
-  const base = baseOptions();
+  const chrome = chartChrome(theme);
+  const base = baseOptions(theme);
   const data = {
     labels,
     datasets: [
@@ -160,6 +156,7 @@ export function PieChart({ labels = [], values = [], doughnut = false }) {
         ...base.plugins.legend,
         labels: {
           ...base.plugins.legend.labels,
+          color: chrome.legend,
           generateLabels: (chart) =>
             (chart.data.labels || []).map((label, i) => ({
               text: String(label),
@@ -175,7 +172,7 @@ export function PieChart({ labels = [], values = [], doughnut = false }) {
   };
   const Comp = doughnut ? Doughnut : Pie;
   return (
-    <div className="chart-box" key={theme}>
+    <div className="chart-box" key={`pie-${theme}`}>
       {labels.length ? (
         <Comp data={data} options={options} />
       ) : (
@@ -203,9 +200,9 @@ export function BarChart({ labels = [], values = [], label = 'Amount', horizonta
       },
     ],
   };
-  const scales = scaleOpts();
+  const scales = scaleOpts(theme);
   const options = {
-    ...baseOptions(),
+    ...baseOptions(theme),
     indexAxis: horizontal ? 'y' : 'x',
     scales: {
       x: scales,
@@ -213,7 +210,7 @@ export function BarChart({ labels = [], values = [], label = 'Amount', horizonta
     },
   };
   return (
-    <div className="chart-box" key={theme}>
+    <div className="chart-box" key={`bar-${theme}`}>
       {labels.length ? (
         <Bar data={data} options={options} />
       ) : (
@@ -239,13 +236,13 @@ export function MultiBarChart({ labels = [], datasets = [] }) {
       maxBarThickness: 36,
     })),
   };
-  const scales = scaleOpts();
+  const scales = scaleOpts(theme);
   const options = {
-    ...baseOptions(),
+    ...baseOptions(theme),
     scales: { x: scales, y: scales },
   };
   return (
-    <div className="chart-box" key={theme}>
+    <div className="chart-box" key={`mbar-${theme}`}>
       {labels.length ? (
         <Bar data={data} options={options} />
       ) : (
@@ -277,7 +274,7 @@ export function LineChart({ labels = [], values = [], label = 'Total' }) {
         fill: true,
         tension: 0.42,
         borderWidth: 2.5,
-        pointBackgroundColor: '#fff',
+        pointBackgroundColor: theme === 'dark' ? '#1a1820' : '#fff',
         pointBorderColor: '#7c6cff',
         pointBorderWidth: 2,
         pointRadius: 4,
@@ -287,13 +284,13 @@ export function LineChart({ labels = [], values = [], label = 'Total' }) {
       },
     ],
   };
-  const scales = scaleOpts();
+  const scales = scaleOpts(theme);
   const options = {
-    ...baseOptions(),
+    ...baseOptions(theme),
     scales: { x: scales, y: scales },
   };
   return (
-    <div className="chart-box" key={theme}>
+    <div className="chart-box" key={`line-${theme}`}>
       {labels.length ? (
         <Line data={data} options={options} />
       ) : (
