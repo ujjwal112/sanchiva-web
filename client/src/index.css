@@ -3409,6 +3409,11 @@ table.data-table tbody tr:hover {
   transform: none;
 }
 
+.ceremony-card--add {
+  border-style: dashed !important;
+  min-height: 180px;
+}
+
 .ceremony-card-edit-form {
   display: flex;
   flex-direction: column;

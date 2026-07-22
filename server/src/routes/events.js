@@ -487,6 +487,69 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+/** Add a ceremony after event creation (overview cards) */
+router.post('/:id/ceremonies', async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const uid = userId(req);
+    const { name, date } = req.body || {};
+    const newName = String(name || '').trim();
+
+    if (!newName) return res.status(400).json({ error: 'Ceremony name is required' });
+    if (!isRealCeremony(newName)) {
+      return res.status(400).json({ error: 'Invalid ceremony name' });
+    }
+
+    const { rows } = await query('SELECT * FROM events WHERE id = $1 AND user_id = $2', [eventId, uid]);
+    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+
+    const meta = parseMeta(rows[0].metadata);
+    let details = Array.isArray(meta.ceremony_details)
+      ? meta.ceremony_details.filter((d) => d && isRealCeremony(d.name)).map((d) => ({ ...d }))
+      : [];
+
+    if (!details.length && Array.isArray(meta.ceremonies)) {
+      details = meta.ceremonies.filter(isRealCeremony).map((n) => ({
+        name: String(n),
+        date: null,
+        quote: ceremonyQuote(n),
+        theme: ceremonyThemeKey(n),
+      }));
+    }
+
+    if (details.some((d) => String(d.name).toLowerCase() === newName.toLowerCase())) {
+      return res.status(400).json({ error: 'A ceremony with that name already exists' });
+    }
+
+    const dateVal = date ? String(date).slice(0, 10) : null;
+    details.push({
+      name: newName,
+      date: dateVal,
+      quote: ceremonyQuote(newName),
+      theme: ceremonyThemeKey(newName),
+    });
+
+    meta.ceremony_details = details;
+    meta.ceremonies = details.map((d) => d.name);
+    details.forEach((d, i) => {
+      meta[`ceremony_date_${i}`] = d.date || '';
+    });
+
+    await query(
+      `UPDATE events SET metadata = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`,
+      [JSON.stringify(meta), eventId, uid]
+    );
+
+    res.status(201).json({
+      success: true,
+      ceremony_details: details,
+      ceremonies: meta.ceremonies,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /** Update a ceremony name and/or date (overview cards); renames guests if name changes */
 router.put('/:id/ceremonies', async (req, res) => {
   try {
