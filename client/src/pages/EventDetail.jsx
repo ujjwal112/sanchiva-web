@@ -9,6 +9,19 @@ import { buildCeremonyCards, getCeremonyTheme } from '../utils/ceremonyThemes';
 const GUEST_PAGE_SIZE = 10;
 const TODO_PAGE_SIZE = 10;
 
+const CEREMONY_NAME_OPTIONS = [
+  'Tilak',
+  'Engagement',
+  'Haldi',
+  'Mehendi',
+  'Sangeet',
+  'Main Wedding',
+  'Reception',
+  'Nikah',
+  'Walima',
+  'Other',
+];
+
 export default function EventDetail() {
   const { eventId } = useParams();
   const navigate = useNavigate();
@@ -41,7 +54,7 @@ export default function EventDetail() {
   const [ceremonyEditForm, setCeremonyEditForm] = useState({ name: '', date: '' });
   const [savingCeremony, setSavingCeremony] = useState(false);
   const [addingCeremony, setAddingCeremony] = useState(false);
-  const [ceremonyAddForm, setCeremonyAddForm] = useState({ name: '', date: '' });
+  const [ceremonyAddForm, setCeremonyAddForm] = useState({ name: '', customName: '', date: '' });
   const [savingNewCeremony, setSavingNewCeremony] = useState(false);
 
   const toDateInputValue = (d) => {
@@ -350,22 +363,28 @@ export default function EventDetail() {
     setEditingCeremony(null);
     setCeremonyEditForm({ name: '', date: '' });
     setAddingCeremony(true);
-    setCeremonyAddForm({ name: '', date: '' });
+    setCeremonyAddForm({ name: '', customName: '', date: '' });
   };
 
   const cancelAddCeremony = () => {
     setAddingCeremony(false);
-    setCeremonyAddForm({ name: '', date: '' });
+    setCeremonyAddForm({ name: '', customName: '', date: '' });
   };
 
   const saveNewCeremony = async (e) => {
     e.preventDefault();
-    const name = ceremonyAddForm.name.trim();
-    if (!name) {
-      show('Ceremony name is required', 'error');
+    const picked = ceremonyAddForm.name.trim();
+    const name =
+      picked === 'Other' ? ceremonyAddForm.customName.trim() : picked;
+    if (!picked) {
+      show('Select a ceremony', 'error');
       return;
     }
-    if (name.toLowerCase() === 'other' || name.toLowerCase() === 'general') {
+    if (picked === 'Other' && !name) {
+      show('Enter a custom ceremony name', 'error');
+      return;
+    }
+    if (!name || name.toLowerCase() === 'other' || name.toLowerCase() === 'general') {
       show('Please enter a real ceremony name', 'error');
       return;
     }
@@ -674,32 +693,34 @@ export default function EventDetail() {
                     </p>
                     <div className="field">
                       <label>Ceremony name</label>
-                      <input
-                        required
+                      <GlassSelect
                         value={ceremonyAddForm.name}
-                        onChange={(e) =>
-                          setCeremonyAddForm((f) => ({ ...f, name: e.target.value }))
+                        onChange={(v) =>
+                          setCeremonyAddForm((f) => ({
+                            ...f,
+                            name: v,
+                            customName: v === 'Other' ? f.customName : '',
+                          }))
                         }
-                        placeholder="e.g. Haldi, Mehendi, Reception"
-                        autoFocus
-                        list="ceremony-name-suggestions"
+                        placeholder="Select ceremony"
+                        options={CEREMONY_NAME_OPTIONS}
+                        aria-label="Ceremony name"
                       />
-                      <datalist id="ceremony-name-suggestions">
-                        {[
-                          'Tilak',
-                          'Engagement',
-                          'Haldi',
-                          'Mehendi',
-                          'Sangeet',
-                          'Main Wedding',
-                          'Reception',
-                          'Nikah',
-                          'Walima',
-                        ].map((n) => (
-                          <option key={n} value={n} />
-                        ))}
-                      </datalist>
                     </div>
+                    {ceremonyAddForm.name === 'Other' && (
+                      <div className="field">
+                        <label>Custom name</label>
+                        <input
+                          required
+                          value={ceremonyAddForm.customName}
+                          onChange={(e) =>
+                            setCeremonyAddForm((f) => ({ ...f, customName: e.target.value }))
+                          }
+                          placeholder="Enter ceremony name"
+                          autoFocus
+                        />
+                      </div>
+                    )}
                     <div className="field field-date">
                       <label>Date (optional)</label>
                       <DateInput
