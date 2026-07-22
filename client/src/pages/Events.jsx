@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { api, formatEventStyleLabel } from '../api';
+import { api, formatCurrency, formatDate, formatEventStyleLabel } from '../api';
 import { Tabs, DateInput, GlassSelect, useToast } from '../components/ui';
 
 const EVENT_TYPES = [
@@ -11,6 +11,11 @@ const EVENT_TYPES = [
   { id: 'corporate', label: 'Corporate', icon: '🏢' },
   { id: 'other', label: 'Other event', icon: '✦' },
 ];
+
+function eventTypeIcon(type) {
+  const t = String(type || '').toLowerCase();
+  return EVENT_TYPES.find((x) => x.id === t)?.icon || '✦';
+}
 
 export default function Events() {
   const navigate = useNavigate();
@@ -489,9 +494,21 @@ export default function Events() {
           <div className="events-list-items events-list-items-wide">
             {events.map((ev) => (
               <div key={ev.id} className="event-list-item">
+                <div className="event-list-item-icon" aria-hidden>
+                  {eventTypeIcon(ev.event_type)}
+                </div>
                 <div className="event-list-item-main">
                   <strong>{ev.name}</strong>
-                  <p className="muted">{formatEventStyleLabel(ev.event_type, ev.sub_type)}</p>
+                  <span className="event-list-badge">
+                    {formatEventStyleLabel(ev.event_type, ev.sub_type)}
+                  </span>
+                  <div className="event-list-item-meta muted">
+                    {ev.event_date ? <span>📅 {formatDate(ev.event_date)}</span> : null}
+                    {ev.location ? <span>📍 {ev.location}</span> : null}
+                    {ev.budget != null && Number(ev.budget) > 0 ? (
+                      <span>₹ {formatCurrency(ev.budget)}</span>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="event-list-actions">
                   <button
