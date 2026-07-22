@@ -1453,6 +1453,23 @@ button {
   z-index: 2;
 }
 
+/* Don’t flip to light paper glass on hover */
+.login-card.card:hover,
+.login-card:hover {
+  transform: none;
+  background: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.14) 0%,
+      rgba(255, 255, 255, 0.05) 42%,
+      rgba(0, 0, 0, 0.08) 100%
+    ),
+    rgba(32, 28, 30, 0.68) !important;
+  border-color: rgba(255, 255, 255, 0.34) !important;
+  box-shadow:
+    0 30px 72px rgba(0, 0, 0, 0.48),
+    0 1px 0 rgba(255, 255, 255, 0.24) inset !important;
+}
+
 .login-brand {
   display: flex;
   flex-direction: column;
