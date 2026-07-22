@@ -35,12 +35,86 @@ function apiUrl() {
   );
 }
 
-function callbackRedirect(res, { accessToken, refreshToken, error }) {
+/** Deep link back into the Android WebView APK after browser OAuth */
+const ANDROID_PACKAGE = 'com.sanchiva.app';
+const ANDROID_APP_SCHEME = 'sanchiva://auth/callback';
+
+/**
+ * Chrome Custom Tabs often ignore bare custom-scheme 302s.
+ * Serve a tiny HTML bridge that opens the app via Android Intent + sanchiva://.
+ */
+function sendAndroidAppReturn(res, { accessToken, refreshToken, error }) {
+  const q = error
+    ? `error=${encodeURIComponent(error)}`
+    : new URLSearchParams({
+        access_token: accessToken || '',
+        refresh_token: refreshToken || '',
+      }).toString();
+
+  const deepLink = `${ANDROID_APP_SCHEME}?${q}`;
+  // Intent URL is the most reliable way to return from Custom Tabs → APK
+  const intentLink = `intent://auth/callback?${q}#Intent;scheme=sanchiva;package=${ANDROID_PACKAGE};end`;
+  const webFallback = `${appUrl()}/auth/callback?${q}`;
+
+  res
+    .status(200)
+    .set({
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store',
+    })
+    .send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Opening Sanchiva…</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background:#0a0a0c; color:#f5f5f7;
+      display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; padding:1.5rem; text-align:center; }
+    a { color:#8ab4ff; }
+    .card { max-width:22rem; }
+    .btn { display:inline-block; margin-top:1rem; padding:.75rem 1.25rem; border-radius:999px;
+      background:linear-gradient(135deg,#5b8cff,#7c5cff); color:#fff; text-decoration:none; font-weight:600; }
+  </style>
+  <script>
+    (function () {
+      var intent = ${JSON.stringify(intentLink)};
+      var deep = ${JSON.stringify(deepLink)};
+      function go() {
+        try { window.location.replace(intent); } catch (e) {}
+        setTimeout(function () {
+          try { window.location.href = deep; } catch (e2) {}
+        }, 350);
+      }
+      go();
+      setTimeout(go, 800);
+    })();
+  </script>
+</head>
+<body>
+  <div class="card">
+    <h1 style="font-size:1.25rem;margin:0 0 .5rem">Returning to Sanchiva…</h1>
+    <p style="opacity:.75;margin:0">Google sign-in succeeded. Opening the app.</p>
+    <a class="btn" href="${deepLink}">Open Sanchiva app</a>
+    <p style="opacity:.55;margin-top:1.25rem;font-size:.85rem">
+      If nothing happens, <a href="${webFallback}">continue in browser</a>.
+    </p>
+  </div>
+</body>
+</html>`);
+}
+
+function callbackRedirect(res, { accessToken, refreshToken, error, client }) {
+  const isAndroid = client === 'android';
+
+  if (isAndroid) {
+    return sendAndroidAppReturn(res, { accessToken, refreshToken, error });
+  }
+
   const front = appUrl();
   if (error) {
     return res.redirect(`${front}/login?error=${encodeURIComponent(error)}`);
   }
-  // Hash fragment so tokens are not sent to server logs as easily as query
   const q = new URLSearchParams({
     access_token: accessToken,
     refresh_token: refreshToken,
@@ -134,13 +208,18 @@ export function configurePassport() {
 
 async function issueTokensAndRedirect(req, res) {
   try {
+    // `state` is echoed by Google OAuth (we set it to "android" for the APK)
+    const client = req.query.state === 'android' ? 'android' : 'web';
     const user = req.user;
-    if (!user) return callbackRedirect(res, { error: 'Login failed' });
+    if (!user) return callbackRedirect(res, { error: 'Login failed', client });
     const accessToken = signAccessToken(user);
     const refreshToken = await issueRefreshToken(user.id);
-    return callbackRedirect(res, { accessToken, refreshToken });
+    return callbackRedirect(res, { accessToken, refreshToken, client });
   } catch (e) {
-    return callbackRedirect(res, { error: e.message || 'Login failed' });
+    return callbackRedirect(res, {
+      error: e.message || 'Login failed',
+      client: req.query.state === 'android' ? 'android' : 'web',
+    });
   }
 }
 
@@ -231,17 +310,26 @@ router.get('/google', (req, res, next) => {
   if (!providerEnabled('google')) {
     return res.status(503).json({ error: 'Google login is not configured' });
   }
-  passport.authenticate('google', { scope: ['profile', 'email'], session: false })(req, res, next);
+  // client=android → deep-link back into the mobile APK after OAuth
+  const state = req.query.client === 'android' ? 'android' : 'web';
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    session: false,
+    state,
+  })(req, res, next);
 });
 
 router.get(
   '/google/callback',
   (req, res, next) => {
-    passport.authenticate('google', { session: false, failureRedirect: `${appUrl()}/login?error=google` })(
-      req,
-      res,
-      next
-    );
+    passport.authenticate('google', { session: false }, (err, user) => {
+      if (err || !user) {
+        const client = req.query.state === 'android' ? 'android' : 'web';
+        return callbackRedirect(res, { error: 'google', client });
+      }
+      req.user = user;
+      return next();
+    })(req, res, next);
   },
   issueTokensAndRedirect
 );

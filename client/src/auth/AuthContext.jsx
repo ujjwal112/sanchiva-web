@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { API_ORIGIN, clearTokens, getAccessToken, getRefreshToken, setTokens } from '../api';
+import { isNativeApp, listenNativeOAuthReturn, openNativeOAuth } from './nativeOAuth';
 
 const AuthContext = createContext(null);
 
@@ -69,7 +70,43 @@ export function AuthProvider({ children }) {
     loadMe();
   }, [loadMe]);
 
-  const loginWithProvider = (provider) => {
+  // Android APK: system browser Google OAuth → deep link back with tokens
+  useEffect(() => {
+    let unsub = () => {};
+    let handling = false;
+    listenNativeOAuthReturn(async (result) => {
+      if (handling) return;
+      handling = true;
+      if (result.error) {
+        window.location.replace(`/login?error=${encodeURIComponent(result.error)}`);
+        return;
+      }
+      try {
+        setTokens(result.access, result.refresh);
+        setLoading(true);
+        await loadMe();
+        window.location.replace('/dashboard');
+      } catch {
+        window.location.replace('/login?error=native_login_failed');
+      }
+    }).then((fn) => {
+      unsub = fn || (() => {});
+    });
+    return () => unsub();
+  }, [loadMe]);
+
+  const loginWithProvider = async (provider) => {
+    // APK: open system browser for Google account picker, then return to app
+    if (isNativeApp()) {
+      try {
+        await openNativeOAuth(provider);
+      } catch (e) {
+        console.error('Native OAuth open failed', e);
+        const base = API_ORIGIN || window.location.origin;
+        window.location.href = `${base}/api/auth/${provider}?client=android`;
+      }
+      return;
+    }
     window.location.href = `${API_ORIGIN}/api/auth/${provider}`;
   };
 

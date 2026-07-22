@@ -1,0 +1,15 @@
+{
+  "appId": "com.sanchiva.app",
+  "appName": "Sanchiva",
+  "webDir": "dist",
+  "server": {
+    "url": "https://sanchiva.onrender.com",
+    "cleartext": false,
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0a0a0c",
+    "webContentsDebuggingEnabled": false
+  }
+}

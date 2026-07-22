@@ -6,12 +6,22 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android",
+    "apk:debug": "npm run build && npx cap sync android && cd android && .\\gradlew.bat assembleDebug",
+    "apk:release": "npm run build && npx cap sync android && cd android && .\\gradlew.bat assembleRelease",
+    "apk:copy": "node -e \"const fs=require('fs');const p='android/app/build/outputs/apk/release/app-release.apk';fs.mkdirSync('android-release',{recursive:true});fs.copyFileSync(p,'android-release/Sanchiva-release.apk');console.log('Copied to android-release/Sanchiva-release.apk');\""
   },
   "engines": {
     "node": "20.x"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/browser": "^8.0.4",
+    "@capacitor/cli": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
     "@vitejs/plugin-react": "^4.3.4",
     "chart.js": "^4.4.7",
     "esbuild": "^0.28.1",
