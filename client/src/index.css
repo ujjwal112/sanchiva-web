@@ -949,6 +949,160 @@ button {
   color: #fff;
 }
 
+/* Features — horizontal scroll rail + entrance animation */
+.landing-features-section {
+  --features-gap: 1rem;
+  position: relative;
+}
+
+.landing-features-head {
+  max-width: none;
+}
+
+.landing-features-head-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.landing-features-head-row > div:first-child {
+  flex: 1;
+  min-width: min(100%, 18rem);
+}
+
+.landing-features-nav {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.landing-features-nav-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 1.35rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset;
+  transition: background 0.25s ease, border-color 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
+}
+
+.landing-features-nav-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.45);
+  transform: scale(1.04);
+}
+
+.landing-features-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.landing-features-rail {
+  position: relative;
+  margin-top: 0.35rem;
+}
+
+.landing-features-track {
+  display: flex;
+  gap: var(--features-gap);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding: 0.65rem 0.15rem 1.1rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  cursor: grab;
+  outline: none;
+}
+
+.landing-features-track:active {
+  cursor: grabbing;
+}
+
+.landing-features-track::-webkit-scrollbar {
+  display: none;
+}
+
+.landing-features-fade {
+  position: absolute;
+  top: 0;
+  bottom: 1rem;
+  width: 3.5rem;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.landing-features-fade[data-active='true'] {
+  opacity: 1;
+}
+
+.landing-features-fade--left {
+  left: 0;
+  background: linear-gradient(90deg, rgba(8, 8, 10, 0.85), transparent);
+}
+
+.landing-features-fade--right {
+  right: 0;
+  background: linear-gradient(270deg, rgba(8, 8, 10, 0.85), transparent);
+}
+
+.landing-features-progress {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  margin-top: 0.15rem;
+}
+
+.landing-features-progress-bar {
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(160, 224, 171, 0.85), rgba(255, 172, 46, 0.9), rgba(255, 255, 255, 0.75));
+  transition: transform 0.12s linear;
+}
+
+.landing-features-section .landing-section-head,
+.landing-features-section .landing-features-rail,
+.landing-features-section .landing-features-progress {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.7s var(--ease-glide, cubic-bezier(0.19, 1, 0.22, 1)),
+    transform 0.7s var(--ease-glide, cubic-bezier(0.19, 1, 0.22, 1));
+}
+
+.landing-features-section.is-visible .landing-section-head {
+  opacity: 1;
+  transform: none;
+}
+
+.landing-features-section.is-visible .landing-features-rail {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.1s;
+}
+
+.landing-features-section.is-visible .landing-features-progress {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.22s;
+}
+
 .landing-features-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -1036,15 +1190,54 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  padding: 1.4rem 1.3rem !important;
+  padding: 1.45rem 1.35rem !important;
   position: relative;
-  transition: transform 0.35s var(--ease-glide), box-shadow 0.35s ease, background 0.35s ease,
+  flex: 0 0 min(300px, 78vw);
+  width: min(300px, 78vw);
+  min-height: 190px;
+  scroll-snap-align: start;
+  opacity: 0;
+  transform: translateY(36px) scale(0.96);
+  filter: blur(6px);
+  transition:
+    opacity 0.65s var(--ease-glide, cubic-bezier(0.19, 1, 0.22, 1)),
+    transform 0.65s var(--ease-glide, cubic-bezier(0.19, 1, 0.22, 1)),
+    filter 0.65s ease,
+    box-shadow 0.35s ease,
+    background 0.35s ease,
     border-color 0.35s ease;
+  transition-delay: var(--feature-delay, 0ms);
+}
+
+.landing-feature-card.is-inview {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: none;
+}
+
+.landing-feature-card.is-inview:hover {
+  transform: translateY(-6px) scale(1.02);
 }
 
 .landing-feature-card > * {
   position: relative;
   z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-features-section .landing-section-head,
+  .landing-features-section .landing-features-rail,
+  .landing-features-section .landing-features-progress,
+  .landing-feature-card {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: none !important;
+  }
+
+  .landing-features-track {
+    scroll-behavior: auto;
+  }
 }
 
 .landing-feature-icon {

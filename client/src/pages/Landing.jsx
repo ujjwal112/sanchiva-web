@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { useAuth } from '../auth/AuthContext';
@@ -37,6 +38,143 @@ const FEATURES = [
 
 export default function Landing() {
   const { isAuthenticated, loading } = useAuth();
+  const featuresRef = useRef(null);
+  const trackRef = useRef(null);
+  const [sectionVisible, setSectionVisible] = useState(false);
+  const [visibleCards, setVisibleCards] = useState(() => new Set());
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+  const userPausedRef = useRef(false);
+
+  // Reveal features section when it enters the viewport
+  useEffect(() => {
+    const el = featuresRef.current;
+    if (!el) return undefined;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setSectionVisible(true);
+      },
+      { threshold: 0.18, rootMargin: '0px 0px -8% 0px' }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // Stagger card reveal + track scroll progress for edge fades / bar
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return undefined;
+
+    const updateScrollMeta = () => {
+      const max = track.scrollWidth - track.clientWidth;
+      const left = track.scrollLeft;
+      setScrollProgress(max > 0 ? left / max : 0);
+      setCanScrollLeft(left > 4);
+      setCanScrollRight(left < max - 4);
+    };
+
+    updateScrollMeta();
+    track.addEventListener('scroll', updateScrollMeta, { passive: true });
+    window.addEventListener('resize', updateScrollMeta);
+
+    const cards = track.querySelectorAll('.landing-feature-card');
+    const cardIo = new IntersectionObserver(
+      (entries) => {
+        setVisibleCards((prev) => {
+          const next = new Set(prev);
+          for (const entry of entries) {
+            const idx = entry.target.getAttribute('data-feature-index');
+            if (entry.isIntersecting && idx != null) next.add(idx);
+          }
+          return next;
+        });
+      },
+      { root: track, threshold: 0.28, rootMargin: '0px 20% 0px 8%' }
+    );
+    cards.forEach((c) => cardIo.observe(c));
+
+    // Seed first cards so the rail isn’t empty when the section appears
+    if (sectionVisible) {
+      setVisibleCards((prev) => {
+        const next = new Set(prev);
+        next.add('0');
+        next.add('1');
+        next.add('2');
+        return next;
+      });
+    }
+
+    // Gentle auto-scroll while section is in view; pauses on user interaction
+    let raf = 0;
+    let last = performance.now();
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const tick = (now) => {
+      const dt = Math.min(32, now - last);
+      last = now;
+      if (!userPausedRef.current && sectionVisible && !reduceMotion) {
+        const max = track.scrollWidth - track.clientWidth;
+        if (max > 0) {
+          let next = track.scrollLeft + dt * 0.03;
+          if (next >= max - 1) next = 0;
+          track.scrollLeft = next;
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    if (!reduceMotion) raf = requestAnimationFrame(tick);
+
+    let resumeTimer = 0;
+    const pause = () => {
+      userPausedRef.current = true;
+      window.clearTimeout(resumeTimer);
+    };
+    const resume = () => {
+      window.clearTimeout(resumeTimer);
+      resumeTimer = window.setTimeout(() => {
+        userPausedRef.current = false;
+      }, 2400);
+    };
+
+    // Vertical wheel → horizontal scroll when over the rail
+    const onWheel = (e) => {
+      if (track.scrollWidth <= track.clientWidth) return;
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault();
+        track.scrollLeft += e.deltaY;
+      }
+      pause();
+      resume();
+    };
+
+    track.addEventListener('pointerdown', pause);
+    track.addEventListener('touchstart', pause, { passive: true });
+    track.addEventListener('pointerleave', resume);
+    track.addEventListener('wheel', onWheel, { passive: false });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(resumeTimer);
+      track.removeEventListener('scroll', updateScrollMeta);
+      window.removeEventListener('resize', updateScrollMeta);
+      track.removeEventListener('pointerdown', pause);
+      track.removeEventListener('touchstart', pause);
+      track.removeEventListener('pointerleave', resume);
+      track.removeEventListener('wheel', onWheel);
+      cardIo.disconnect();
+    };
+  }, [sectionVisible]);
+
+  const scrollFeaturesBy = (dir) => {
+    const track = trackRef.current;
+    if (!track) return;
+    userPausedRef.current = true;
+    const amount = Math.min(340, track.clientWidth * 0.78);
+    track.scrollBy({ left: dir * amount, behavior: 'smooth' });
+    window.setTimeout(() => {
+      userPausedRef.current = false;
+    }, 2600);
+  };
 
   if (!loading && isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
@@ -90,25 +228,84 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="features" className="landing-section">
-          <div className="landing-section-head">
+        <section
+          id="features"
+          ref={featuresRef}
+          className={`landing-section landing-features-section${sectionVisible ? ' is-visible' : ''}`}
+        >
+          <div className="landing-section-head landing-features-head">
             <p className="landing-eyebrow">What you can do</p>
-            <h2>One app for money and moments</h2>
-            <p className="muted">
-              Built so nothing important slips through, from this month’s groceries to your wedding
-              guest list.
-            </p>
+            <div className="landing-features-head-row">
+              <div>
+                <h2>One app for money and moments</h2>
+                <p className="muted">
+                  Scroll the cards — built so nothing important slips through, from groceries to your
+                  wedding guest list.
+                </p>
+              </div>
+              <div className="landing-features-nav" aria-hidden={false}>
+                <button
+                  type="button"
+                  className="landing-features-nav-btn"
+                  onClick={() => scrollFeaturesBy(-1)}
+                  disabled={!canScrollLeft}
+                  aria-label="Previous features"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="landing-features-nav-btn"
+                  onClick={() => scrollFeaturesBy(1)}
+                  disabled={!canScrollRight}
+                  aria-label="Next features"
+                >
+                  ›
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="landing-features-grid">
-            {FEATURES.map((f) => (
-              <article key={f.title} className="card landing-feature-card">
-                <span className="landing-feature-icon" aria-hidden>
-                  {f.icon}
-                </span>
-                <h3>{f.title}</h3>
-                <p className="muted">{f.text}</p>
-              </article>
-            ))}
+
+          <div className="landing-features-rail">
+            <div
+              className="landing-features-fade landing-features-fade--left"
+              data-active={canScrollLeft ? 'true' : 'false'}
+              aria-hidden
+            />
+            <div
+              className="landing-features-fade landing-features-fade--right"
+              data-active={canScrollRight ? 'true' : 'false'}
+              aria-hidden
+            />
+            <div
+              ref={trackRef}
+              className="landing-features-track"
+              tabIndex={0}
+              role="region"
+              aria-label="Feature cards — scroll horizontally"
+            >
+              {FEATURES.map((f, i) => (
+                <article
+                  key={f.title}
+                  data-feature-index={String(i)}
+                  className={`card landing-feature-card${visibleCards.has(String(i)) ? ' is-inview' : ''}`}
+                  style={{ '--feature-delay': `${i * 80}ms` }}
+                >
+                  <span className="landing-feature-icon" aria-hidden>
+                    {f.icon}
+                  </span>
+                  <h3>{f.title}</h3>
+                  <p className="muted">{f.text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="landing-features-progress" aria-hidden>
+            <div
+              className="landing-features-progress-bar"
+              style={{ transform: `scaleX(${Math.max(0.08, scrollProgress || 0.08)})` }}
+            />
           </div>
         </section>
 
