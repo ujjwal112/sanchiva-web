@@ -371,7 +371,7 @@ button {
     12px 0 40px rgba(0, 0, 0, 0.28);
   display: flex;
   flex-direction: column;
-  z-index: 40;
+  z-index: 60;
   transition: width 0.35s var(--ease-glide), transform 0.35s var(--ease-glide),
     padding 0.35s var(--ease-glide);
   color: #fff;
@@ -641,10 +641,10 @@ button {
   }
 }
 
-/* User menu (top-left) */
+/* User menu (top-right) — below mobile drawer/overlay */
 .user-menu {
   position: relative;
-  z-index: 50;
+  z-index: 20;
   flex-shrink: 0;
 }
 
@@ -2329,11 +2329,31 @@ button {
     padding: 1rem;
   }
 
+  /* Drawer above main chrome; hide user/theme controls while open */
+  .sidebar {
+    z-index: 70;
+  }
+
+  .app-shell.sidebar-drawer-open .topbar-right {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+
+  .app-shell.sidebar-drawer-open .user-menu {
+    z-index: 1;
+  }
+
+  .topbar-right {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+
   .overlay {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.45);
-    z-index: 30;
+    z-index: 65;
   }
 }
 

@@ -59,7 +59,9 @@ export default function Layout() {
   };
 
   return (
-    <div className={`app-shell${collapsed ? ' sidebar-collapsed' : ''}`}>
+    <div
+      className={`app-shell${collapsed ? ' sidebar-collapsed' : ''}${mobileOpen ? ' sidebar-drawer-open' : ''}`}
+    >
       <Sidebar
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
