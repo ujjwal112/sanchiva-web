@@ -2550,11 +2550,15 @@ table.data-table tbody tr:hover {
   color: var(--danger);
 }
 
-/* Charts */
+/* Charts — colorful series on liquid glass cards */
 .chart-box {
   position: relative;
   height: 260px;
   width: 100%;
+}
+
+.chart-box canvas {
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.05));
 }
 
 .chart-box.sm {
