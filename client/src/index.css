@@ -3559,26 +3559,31 @@ table.data-table tbody tr:hover {
 
 .event-kpi {
   padding: 0.75rem 0.85rem;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 4px 14px rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  color: var(--color-obsidian, #0a0a0a);
 }
 
 .event-kpi span {
   font-size: 0.78rem;
+  color: var(--color-felt-gray, #6d6d6d);
 }
 
 .event-kpi strong {
   font-size: 1.05rem;
+  color: var(--color-obsidian, #0a0a0a);
 }
 
 .event-charts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
+  margin-top: 0.75rem;
 }
 
 @media (max-width: 900px) {
@@ -3587,30 +3592,48 @@ table.data-table tbody tr:hover {
   }
 }
 
+/* Match Dashboard / other tabs: light liquid glass chart panels */
 .event-chart-card {
-  padding: 0.85rem;
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 1rem 1.05rem;
+  border-radius: 18px;
   min-width: 0;
+  background: linear-gradient(
+      155deg,
+      rgba(255, 255, 255, 0.72) 0%,
+      rgba(255, 255, 255, 0.42) 45%,
+      rgba(255, 255, 255, 0.58) 100%
+    ),
+    rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  outline: 1px solid rgba(0, 0, 0, 0.05);
+  outline-offset: -1px;
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  color: var(--color-obsidian, #0a0a0a);
 }
 
 .event-chart-card h4 {
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 600;
-  margin-bottom: 0.65rem;
-  color: var(--text-muted);
+  margin-bottom: 0.7rem;
+  color: var(--color-obsidian, #0a0a0a);
 }
 
 .event-chart-box {
   height: 280px;
   width: 100%;
   position: relative;
+  background: transparent;
+  border-radius: 12px;
 }
 
 .event-chart-box .chart-box {
   height: 100% !important;
   min-height: 260px;
+  background: transparent;
 }
 
 .event-table-wrap {
