@@ -4510,58 +4510,42 @@ table.data-table tbody tr:hover {
    Theme toggle + dark app theme
    ------------------------------------------- */
 
-/* Theme switch: OFF = light, ON = dark */
+/* Theme switch: OFF = light (sun), ON = dark (moon) — icon on the circle */
 .theme-switch {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
   flex-shrink: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
   cursor: pointer;
   user-select: none;
-  margin: 0;
-}
-
-.theme-switch-text {
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: var(--text-muted);
-  line-height: 1;
-  transition: color 0.2s ease, opacity 0.2s ease;
-}
-
-.theme-switch.is-off .theme-switch-text--off,
-.theme-switch.is-on .theme-switch-text--on {
-  color: var(--text);
-  opacity: 1;
-}
-
-.theme-switch.is-off .theme-switch-text--on,
-.theme-switch.is-on .theme-switch-text--off {
-  opacity: 0.45;
 }
 
 .theme-switch-track {
   position: relative;
-  width: 46px;
-  height: 26px;
-  padding: 0;
+  display: block;
+  width: 48px;
+  height: 28px;
   border: 1px solid var(--glass-border);
   border-radius: 999px;
   background: var(--glass);
   backdrop-filter: blur(12px) saturate(160%);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
   box-shadow: var(--glass-shadow);
-  cursor: pointer;
-  flex-shrink: 0;
   transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
-.theme-switch-track:hover {
+.theme-switch:hover .theme-switch-track {
   background: var(--glass-strong);
 }
 
-.theme-switch-track:focus-visible {
+.theme-switch:focus-visible {
+  outline: none;
+}
+
+.theme-switch:focus-visible .theme-switch-track {
   outline: 2px solid rgba(124, 108, 255, 0.55);
   outline-offset: 2px;
 }
@@ -4570,15 +4554,19 @@ table.data-table tbody tr:hover {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
+  display: grid;
+  place-items: center;
   background: #fff;
+  color: #b45309; /* sun amber on light */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
-  transition: transform 0.28s cubic-bezier(0.19, 1, 0.22, 1), background 0.2s ease;
+  transition: transform 0.28s cubic-bezier(0.19, 1, 0.22, 1), background 0.2s ease,
+    color 0.2s ease;
 }
 
-/* ON = dark theme */
+/* ON = dark theme → moon */
 .theme-switch.is-on .theme-switch-track {
   background: linear-gradient(135deg, rgba(124, 108, 255, 0.55), rgba(34, 211, 238, 0.4));
   border-color: rgba(124, 108, 255, 0.45);
@@ -4587,7 +4575,9 @@ table.data-table tbody tr:hover {
 
 .theme-switch.is-on .theme-switch-thumb {
   transform: translateX(20px);
-  background: #fff;
+  background: #1a1824;
+  color: #e9d5ff; /* moon soft violet */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
 }
 
 .topbar-right {
@@ -4596,12 +4586,6 @@ table.data-table tbody tr:hover {
   gap: 0.55rem;
   flex-shrink: 0;
   margin-left: auto;
-}
-
-@media (max-width: 520px) {
-  .theme-switch-text {
-    display: none;
-  }
 }
 
 /* -- Dark theme tokens -- */
@@ -4830,15 +4814,6 @@ html[data-theme='dark'] .user-menu-trigger {
   color: #fff;
 }
 
-html[data-theme='dark'] .theme-switch-text {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-html[data-theme='dark'] .theme-switch.is-off .theme-switch-text--off,
-html[data-theme='dark'] .theme-switch.is-on .theme-switch-text--on {
-  color: #fff;
-}
-
 html[data-theme='dark'] .theme-switch-track {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.18);
@@ -4847,6 +4822,10 @@ html[data-theme='dark'] .theme-switch-track {
 html[data-theme='dark'] .theme-switch.is-on .theme-switch-track {
   background: linear-gradient(135deg, rgba(124, 108, 255, 0.65), rgba(34, 211, 238, 0.45));
   border-color: rgba(167, 139, 250, 0.5);
+}
+
+html[data-theme='dark'] .theme-switch.is-off .theme-switch-thumb {
+  color: #f59e0b;
 }
 
 html[data-theme='dark'] .table-wrap,
