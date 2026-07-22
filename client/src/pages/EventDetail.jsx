@@ -9,19 +9,6 @@ import { buildCeremonyCards, getCeremonyTheme } from '../utils/ceremonyThemes';
 const GUEST_PAGE_SIZE = 10;
 const TODO_PAGE_SIZE = 10;
 
-const CEREMONY_NAME_OPTIONS = [
-  'Tilak',
-  'Engagement',
-  'Haldi',
-  'Mehendi',
-  'Sangeet',
-  'Main Wedding',
-  'Reception',
-  'Nikah',
-  'Walima',
-  'Other',
-];
-
 export default function EventDetail() {
   const { eventId } = useParams();
   const navigate = useNavigate();
@@ -54,7 +41,7 @@ export default function EventDetail() {
   const [ceremonyEditForm, setCeremonyEditForm] = useState({ name: '', date: '' });
   const [savingCeremony, setSavingCeremony] = useState(false);
   const [addingCeremony, setAddingCeremony] = useState(false);
-  const [ceremonyAddForm, setCeremonyAddForm] = useState({ name: '', customName: '', date: '' });
+  const [ceremonyAddForm, setCeremonyAddForm] = useState({ name: '', date: '' });
   const [savingNewCeremony, setSavingNewCeremony] = useState(false);
 
   const toDateInputValue = (d) => {
@@ -363,28 +350,22 @@ export default function EventDetail() {
     setEditingCeremony(null);
     setCeremonyEditForm({ name: '', date: '' });
     setAddingCeremony(true);
-    setCeremonyAddForm({ name: '', customName: '', date: '' });
+    setCeremonyAddForm({ name: '', date: '' });
   };
 
   const cancelAddCeremony = () => {
     setAddingCeremony(false);
-    setCeremonyAddForm({ name: '', customName: '', date: '' });
+    setCeremonyAddForm({ name: '', date: '' });
   };
 
   const saveNewCeremony = async (e) => {
     e.preventDefault();
-    const picked = ceremonyAddForm.name.trim();
-    const name =
-      picked === 'Other' ? ceremonyAddForm.customName.trim() : picked;
-    if (!picked) {
-      show('Select a ceremony', 'error');
+    const name = ceremonyAddForm.name.trim();
+    if (!name) {
+      show('Ceremony name is required', 'error');
       return;
     }
-    if (picked === 'Other' && !name) {
-      show('Enter a custom ceremony name', 'error');
-      return;
-    }
-    if (!name || name.toLowerCase() === 'other' || name.toLowerCase() === 'general') {
+    if (name.toLowerCase() === 'other' || name.toLowerCase() === 'general') {
       show('Please enter a real ceremony name', 'error');
       return;
     }
@@ -679,18 +660,12 @@ export default function EventDetail() {
                 );
               })}
 
-              {addingCeremony && (() => {
-                const previewName =
-                  ceremonyAddForm.name === 'Other'
-                    ? ceremonyAddForm.customName || 'Ceremony'
-                    : ceremonyAddForm.name || 'Ceremony';
-                const previewTheme = getCeremonyTheme(previewName);
-                return (
+              {addingCeremony && (
                 <article
-                  className={`ceremony-card ceremony-card--editing ceremony-card--add ceremony-card--${previewTheme.key}`}
+                  className={`ceremony-card ceremony-card--editing ceremony-card--add ceremony-card--${getCeremonyTheme(ceremonyAddForm.name || 'Ceremony').key}`}
                   style={{
-                    background: previewTheme.bg,
-                    borderColor: previewTheme.border,
+                    background: getCeremonyTheme(ceremonyAddForm.name || 'Ceremony').bg,
+                    borderColor: getCeremonyTheme(ceremonyAddForm.name || 'Ceremony').border,
                   }}
                 >
                   <form className="ceremony-card-edit-form" onSubmit={saveNewCeremony}>
@@ -699,34 +674,32 @@ export default function EventDetail() {
                     </p>
                     <div className="field">
                       <label>Ceremony name</label>
-                      <GlassSelect
+                      <input
+                        required
                         value={ceremonyAddForm.name}
-                        onChange={(v) =>
-                          setCeremonyAddForm((f) => ({
-                            ...f,
-                            name: v,
-                            customName: v === 'Other' ? f.customName : '',
-                          }))
+                        onChange={(e) =>
+                          setCeremonyAddForm((f) => ({ ...f, name: e.target.value }))
                         }
-                        placeholder="Select ceremony"
-                        options={CEREMONY_NAME_OPTIONS}
-                        aria-label="Ceremony name"
+                        placeholder="e.g. Haldi, Mehendi, Reception"
+                        autoFocus
+                        list="ceremony-name-suggestions"
                       />
+                      <datalist id="ceremony-name-suggestions">
+                        {[
+                          'Tilak',
+                          'Engagement',
+                          'Haldi',
+                          'Mehendi',
+                          'Sangeet',
+                          'Main Wedding',
+                          'Reception',
+                          'Nikah',
+                          'Walima',
+                        ].map((n) => (
+                          <option key={n} value={n} />
+                        ))}
+                      </datalist>
                     </div>
-                    {ceremonyAddForm.name === 'Other' && (
-                      <div className="field">
-                        <label>Custom name</label>
-                        <input
-                          required
-                          value={ceremonyAddForm.customName}
-                          onChange={(e) =>
-                            setCeremonyAddForm((f) => ({ ...f, customName: e.target.value }))
-                          }
-                          placeholder="Enter ceremony name"
-                          autoFocus
-                        />
-                      </div>
-                    )}
                     <div className="field field-date">
                       <label>Date (optional)</label>
                       <DateInput
@@ -755,8 +728,7 @@ export default function EventDetail() {
                     </div>
                   </form>
                 </article>
-                );
-              })()}
+              )}
             </div>
           </section>
         </>
