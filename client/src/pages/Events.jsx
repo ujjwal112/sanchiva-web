@@ -506,7 +506,7 @@ export default function Events() {
                     {ev.event_date ? <span>📅 {formatDate(ev.event_date)}</span> : null}
                     {ev.location ? <span>📍 {ev.location}</span> : null}
                     {ev.budget != null && Number(ev.budget) > 0 ? (
-                      <span>₹ {formatCurrency(ev.budget)}</span>
+                      <span>{formatCurrency(ev.budget)}</span>
                     ) : null}
                   </div>
                 </div>
