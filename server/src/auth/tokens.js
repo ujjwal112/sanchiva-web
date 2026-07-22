@@ -2,6 +2,11 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
+import {
+  ensureGuestDemoReady,
+  resetGuestDemoData,
+  SHARED_GUEST_PROVIDER_ID,
+} from './guestSeed.js';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -94,7 +99,7 @@ export async function getUserById(id) {
   const uid = Number(id);
   if (!uid || Number.isNaN(uid)) return null;
   const { rows } = await query(
-    `SELECT id, email, name, picture, provider, created_at FROM users WHERE id = $1`,
+    `SELECT id, email, name, picture, provider, provider_id, created_at FROM users WHERE id = $1`,
     [uid]
   );
   return rows[0] || null;
@@ -224,28 +229,35 @@ export async function authenticateLocalUser(email, password) {
   };
 }
 
-/** Create a one-time guest user for exploring the app */
+/**
+ * Guest login: shared demo account with seeded sample data (not events).
+ * Session changes are reset on logout; baseline seed is restored.
+ */
 export async function createGuestUser() {
-  const guestId = crypto.randomUUID();
-  const { rows } = await query(
-    `INSERT INTO users (email, name, picture, provider, provider_id)
-     VALUES ($1, $2, NULL, 'guest', $3) RETURNING *`,
-    [`guest-${guestId}@sanchiva.local`, 'Guest User', guestId]
-  );
-  return rows[0];
+  return ensureGuestDemoReady();
 }
 
 /**
- * Wipe all guest session data and remove the guest account.
- * FK CASCADE on user_id tables handles related rows.
+ * Guest logout cleanup:
+ * - Keep the shared demo guest account
+ * - Delete guest-added rows and any events
+ * - Restore baseline seed (undo edits to demo rows)
+ * - Revoke refresh tokens for this user
  */
 export async function deleteGuestUserCompletely(userId) {
   const user = await getUserById(userId);
   if (!user || user.provider !== 'guest') {
     return { deleted: false, reason: 'not_guest' };
   }
-  // Extra cleanup for safety (events cascade via event_id, but explicit is fine)
   await query(`DELETE FROM refresh_tokens WHERE user_id = $1`, [userId]);
+
+  // Shared demo guest: reset data in place (seed stays / is restored).
+  if (user.provider_id === SHARED_GUEST_PROVIDER_ID) {
+    await resetGuestDemoData(userId);
+    return { deleted: false, reset: true, reason: 'demo_reset' };
+  }
+
+  // Legacy one-off guest accounts: remove entirely.
   await query(`DELETE FROM users WHERE id = $1 AND provider = 'guest'`, [userId]);
   return { deleted: true };
 }

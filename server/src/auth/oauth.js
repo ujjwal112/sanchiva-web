@@ -203,7 +203,10 @@ router.post('/login', async (req, res) => {
   }
 });
 
-/** Guest login, no OAuth; data wiped on logout */
+/**
+ * Guest login — shared demo account with sample data in all modules except Events.
+ * On logout: guest-added rows are removed and demo rows reset to baseline.
+ */
 router.post('/guest', async (_req, res) => {
   try {
     const user = await createGuestUser();
@@ -309,14 +312,18 @@ router.post('/logout', requireAuth, async (req, res) => {
     const { refresh_token: refreshToken } = req.body || {};
     if (refreshToken) await revokeRefreshToken(refreshToken);
 
-    // Guest sessions: delete all data + guest user for this session
+    // Guest: reset demo seed (remove session adds / undo edits); keep shared guest account
     const full = await getUserById(req.user.id);
     if (full?.provider === 'guest') {
-      await deleteGuestUserCompletely(req.user.id);
-      return res.json({ success: true, guest_data_deleted: true });
+      const result = await deleteGuestUserCompletely(req.user.id);
+      return res.json({
+        success: true,
+        guest_data_deleted: !!result.deleted,
+        guest_data_reset: !!result.reset,
+      });
     }
 
-    res.json({ success: true, guest_data_deleted: false });
+    res.json({ success: true, guest_data_deleted: false, guest_data_reset: false });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

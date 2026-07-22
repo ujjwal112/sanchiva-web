@@ -100,7 +100,7 @@ const authPaths = {
   '/api/auth/logout': {
     post: {
       tags: ['Auth'],
-      summary: 'Logout (revokes refresh token; wipes guest data)',
+      summary: 'Logout (revokes refresh token; resets guest demo data)',
       security: [{ bearerAuth: [] }],
       requestBody: {
         content: {

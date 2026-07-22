@@ -63,7 +63,7 @@ Color and quote follow the ceremony type, for example:
 - **Access token** (JWT, short-lived) + **refresh token** (rotated, stored hashed)  
 - Top-right user menu (name → **Logout**)  
 - **Per-user data**, each logged-in user only sees their own records  
-- Guest logout **deletes all guest data** for that session  
+- Guest login includes **sample demo data** (expenses, loans, cards, monetary — not events). Guest **adds** are removed on logout; **edits** to demo rows reset to the baseline; demo sample data stays for the next guest session.
 
 ### API documentation (Swagger)
 Interactive OpenAPI docs (try endpoints in the browser):

@@ -31,7 +31,7 @@ const FEATURES = [
   {
     icon: '🔒',
     title: 'Secure & personal',
-    text: 'Google or Guest login. Your data stays private to your account. Guest data wipes on logout.',
+    text: 'Google or Guest login. Guest includes sample data you can explore; your adds reset on logout.',
   },
 ];
 
