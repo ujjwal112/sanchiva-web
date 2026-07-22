@@ -7,178 +7,129 @@ const FEATURES = [
   {
     icon: '◈',
     title: 'Dashboard',
-    text: 'See KPIs, charts, and a clear snapshot of spends, loans, and assets in one view.',
+    tagline: 'Your money at a glance',
+    text: 'See KPIs, charts, and a clear snapshot of spends, loans, and assets in one calm view—so you always know where you stand without opening five apps.',
+    points: [
+      'Live totals for spends, EMIs, income & assets',
+      'Week and month charts that stay readable',
+      'Quick jump into any module from one home',
+    ],
   },
   {
     icon: '₹',
     title: 'Daily Expense',
-    text: 'Log daily spends with categories, week and month views, plus Excel and PDF export.',
+    tagline: 'Every rupee, tracked gently',
+    text: 'Log daily spends with categories, review week and month insights, and export Excel or PDF when you need a record—perfect for households and personal budgets.',
+    points: [
+      'Fast entry with categories you actually use',
+      'Week / month summaries and pie breakdowns',
+      'Excel & PDF export whenever you need it',
+    ],
   },
   {
     icon: '◫',
     title: 'Loans & Credit Cards',
-    text: 'Track bank EMIs, credit card spends, and card EMIs with progress summaries.',
+    tagline: 'EMIs under control',
+    text: 'Track bank EMIs, credit card spends, and card EMIs with progress summaries—know what is due, what is left, and when each loan closes.',
+    points: [
+      'Bank loans with EMI date and close year',
+      'Credit card spends by type and card',
+      'Card EMI schedules with start / end periods',
+    ],
   },
   {
     icon: '◎',
     title: 'Monetary',
-    text: 'Record income, assets (FD, MF, crypto…), and money you have lent to people.',
+    tagline: 'Income, assets & money lent',
+    text: 'Record salary and side income, hold your FDs, MFs, crypto and gold in one place, and keep a clear list of money you have given to people.',
+    points: [
+      'Monthly income sources with balances',
+      'Assets across FD, RD, stocks, gold & more',
+      'Money given with dates and notes',
+    ],
   },
   {
     icon: '✦',
     title: 'Events',
-    text: 'Plan weddings and celebrations with smart checklists, budgets, ceremony cards, and guests.',
+    tagline: 'Weddings & celebrations, planned',
+    text: 'Plan weddings and life events with a smart wizard, ceremony cards, budgets, todos, and guest lists—so big days stay organised instead of living in chats and sheets.',
+    points: [
+      'Wizard for wedding, birthday, corporate & more',
+      'Ceremony cards with dates and blessings',
+      'Todos, budgets, guests and exports',
+    ],
   },
   {
     icon: '🔒',
     title: 'Secure & personal',
-    text: 'Google or Guest login. Guest includes sample data you can explore; your adds reset on logout.',
+    tagline: 'Your vault, your rules',
+    text: 'Sign in with Google, email, or explore as Guest with sample data. Your account stays private; guest extras reset when you leave so demos stay clean.',
+    points: [
+      'Google, email/password, or Guest login',
+      'Per-user data with secure sessions',
+      'Guest demo data resets on logout',
+    ],
   },
 ];
 
+function clamp(n, min, max) {
+  return Math.min(max, Math.max(min, n));
+}
+
+/**
+ * Features: sticky vertical stack — scroll down and each card rolls
+ * from front to back with smooth fade/scale (no horizontal scroll).
+ */
 export default function Landing() {
   const { isAuthenticated, loading } = useAuth();
-  const featuresRef = useRef(null);
-  const trackRef = useRef(null);
-  const [sectionVisible, setSectionVisible] = useState(false);
-  const [visibleCards, setVisibleCards] = useState(() => new Set());
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
-  const userPausedRef = useRef(false);
+  const pinRef = useRef(null);
+  const [progress, setProgress] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [reduceMotion, setReduceMotion] = useState(false);
 
-  // Reveal features section when it enters the viewport
   useEffect(() => {
-    const el = featuresRef.current;
-    if (!el) return undefined;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setSectionVisible(true);
-      },
-      { threshold: 0.18, rootMargin: '0px 0px -8% 0px' }
-    );
-    io.observe(el);
-    return () => io.disconnect();
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const apply = () => setReduceMotion(mq.matches);
+    apply();
+    mq.addEventListener?.('change', apply);
+    return () => mq.removeEventListener?.('change', apply);
   }, []);
 
-  // Stagger card reveal + track scroll progress for edge fades / bar
   useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return undefined;
+    if (reduceMotion) return undefined;
+    const pin = pinRef.current;
+    if (!pin) return undefined;
 
-    const updateScrollMeta = () => {
-      const max = track.scrollWidth - track.clientWidth;
-      const left = track.scrollLeft;
-      setScrollProgress(max > 0 ? left / max : 0);
-      setCanScrollLeft(left > 4);
-      setCanScrollRight(left < max - 4);
-    };
-
-    updateScrollMeta();
-    track.addEventListener('scroll', updateScrollMeta, { passive: true });
-    window.addEventListener('resize', updateScrollMeta);
-
-    const cards = track.querySelectorAll('.landing-feature-card');
-    const cardIo = new IntersectionObserver(
-      (entries) => {
-        setVisibleCards((prev) => {
-          const next = new Set(prev);
-          for (const entry of entries) {
-            const idx = entry.target.getAttribute('data-feature-index');
-            if (entry.isIntersecting && idx != null) next.add(idx);
-          }
-          return next;
-        });
-      },
-      { root: track, threshold: 0.28, rootMargin: '0px 20% 0px 8%' }
-    );
-    cards.forEach((c) => cardIo.observe(c));
-
-    // Seed first cards so the rail isn’t empty when the section appears
-    if (sectionVisible) {
-      setVisibleCards((prev) => {
-        const next = new Set(prev);
-        next.add('0');
-        next.add('1');
-        next.add('2');
-        return next;
-      });
-    }
-
-    // Gentle auto-scroll while section is in view; pauses on user interaction
     let raf = 0;
-    let last = performance.now();
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const tick = (now) => {
-      const dt = Math.min(32, now - last);
-      last = now;
-      if (!userPausedRef.current && sectionVisible && !reduceMotion) {
-        const max = track.scrollWidth - track.clientWidth;
-        if (max > 0) {
-          let next = track.scrollLeft + dt * 0.03;
-          if (next >= max - 1) next = 0;
-          track.scrollLeft = next;
-        }
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    if (!reduceMotion) raf = requestAnimationFrame(tick);
-
-    let resumeTimer = 0;
-    const pause = () => {
-      userPausedRef.current = true;
-      window.clearTimeout(resumeTimer);
-    };
-    const resume = () => {
-      window.clearTimeout(resumeTimer);
-      resumeTimer = window.setTimeout(() => {
-        userPausedRef.current = false;
-      }, 2400);
+    const measure = () => {
+      const rect = pin.getBoundingClientRect();
+      const scrollable = Math.max(1, pin.offsetHeight - window.innerHeight);
+      const p = clamp(-rect.top / scrollable, 0, 1);
+      setProgress(p);
+      setActiveIndex(Math.min(FEATURES.length - 1, Math.floor(p * FEATURES.length * 0.999)));
     };
 
-    // Vertical wheel → horizontal scroll when over the rail
-    const onWheel = (e) => {
-      if (track.scrollWidth <= track.clientWidth) return;
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-        e.preventDefault();
-        track.scrollLeft += e.deltaY;
-      }
-      pause();
-      resume();
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measure);
     };
 
-    track.addEventListener('pointerdown', pause);
-    track.addEventListener('touchstart', pause, { passive: true });
-    track.addEventListener('pointerleave', resume);
-    track.addEventListener('wheel', onWheel, { passive: false });
-
+    measure();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
     return () => {
       cancelAnimationFrame(raf);
-      window.clearTimeout(resumeTimer);
-      track.removeEventListener('scroll', updateScrollMeta);
-      window.removeEventListener('resize', updateScrollMeta);
-      track.removeEventListener('pointerdown', pause);
-      track.removeEventListener('touchstart', pause);
-      track.removeEventListener('pointerleave', resume);
-      track.removeEventListener('wheel', onWheel);
-      cardIo.disconnect();
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
     };
-  }, [sectionVisible]);
-
-  const scrollFeaturesBy = (dir) => {
-    const track = trackRef.current;
-    if (!track) return;
-    userPausedRef.current = true;
-    const amount = Math.min(340, track.clientWidth * 0.78);
-    track.scrollBy({ left: dir * amount, behavior: 'smooth' });
-    window.setTimeout(() => {
-      userPausedRef.current = false;
-    }, 2600);
-  };
+  }, [reduceMotion]);
 
   if (!loading && isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
+
+  // ~1 viewport of scroll “dwell” per card after the first sticky frame
+  const pinHeightVh = 100 + FEATURES.length * 70;
 
   return (
     <div className="landing-page">
@@ -227,88 +178,127 @@ export default function Landing() {
             <div className="landing-hero-glow" />
           </div>
         </section>
+      </main>
 
-        <section
-          id="features"
-          ref={featuresRef}
-          className={`landing-section landing-features-section${sectionVisible ? ' is-visible' : ''}`}
-        >
-          <div className="landing-section-head landing-features-head">
-            <p className="landing-eyebrow">What you can do</p>
-            <div className="landing-features-head-row">
-              <div>
-                <h2>One app for money and moments</h2>
-                <p className="muted">
-                  Scroll the cards — built so nothing important slips through, from groceries to your
-                  wedding guest list.
-                </p>
-              </div>
-              <div className="landing-features-nav" aria-hidden={false}>
-                <button
-                  type="button"
-                  className="landing-features-nav-btn"
-                  onClick={() => scrollFeaturesBy(-1)}
-                  disabled={!canScrollLeft}
-                  aria-label="Previous features"
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className="landing-features-nav-btn"
-                  onClick={() => scrollFeaturesBy(1)}
-                  disabled={!canScrollRight}
-                  aria-label="Next features"
-                >
-                  ›
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="landing-features-rail">
-            <div
-              className="landing-features-fade landing-features-fade--left"
-              data-active={canScrollLeft ? 'true' : 'false'}
-              aria-hidden
-            />
-            <div
-              className="landing-features-fade landing-features-fade--right"
-              data-active={canScrollRight ? 'true' : 'false'}
-              aria-hidden
-            />
-            <div
-              ref={trackRef}
-              className="landing-features-track"
-              tabIndex={0}
-              role="region"
-              aria-label="Feature cards — scroll horizontally"
-            >
-              {FEATURES.map((f, i) => (
-                <article
-                  key={f.title}
-                  data-feature-index={String(i)}
-                  className={`card landing-feature-card${visibleCards.has(String(i)) ? ' is-inview' : ''}`}
-                  style={{ '--feature-delay': `${i * 80}ms` }}
-                >
-                  <span className="landing-feature-icon" aria-hidden>
-                    {f.icon}
+      {/* Full-bleed vertical stack theater */}
+      <section
+        id="features"
+        ref={pinRef}
+        className={`landing-features-stack${reduceMotion ? ' is-static' : ''}`}
+        style={reduceMotion ? undefined : { height: `${pinHeightVh}vh` }}
+        aria-label="Features"
+      >
+        <div className="landing-features-sticky">
+          <div className="landing-features-sticky-inner">
+            <div className="landing-section-head landing-features-head">
+              <p className="landing-eyebrow">What you can do</p>
+              <div className="landing-features-head-row">
+                <div>
+                  <h2>One app for money and moments</h2>
+                  <p className="muted">
+                    Scroll down — each feature comes to the front, then rolls behind with a smooth
+                    fade as the next one appears.
+                  </p>
+                </div>
+                <div className="landing-features-counter" aria-live="polite">
+                  <span className="landing-features-counter-num">
+                    {String(activeIndex + 1).padStart(2, '0')}
                   </span>
-                  <h3>{f.title}</h3>
-                  <p className="muted">{f.text}</p>
-                </article>
-              ))}
+                  <span className="landing-features-counter-sep">/</span>
+                  <span className="landing-features-counter-total">
+                    {String(FEATURES.length).padStart(2, '0')}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="landing-features-stage">
+              {FEATURES.map((f, i) => {
+                // Continuous “front” index along the scrub (0 … n-1)
+                const front = progress * (FEATURES.length - 1);
+                const dist = i - front; // 0 = current front; >0 waiting; <0 already passed behind
+                const abs = Math.abs(dist);
+
+                // Front card: scale 1, opacity 1; behind: shrink + fade + push back
+                let scale = 1 - Math.min(abs, 2.2) * 0.06;
+                let opacity = 1 - Math.min(Math.max(-dist, 0), 1.15) * 0.85;
+                let y = dist * 18;
+                let blur = Math.min(Math.max(-dist, 0), 1) * 6;
+                let z = 100 - Math.round(abs * 10);
+                // Cards still ahead sit slightly behind and dimmer
+                if (dist > 0.05) {
+                  scale = 0.94 - Math.min(dist, 1.5) * 0.03;
+                  opacity = 0.35 + Math.max(0, 1 - dist) * 0.35;
+                  y = 28 + dist * 12;
+                  blur = 2 + dist * 2;
+                  z = 40 - Math.round(dist * 8);
+                }
+                // Passed cards recede to the back
+                if (dist < -0.05) {
+                  scale = 0.92 + dist * 0.04;
+                  opacity = Math.max(0, 1 + dist * 1.15);
+                  y = dist * 22;
+                  blur = Math.min(8, -dist * 7);
+                  z = 20 + Math.round(dist * 5);
+                }
+
+                if (reduceMotion) {
+                  scale = 1;
+                  opacity = 1;
+                  y = 0;
+                  blur = 0;
+                  z = FEATURES.length - i;
+                }
+
+                const isFront = i === activeIndex && !reduceMotion;
+
+                return (
+                  <article
+                    key={f.title}
+                    className={`landing-feature-card landing-feature-card--stack${isFront ? ' is-front' : ''}`}
+                    style={{
+                      zIndex: z,
+                      opacity,
+                      transform: `translate3d(-50%, calc(-50% + ${y}px), 0) scale(${scale})`,
+                      filter: blur > 0.2 ? `blur(${blur}px)` : 'none',
+                      pointerEvents: isFront || reduceMotion ? 'auto' : 'none',
+                    }}
+                    aria-hidden={!isFront && !reduceMotion}
+                  >
+                    <div className="landing-feature-card-inner">
+                      <div className="landing-feature-card-top">
+                        <span className="landing-feature-icon" aria-hidden>
+                          {f.icon}
+                        </span>
+                        <span className="landing-feature-index" aria-hidden>
+                          {String(i + 1).padStart(2, '0')}
+                        </span>
+                      </div>
+                      <p className="landing-feature-tagline">{f.tagline}</p>
+                      <h3>{f.title}</h3>
+                      <p className="landing-feature-text muted">{f.text}</p>
+                      <ul className="landing-feature-points">
+                        {f.points.map((pt) => (
+                          <li key={pt}>{pt}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="landing-features-progress" aria-hidden>
+              <div
+                className="landing-features-progress-bar"
+                style={{ transform: `scaleX(${Math.max(0.06, progress)})` }}
+              />
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="landing-features-progress" aria-hidden>
-            <div
-              className="landing-features-progress-bar"
-              style={{ transform: `scaleX(${Math.max(0.08, scrollProgress || 0.08)})` }}
-            />
-          </div>
-        </section>
-
+      <main className="landing-main landing-main--after-features">
         <section className="landing-section">
           <div className="card landing-about-block">
             <div>
