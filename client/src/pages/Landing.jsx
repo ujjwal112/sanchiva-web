@@ -101,12 +101,19 @@ export default function Landing() {
     if (!pin) return undefined;
 
     let raf = 0;
+    let display = 0;
     const measure = () => {
       const rect = pin.getBoundingClientRect();
       const scrollable = Math.max(1, pin.offsetHeight - window.innerHeight);
-      const p = clamp(-rect.top / scrollable, 0, 1);
-      setProgress(p);
-      setActiveIndex(Math.min(FEATURES.length - 1, Math.floor(p * FEATURES.length * 0.999)));
+      const target = clamp(-rect.top / scrollable, 0, 1);
+      // Smooth lerp — snappy but not jittery
+      display += (target - display) * 0.22;
+      if (Math.abs(target - display) < 0.0008) display = target;
+      setProgress(display);
+      setActiveIndex(Math.min(FEATURES.length - 1, Math.round(display * (FEATURES.length - 1))));
+      if (Math.abs(target - display) > 0.0008) {
+        raf = requestAnimationFrame(measure);
+      }
     };
 
     const onScroll = () => {
@@ -128,8 +135,8 @@ export default function Landing() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // ~1 viewport of scroll “dwell” per card after the first sticky frame
-  const pinHeightVh = 100 + FEATURES.length * 70;
+  // Faster scrub: less scroll per card so next feature arrives sooner
+  const pinHeightVh = 100 + FEATURES.length * 42;
 
   return (
     <div className="landing-page">
@@ -196,8 +203,8 @@ export default function Landing() {
                 <div>
                   <h2>One app for money and moments</h2>
                   <p className="muted">
-                    Scroll down — each feature comes to the front, then rolls behind with a smooth
-                    fade as the next one appears.
+                    Scroll down — features rotate clockwise like a dial. Each card spins to the front
+                    fast and smooth as the last one slips behind.
                   </p>
                 </div>
                 <div className="landing-features-counter" aria-live="polite">
@@ -212,42 +219,40 @@ export default function Landing() {
               </div>
             </div>
 
-            <div className="landing-features-stage">
+            <div className="landing-features-stage landing-features-stage--orbit">
               {FEATURES.map((f, i) => {
-                // Continuous “front” index along the scrub (0 … n-1)
-                const front = progress * (FEATURES.length - 1);
-                const dist = i - front; // 0 = current front; >0 waiting; <0 already passed behind
-                const abs = Math.abs(dist);
+                const n = FEATURES.length;
+                // Carousel rotation (clockwise as progress increases)
+                const stepDeg = 360 / n;
+                const rotDeg = progress * (n - 1) * stepDeg;
+                // Card angle on the circle; 0° = front (facing user)
+                let aDeg = i * stepDeg - rotDeg;
+                // normalize to [-180, 180]
+                aDeg = ((((aDeg + 180) % 360) + 360) % 360) - 180;
+                const aRad = (aDeg * Math.PI) / 180;
 
-                // Front card: scale 1, opacity 1; behind: shrink + fade + push back
-                let scale = 1 - Math.min(abs, 2.2) * 0.06;
-                let opacity = 1 - Math.min(Math.max(-dist, 0), 1.15) * 0.85;
-                let y = dist * 18;
-                let blur = Math.min(Math.max(-dist, 0), 1) * 6;
-                let z = 100 - Math.round(abs * 10);
-                // Cards still ahead sit slightly behind and dimmer
-                if (dist > 0.05) {
-                  scale = 0.94 - Math.min(dist, 1.5) * 0.03;
-                  opacity = 0.35 + Math.max(0, 1 - dist) * 0.35;
-                  y = 28 + dist * 12;
-                  blur = 2 + dist * 2;
-                  z = 40 - Math.round(dist * 8);
-                }
-                // Passed cards recede to the back
-                if (dist < -0.05) {
-                  scale = 0.92 + dist * 0.04;
-                  opacity = Math.max(0, 1 + dist * 1.15);
-                  y = dist * 22;
-                  blur = Math.min(8, -dist * 7);
-                  z = 20 + Math.round(dist * 5);
-                }
+                // Clockwise orbit in the plane: +X to the right, depth from cos
+                // radius scales with viewport feel
+                const R = typeof window !== 'undefined' ? Math.min(200, window.innerWidth * 0.22) : 160;
+                const x = Math.sin(aRad) * R;
+                const y = (1 - Math.cos(aRad)) * 36 - 8;
+                const depth = Math.cos(aRad); // 1 front → -1 back
+
+                let scale = 0.72 + 0.28 * Math.max(0, depth);
+                let opacity = Math.max(0, 0.08 + 0.92 * Math.max(0, depth));
+                // Soft fade once past ~half circle
+                if (Math.abs(aDeg) > 95) opacity = 0;
+                else if (Math.abs(aDeg) > 70) opacity *= 0.45;
+
+                let blur = Math.max(0, (1 - Math.max(0, depth)) * 5);
+                const rotZ = aDeg * 0.55; // tilt with orbit (CSS +deg is clockwise)
+                const rotY = aDeg * 0.22;
+                const z = Math.round(50 + depth * 50);
 
                 if (reduceMotion) {
                   scale = 1;
                   opacity = 1;
-                  y = 0;
                   blur = 0;
-                  z = FEATURES.length - i;
                 }
 
                 const isFront = i === activeIndex && !reduceMotion;
@@ -257,10 +262,12 @@ export default function Landing() {
                     key={f.title}
                     className={`landing-feature-card landing-feature-card--stack${isFront ? ' is-front' : ''}`}
                     style={{
-                      zIndex: z,
+                      zIndex: reduceMotion ? n - i : z,
                       opacity,
-                      transform: `translate3d(-50%, calc(-50% + ${y}px), 0) scale(${scale})`,
-                      filter: blur > 0.2 ? `blur(${blur}px)` : 'none',
+                      transform: reduceMotion
+                        ? 'none'
+                        : `translate3d(calc(-50% + ${x}px), calc(-50% + ${y}px), 0) rotateZ(${rotZ}deg) rotateY(${rotY}deg) scale(${scale})`,
+                      filter: blur > 0.35 ? `blur(${blur}px)` : 'none',
                       pointerEvents: isFront || reduceMotion ? 'auto' : 'none',
                     }}
                     aria-hidden={!isFront && !reduceMotion}
