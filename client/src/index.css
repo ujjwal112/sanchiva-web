@@ -1028,13 +1028,12 @@ button {
   flex: 1;
   min-height: 0;
   width: 100%;
-  perspective: 1400px;
-  transform-style: preserve-3d;
+  overflow: hidden;
 }
 
-.landing-features-stage--orbit {
-  /* give orbit room so cards can swing clockwise without clipping hard */
-  overflow: visible;
+.landing-features-stage--solo {
+  /* single-card focus — no multi-card clutter */
+  overflow: hidden;
 }
 
 .landing-features-progress {
@@ -1134,28 +1133,26 @@ button {
   border-color: rgba(255, 255, 255, 0.34) !important;
 }
 
-/* Orbit cards — clockwise carousel, scroll-driven */
+/* One card at a time — full opacity when active for readable text */
 .landing-feature-card--stack {
   position: absolute;
   left: 50%;
   top: 50%;
   width: min(640px, 100%);
-  min-height: min(420px, 58vh);
+  min-height: min(440px, 60vh);
   height: auto;
   padding: 0 !important;
-  will-change: transform, opacity, filter;
+  will-change: transform, opacity;
   transform-origin: center center;
-  transform-style: preserve-3d;
-  backface-visibility: hidden;
-  /* scroll + rAF drive transform; short transition softens steps between frames */
-  transition: opacity 0.12s ease-out, filter 0.12s ease-out;
+  /* fast crossfade between features */
+  transition: opacity 0.18s ease-out, transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 .landing-feature-card--stack.is-front {
   box-shadow:
-    0 36px 80px rgba(0, 0, 0, 0.52),
-    0 1px 0 rgba(255, 255, 255, 0.3) inset,
-    0 0 0 1px rgba(255, 255, 255, 0.14) !important;
+    0 28px 64px rgba(0, 0, 0, 0.48),
+    0 1px 0 rgba(255, 255, 255, 0.32) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.16) !important;
 }
 
 .landing-feature-card-inner {
@@ -1163,9 +1160,9 @@ button {
   z-index: 2;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
-  padding: 1.75rem 1.65rem 1.85rem;
-  min-height: min(420px, 58vh);
+  gap: 0.65rem;
+  padding: 1.85rem 1.75rem 2rem;
+  min-height: min(440px, 60vh);
   box-sizing: border-box;
 }
 
@@ -1192,27 +1189,28 @@ button {
 
 .landing-feature-tagline {
   margin: 0;
-  font-size: 0.78rem;
-  font-weight: 500;
+  font-size: 0.8rem;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .landing-feature-card h3 {
   margin: 0;
-  font-size: clamp(1.45rem, 3.2vw, 1.85rem);
-  font-weight: 500;
+  font-size: clamp(1.5rem, 3.4vw, 2rem);
+  font-weight: 600;
   color: #fff !important;
   letter-spacing: -0.02em;
 }
 
 .landing-feature-text {
   margin: 0;
-  font-size: 0.98rem;
-  line-height: 1.55;
-  color: rgba(255, 255, 255, 0.72) !important;
-  max-width: 42ch;
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.9) !important;
+  max-width: 44ch;
+  font-weight: 400;
 }
 
 .landing-feature-points {
@@ -1228,9 +1226,10 @@ button {
 .landing-feature-points li {
   position: relative;
   padding-left: 1.15rem;
-  font-size: 0.9rem;
-  line-height: 1.4;
-  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 400;
 }
 
 .landing-feature-points li::before {

@@ -101,19 +101,15 @@ export default function Landing() {
     if (!pin) return undefined;
 
     let raf = 0;
-    let display = 0;
     const measure = () => {
       const rect = pin.getBoundingClientRect();
       const scrollable = Math.max(1, pin.offsetHeight - window.innerHeight);
-      const target = clamp(-rect.top / scrollable, 0, 1);
-      // Smooth lerp — snappy but not jittery
-      display += (target - display) * 0.22;
-      if (Math.abs(target - display) < 0.0008) display = target;
-      setProgress(display);
-      setActiveIndex(Math.min(FEATURES.length - 1, Math.round(display * (FEATURES.length - 1))));
-      if (Math.abs(target - display) > 0.0008) {
-        raf = requestAnimationFrame(measure);
-      }
+      // Direct mapping — snappy card switches
+      const p = clamp(-rect.top / scrollable, 0, 1);
+      setProgress(p);
+      // Each segment of progress = one card (only one visible)
+      const idx = Math.min(FEATURES.length - 1, Math.floor(p * FEATURES.length * 0.999));
+      setActiveIndex(idx);
     };
 
     const onScroll = () => {
@@ -135,8 +131,8 @@ export default function Landing() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Faster scrub: less scroll per card so next feature arrives sooner
-  const pinHeightVh = 100 + FEATURES.length * 42;
+  // Short pin so next feature appears quickly while scrolling
+  const pinHeightVh = 100 + FEATURES.length * 32;
 
   return (
     <div className="landing-page">
@@ -203,8 +199,8 @@ export default function Landing() {
                 <div>
                   <h2>One app for money and moments</h2>
                   <p className="muted">
-                    Scroll down — features rotate clockwise like a dial. Each card spins to the front
-                    fast and smooth as the last one slips behind.
+                    Scroll down to move through each feature one at a time — only the front card stays
+                    on screen.
                   </p>
                 </div>
                 <div className="landing-features-counter" aria-live="polite">
@@ -219,58 +215,51 @@ export default function Landing() {
               </div>
             </div>
 
-            <div className="landing-features-stage landing-features-stage--orbit">
+            <div className="landing-features-stage landing-features-stage--solo">
               {FEATURES.map((f, i) => {
-                const n = FEATURES.length;
-                // Carousel rotation (clockwise as progress increases)
-                const stepDeg = 360 / n;
-                const rotDeg = progress * (n - 1) * stepDeg;
-                // Card angle on the circle; 0° = front (facing user)
-                let aDeg = i * stepDeg - rotDeg;
-                // normalize to [-180, 180]
-                aDeg = ((((aDeg + 180) % 360) + 360) % 360) - 180;
-                const aRad = (aDeg * Math.PI) / 180;
-
-                // Clockwise orbit in the plane: +X to the right, depth from cos
-                // radius scales with viewport feel
-                const R = typeof window !== 'undefined' ? Math.min(200, window.innerWidth * 0.22) : 160;
-                const x = Math.sin(aRad) * R;
-                const y = (1 - Math.cos(aRad)) * 36 - 8;
-                const depth = Math.cos(aRad); // 1 front → -1 back
-
-                let scale = 0.72 + 0.28 * Math.max(0, depth);
-                let opacity = Math.max(0, 0.08 + 0.92 * Math.max(0, depth));
-                // Soft fade once past ~half circle
-                if (Math.abs(aDeg) > 95) opacity = 0;
-                else if (Math.abs(aDeg) > 70) opacity *= 0.45;
-
-                let blur = Math.max(0, (1 - Math.max(0, depth)) * 5);
-                const rotZ = aDeg * 0.55; // tilt with orbit (CSS +deg is clockwise)
-                const rotY = aDeg * 0.22;
-                const z = Math.round(50 + depth * 50);
+                const isFront = reduceMotion || i === activeIndex;
+                // Within the active segment, fade out near the end and next fades in
+                const seg = 1 / FEATURES.length;
+                const local = clamp((progress - i * seg) / seg, 0, 1);
+                let opacity = 0;
+                let y = 28;
+                let scale = 0.96;
 
                 if (reduceMotion) {
-                  scale = 1;
                   opacity = 1;
-                  blur = 0;
+                  y = 0;
+                  scale = 1;
+                } else if (i === activeIndex) {
+                  // Enter fast, hold readable, exit fast near end of segment
+                  if (local < 0.12) {
+                    const t = local / 0.12;
+                    opacity = t;
+                    y = 24 * (1 - t);
+                    scale = 0.96 + 0.04 * t;
+                  } else if (local > 0.88) {
+                    const t = (local - 0.88) / 0.12;
+                    opacity = 1 - t;
+                    y = -18 * t;
+                    scale = 1 - 0.03 * t;
+                  } else {
+                    opacity = 1;
+                    y = 0;
+                    scale = 1;
+                  }
                 }
-
-                const isFront = i === activeIndex && !reduceMotion;
 
                 return (
                   <article
                     key={f.title}
                     className={`landing-feature-card landing-feature-card--stack${isFront ? ' is-front' : ''}`}
                     style={{
-                      zIndex: reduceMotion ? n - i : z,
+                      zIndex: isFront ? 20 : 1,
                       opacity,
-                      transform: reduceMotion
-                        ? 'none'
-                        : `translate3d(calc(-50% + ${x}px), calc(-50% + ${y}px), 0) rotateZ(${rotZ}deg) rotateY(${rotY}deg) scale(${scale})`,
-                      filter: blur > 0.35 ? `blur(${blur}px)` : 'none',
-                      pointerEvents: isFront || reduceMotion ? 'auto' : 'none',
+                      transform: `translate3d(-50%, calc(-50% + ${y}px), 0) scale(${scale})`,
+                      pointerEvents: isFront ? 'auto' : 'none',
+                      visibility: opacity < 0.02 && !reduceMotion ? 'hidden' : 'visible',
                     }}
-                    aria-hidden={!isFront && !reduceMotion}
+                    aria-hidden={!isFront}
                   >
                     <div className="landing-feature-card-inner">
                       <div className="landing-feature-card-top">
