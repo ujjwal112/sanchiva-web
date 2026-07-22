@@ -3356,29 +3356,49 @@ table.data-table tbody tr:hover {
   width: fit-content;
   max-width: 100%;
   margin-bottom: 0;
+  align-self: center;
 }
 
-/* Match height of the tabs bar (padding 0.35 + tab 0.55 each side) */
+/*
+ * Back to My Events — same oval glass pill as Overview / Budget / Todos / Guests track
+ * (.tabs shell + .tab padding) so height and shape match.
+ */
+.event-back-my-events.btn,
 .event-back-my-events {
   flex: 0 0 auto;
   white-space: nowrap;
   margin-left: auto;
+  align-self: center;
   box-sizing: border-box;
-  /* Outer tabs pad 0.35 + inner tab pad 0.55 → same total height as tabs shell */
-  padding: calc(0.35rem + 0.55rem) 1.1rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  border-radius: 14px;
-  border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.04);
-  line-height: 1.35;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* shell padding 0.3rem + tab padding 0.5rem — matches .tabs total height */
+  padding: calc(0.3rem + 0.5rem) 1.35rem;
   min-height: unset;
   height: auto;
-  align-self: center;
+  line-height: 1.2;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: normal;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  color: var(--text-muted);
+  box-shadow: var(--glass-shadow);
+  transition: background 0.35s var(--ease-glide, ease), color 0.35s ease, border-color 0.35s ease,
+    box-shadow 0.35s ease;
 }
 
+.event-back-my-events.btn:hover,
 .event-back-my-events:hover {
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-obsidian, #0a0a0a);
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  transform: none;
 }
 
 .todo-edit-banner {
