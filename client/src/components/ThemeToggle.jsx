@@ -1,41 +1,36 @@
 import { useTheme } from '../theme/ThemeContext';
 
+/**
+ * Theme switch: ON = dark, OFF = light.
+ */
 export default function ThemeToggle({ className = '' }) {
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark, setTheme } = useTheme();
+
+  const onToggle = () => {
+    setTheme(isDark ? 'light' : 'dark');
+  };
 
   return (
-    <button
-      type="button"
-      className={`theme-toggle ${className}`.trim()}
-      onClick={toggleTheme}
-      aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-      title={isDark ? 'Light theme' : 'Dark theme'}
+    <label
+      className={`theme-switch ${isDark ? 'is-on' : 'is-off'} ${className}`.trim()}
+      title={isDark ? 'Dark theme on' : 'Light theme (dark off)'}
     >
-      <span className="theme-toggle-icon" aria-hidden>
-        {isDark ? (
-          /* sun */
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-            <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8" />
-            <path
-              d="M12 2.5v2.2M12 19.3v2.2M4.5 12H2.3M21.7 12h-2.2M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
-          </svg>
-        ) : (
-          /* moon */
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-            <path
-              d="M20.5 14.2A8.2 8.2 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinejoin="round"
-            />
-          </svg>
-        )}
+      <span className="theme-switch-text theme-switch-text--off" aria-hidden>
+        Light
       </span>
-      <span className="theme-toggle-label">{isDark ? 'Light' : 'Dark'}</span>
-    </button>
+      <button
+        type="button"
+        className="theme-switch-track"
+        role="switch"
+        aria-checked={isDark}
+        aria-label={isDark ? 'Dark theme on — click for light' : 'Light theme on — click for dark'}
+        onClick={onToggle}
+      >
+        <span className="theme-switch-thumb" aria-hidden />
+      </button>
+      <span className="theme-switch-text theme-switch-text--on" aria-hidden>
+        Dark
+      </span>
+    </label>
   );
 }
