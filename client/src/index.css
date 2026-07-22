@@ -946,7 +946,7 @@ button {
   font-weight: 300;
   letter-spacing: normal;
   margin-bottom: 0.35rem;
-  color: var(--color-obsidian);
+  color: #fff;
 }
 
 .landing-features-grid {
@@ -955,42 +955,125 @@ button {
   gap: 0.9rem;
 }
 
-/*
- * Feature cards: exact same glass as base .card (hero/about glass system).
- * Only layout/spacing — no alternate frosted overrides.
- */
+/* Shared dark liquid glass (same family as login/refimage) */
+.landing-dark-glass,
+.landing-feature-card,
+.landing-about-block {
+  background: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.04) 42%,
+      rgba(0, 0, 0, 0.08) 100%
+    ),
+    rgba(28, 24, 26, 0.62) !important;
+  backdrop-filter: blur(36px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(170%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  outline: none !important;
+  border-radius: 28px !important;
+  box-shadow:
+    0 24px 56px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.25) inset !important;
+  color: #fff;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.landing-feature-card.card::before,
+.landing-about-block.card::before,
+.landing-feature-card::before,
+.landing-about-block::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0.04) 36%,
+    transparent 58%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.landing-feature-card.card::after,
+.landing-about-block.card::after,
+.landing-feature-card::after,
+.landing-about-block::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.landing-feature-card.card:hover,
+.landing-about-block.card:hover,
+.landing-feature-card:hover,
+.landing-about-block:hover {
+  transform: translateY(-3px);
+  background: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.14) 0%,
+      rgba(255, 255, 255, 0.05) 42%,
+      rgba(0, 0, 0, 0.08) 100%
+    ),
+    rgba(32, 28, 30, 0.68) !important;
+  border-color: rgba(255, 255, 255, 0.34) !important;
+  box-shadow:
+    0 28px 64px rgba(0, 0, 0, 0.48),
+    0 1px 0 rgba(255, 255, 255, 0.24) inset !important;
+}
+
 .landing-feature-card {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 1.35rem 1.25rem !important;
-  /* inherit background, border, blur, shadow, ::before/::after from .card */
+  gap: 0.45rem;
+  padding: 1.4rem 1.3rem !important;
+  position: relative;
+  transition: transform 0.35s var(--ease-glide), box-shadow 0.35s ease, background 0.35s ease,
+    border-color 0.35s ease;
+}
+
+.landing-feature-card > * {
+  position: relative;
+  z-index: 2;
 }
 
 .landing-feature-icon {
-  font-size: 1.35rem;
+  font-size: 1.4rem;
   line-height: 1;
-  margin-bottom: 0.1rem;
+  margin-bottom: 0.15rem;
+  filter: drop-shadow(0 0 10px rgba(160, 120, 255, 0.35));
 }
 
 .landing-feature-card h3 {
   margin: 0 0 0.15rem;
-  font-size: 1.05rem;
+  font-size: 1.08rem;
+  font-weight: 500;
+  color: #fff !important;
 }
 
 .landing-feature-card p {
   margin: 0;
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   line-height: 1.45;
 }
 
 .landing-page .landing-feature-card h3 {
-  color: var(--color-obsidian) !important;
+  color: #fff !important;
 }
 
 .landing-page .landing-feature-card .muted,
 .landing-page .landing-feature-card p {
-  color: var(--color-felt-gray) !important;
+  color: rgba(255, 255, 255, 0.68) !important;
 }
 
 .landing-about-block {
@@ -998,22 +1081,44 @@ button {
   grid-template-columns: 1.4fr 0.8fr;
   gap: 1.5rem;
   align-items: stretch;
-  padding: 1.75rem !important;
+  padding: 1.85rem !important;
+  position: relative;
+  transition: transform 0.35s var(--ease-glide), box-shadow 0.35s ease, background 0.35s ease,
+    border-color 0.35s ease;
+}
+
+.landing-about-block > * {
+  position: relative;
+  z-index: 2;
 }
 
 .landing-about-block h2 {
   font-family: var(--font);
   font-size: clamp(1.35rem, 2.5vw, 1.85rem);
-  font-weight: 300;
+  font-weight: 400;
   margin-bottom: 0.65rem;
   letter-spacing: normal;
-  color: var(--color-obsidian);
+  color: #fff !important;
+}
+
+.landing-about-block .muted,
+.landing-about-block p {
+  color: rgba(255, 255, 255, 0.68) !important;
+}
+
+.landing-about-block strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.landing-about-block .landing-eyebrow {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .landing-bullets {
   margin: 1rem 0 0;
   padding-left: 1.15rem;
-  color: var(--color-felt-gray);
+  color: rgba(255, 255, 255, 0.72);
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
@@ -1021,10 +1126,10 @@ button {
 }
 
 .landing-bullets li::marker {
-  color: var(--color-obsidian);
+  color: rgba(255, 255, 255, 0.85);
 }
 
-/* Ready to start — liquid glass panel */
+/* Ready to start — nested dark glass (same ref family) */
 .landing-cta-panel {
   display: flex;
   flex-direction: column;
@@ -1035,17 +1140,24 @@ button {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  border-radius: var(--radius-cards, 22px);
-  background: var(--glass);
-  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 180%));
-  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 180%));
-  border: 1px solid var(--glass-border);
-  outline: 1px solid var(--glass-border-outer, rgba(0, 0, 0, 0.06));
-  outline-offset: -1px;
-  box-shadow: var(--glass-shadow);
-  color: var(--color-obsidian);
-  transition: transform 0.8s var(--ease-glide), box-shadow 0.8s var(--ease-glide),
-    background 0.8s var(--ease-glide);
+  border-radius: 24px;
+  background: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.03) 45%,
+      rgba(0, 0, 0, 0.12) 100%
+    ),
+    rgba(18, 16, 18, 0.55);
+  backdrop-filter: blur(28px) saturate(170%);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  outline: none;
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.35),
+    0 1px 0 rgba(255, 255, 255, 0.16) inset;
+  color: #fff;
+  transition: transform 0.35s var(--ease-glide), box-shadow 0.35s ease, background 0.35s ease,
+    border-color 0.35s ease;
 }
 
 .landing-cta-panel::before {
@@ -1055,10 +1167,9 @@ button {
   border-radius: inherit;
   background: linear-gradient(
     155deg,
-    rgba(255, 255, 255, 0.62) 0%,
-    rgba(255, 255, 255, 0.12) 36%,
-    transparent 58%,
-    rgba(255, 255, 255, 0.1) 100%
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.04) 36%,
+    transparent 58%
   );
   pointer-events: none;
   z-index: 0;
@@ -1071,7 +1182,7 @@ button {
   left: 10%;
   right: 10%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
   pointer-events: none;
   z-index: 1;
 }
@@ -1083,20 +1194,29 @@ button {
 
 .landing-cta-panel:hover {
   transform: translateY(-2px);
-  background: var(--glass-strong);
-  box-shadow: var(--glass-shadow-hover);
+  background: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.04) 45%,
+      rgba(0, 0, 0, 0.1) 100%
+    ),
+    rgba(22, 20, 22, 0.62);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.42),
+    0 1px 0 rgba(255, 255, 255, 0.2) inset;
 }
 
 .landing-cta-panel h3 {
   margin: 0;
   font-size: 1.15rem;
-  font-weight: 300;
+  font-weight: 500;
   font-family: var(--font);
-  color: var(--color-obsidian);
+  color: #fff !important;
 }
 
 .landing-cta-panel .muted {
-  color: var(--color-felt-gray) !important;
+  color: rgba(255, 255, 255, 0.68) !important;
   font-size: 0.9rem;
   margin: 0;
 }
@@ -1112,6 +1232,29 @@ button {
   min-height: 42px;
 }
 
+.landing-cta-panel-actions .btn-primary {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(255, 255, 255, 0.95);
+  color: #121012;
+}
+
+.landing-cta-panel-actions .btn-primary:hover {
+  background: #fff;
+  color: #0a0a0a;
+}
+
+.landing-cta-panel-actions .btn-ghost {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.32);
+  color: #fff;
+}
+
+.landing-cta-panel-actions .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #fff;
+}
+
 .landing-footer {
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   padding: 1.25rem 1.5rem 1.75rem;
@@ -1120,21 +1263,25 @@ button {
 }
 
 .landing-page .landing-section .muted {
-  color: var(--color-felt-gray);
+  color: rgba(255, 255, 255, 0.68);
 }
 
 .landing-page .landing-main > .landing-section:not(:first-child) {
-  color: var(--color-obsidian);
+  color: #fff;
 }
 
-/* Light content band after hero */
+/* Keep landing width */
 .landing-page .landing-main {
   width: min(1078px, 100%);
 }
 
 .landing-page .landing-section .landing-section-head h2,
 .landing-page .landing-about-block h2 {
-  color: var(--color-obsidian);
+  color: #fff !important;
+}
+
+.landing-page .landing-section-head .muted {
+  color: rgba(255, 255, 255, 0.68) !important;
 }
 
 .landing-footer .muted {
