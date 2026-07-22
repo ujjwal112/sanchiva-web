@@ -679,12 +679,18 @@ export default function EventDetail() {
                 );
               })}
 
-              {addingCeremony && (
+              {addingCeremony && (() => {
+                const previewName =
+                  ceremonyAddForm.name === 'Other'
+                    ? ceremonyAddForm.customName || 'Ceremony'
+                    : ceremonyAddForm.name || 'Ceremony';
+                const previewTheme = getCeremonyTheme(previewName);
+                return (
                 <article
-                  className={`ceremony-card ceremony-card--editing ceremony-card--add ceremony-card--${getCeremonyTheme(ceremonyAddForm.name || 'Ceremony').key}`}
+                  className={`ceremony-card ceremony-card--editing ceremony-card--add ceremony-card--${previewTheme.key}`}
                   style={{
-                    background: getCeremonyTheme(ceremonyAddForm.name || 'Ceremony').bg,
-                    borderColor: getCeremonyTheme(ceremonyAddForm.name || 'Ceremony').border,
+                    background: previewTheme.bg,
+                    borderColor: previewTheme.border,
                   }}
                 >
                   <form className="ceremony-card-edit-form" onSubmit={saveNewCeremony}>
@@ -749,7 +755,8 @@ export default function EventDetail() {
                     </div>
                   </form>
                 </article>
-              )}
+                );
+              })()}
             </div>
           </section>
         </>
