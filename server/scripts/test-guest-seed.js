@@ -20,6 +20,24 @@ for (const t of tables) {
   console.log(`${t}: ${rows[0].c}`);
 }
 
+const { rows: eventRows } = await query(
+  `SELECT event_type, sub_type, name FROM events WHERE user_id = $1 ORDER BY id`,
+  [user.id]
+);
+console.log('--- events ---');
+for (const e of eventRows) {
+  console.log(`  [${e.event_type}] ${e.name}${e.sub_type ? ` (${e.sub_type})` : ''}`);
+}
+const items = await query(
+  `SELECT COUNT(*)::int AS c FROM event_items ei JOIN events e ON e.id = ei.event_id WHERE e.user_id = $1`,
+  [user.id]
+);
+const guests = await query(
+  `SELECT COUNT(*)::int AS c FROM event_guests eg JOIN events e ON e.id = eg.event_id WHERE e.user_id = $1`,
+  [user.id]
+);
+console.log('event_items:', items.rows[0].c, 'event_guests:', guests.rows[0].c);
+
 await query(
   `INSERT INTO daily_expenses (user_id, category, amount, expense_date, item_name)
    VALUES ($1,'Food',99,'2026-01-01','Guest add')`,

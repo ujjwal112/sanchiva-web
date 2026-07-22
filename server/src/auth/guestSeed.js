@@ -1,9 +1,11 @@
 /**
  * Guest demo data: shared guest account gets rich sample rows in every
- * module except Events. On logout we wipe session changes and re-seed so
- * the baseline always returns; guest-added rows disappear and edits reset.
+ * module, including Events of every type. On logout we wipe session changes
+ * and re-seed so the baseline always returns; guest-added rows disappear
+ * and edits reset.
  */
 import { query } from '../db.js';
+import { buildEventTemplate } from '../routes/events.js';
 
 export const SHARED_GUEST_PROVIDER_ID = 'shared-demo';
 
@@ -17,6 +19,477 @@ function daysAgo(n) {
   d.setHours(12, 0, 0, 0);
   d.setDate(d.getDate() - n);
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+/** ISO date in the future from today. */
+function daysFromNow(n) {
+  return daysAgo(-n);
+}
+
+function ceremonyMeta(name, date) {
+  const n = String(name).toLowerCase();
+  let theme = 'default';
+  let quote = 'Celebrating this special moment with love, laughter, and joy.';
+  if (n.includes('haldi')) {
+    theme = 'haldi';
+    quote = 'May turmeric bring you glow, joy, and a lifetime of blessings.';
+  } else if (n.includes('mehend') || n.includes('mehndi')) {
+    theme = 'mehendi';
+    quote = 'Every leaf of mehendi is a wish for love that lasts forever.';
+  } else if (n.includes('sangeet')) {
+    theme = 'sangeet';
+    quote = 'Dance like the music was written for your forever.';
+  } else if (n.includes('tilak')) {
+    theme = 'tilak';
+    quote = 'A sacred mark of blessing as two families join in joy.';
+  } else if (n.includes('engag')) {
+    theme = 'engagement';
+    quote = 'Two hearts, one promise, a beautiful lifetime ahead.';
+  } else if (n.includes('nikah')) {
+    theme = 'nikah';
+    quote = 'May faith and love guide every step of your journey together.';
+  } else if (n.includes('walima')) {
+    theme = 'walima';
+    quote = 'May this feast of joy mark the start of endless happiness.';
+  } else if (n.includes('reception')) {
+    theme = 'reception';
+    quote = 'Celebrating love with the ones who matter most.';
+  } else if (n.includes('wedding') || n.includes('main')) {
+    theme = 'wedding';
+    quote = 'Today we begin a beautiful forever, hand in hand.';
+  }
+  return { name, date: date || null, quote, theme };
+}
+
+/**
+ * Create one demo event with todos + a few guests.
+ */
+async function insertDemoEvent(userId, def) {
+  const {
+    name,
+    event_type,
+    sub_type = null,
+    event_date,
+    end_date = null,
+    location,
+    budget,
+    notes,
+    answers = {},
+    ceremonies = [],
+    guests = [],
+    status = 'planning',
+  } = def;
+
+  const ceremony_details = ceremonies.map((c) =>
+    typeof c === 'string' ? ceremonyMeta(c, null) : ceremonyMeta(c.name, c.date)
+  );
+  const ceremonyNames = ceremony_details.map((d) => d.name);
+  const metadata = {
+    ...answers,
+    days: answers.days || 1,
+    guest_estimate: answers.guest_estimate || guests.reduce((s, g) => s + (g.count || 1), 0) || 50,
+    ceremonies: ceremonyNames,
+    ceremony_details,
+  };
+
+  const { rows } = await query(
+    `INSERT INTO events (
+       user_id, name, event_type, sub_type, event_date, end_date,
+       location, budget, notes, metadata, status
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+    [
+      userId,
+      name,
+      event_type,
+      sub_type,
+      event_date,
+      end_date,
+      location,
+      budget,
+      notes,
+      JSON.stringify(metadata),
+      status,
+    ]
+  );
+  const event = rows[0];
+
+  const template = buildEventTemplate(event_type, {
+    ...answers,
+    sub_type,
+    wedding_style: sub_type || answers.wedding_style,
+    ceremonies: ceremonyNames,
+  });
+  for (let i = 0; i < template.length; i++) {
+    const t = template[i];
+    const planned = Number(t.planned_amount) || 0;
+    const token = i % 4 === 0 ? Math.round(planned * 0.2) : 0;
+    const remaining = Math.max(planned - token, 0);
+    await query(
+      `INSERT INTO event_items
+         (event_id, title, category, planned_amount, token_paid, remaining_amount, is_done, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [event.id, t.title, t.category, planned || 5000 + i * 1200, token, remaining || 5000 + i * 1200, i % 5 === 0, i]
+    );
+  }
+
+  for (const g of guests) {
+    await query(
+      `INSERT INTO event_guests (event_id, name, side, ceremony, rsvp, count, notes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [
+        event.id,
+        g.name,
+        g.side || 'Family',
+        g.ceremony || ceremonyNames[0] || 'Main',
+        g.rsvp || 'yes',
+        g.count || 1,
+        g.notes || 'Demo guest',
+      ]
+    );
+  }
+
+  return event;
+}
+
+async function seedDemoEvents(userId) {
+  const weddingGuests = (ceremony) => [
+    { name: 'Aarav Sharma', side: 'Groom', ceremony, rsvp: 'yes', count: 2 },
+    { name: 'Diya Patel', side: 'Bride', ceremony, rsvp: 'yes', count: 3 },
+    { name: 'Rohan Mehta', side: 'Friends', ceremony, rsvp: 'maybe', count: 1 },
+    { name: 'Ananya Iyer', side: 'Bride', ceremony, rsvp: 'yes', count: 2 },
+    { name: 'Kabir Khan', side: 'Groom', ceremony, rsvp: 'no', count: 1 },
+  ];
+
+  // Every app event type — plus multiple wedding styles
+  const defs = [
+    {
+      name: 'Aarav & Diya Wedding',
+      event_type: 'wedding',
+      sub_type: 'Hindu',
+      event_date: daysFromNow(45),
+      end_date: daysFromNow(48),
+      location: 'Jaipur Palace Resort',
+      budget: 1500000,
+      notes: 'Demo Hindu wedding with multi-day ceremonies',
+      answers: {
+        days: 4,
+        guest_estimate: 350,
+        bride_groom: 'Aarav & Diya',
+        venue_budget: 400000,
+        photo_budget: 120000,
+        food_budget: 350000,
+        wedding_style: 'Hindu',
+      },
+      ceremonies: [
+        { name: 'Tilak', date: daysFromNow(40) },
+        { name: 'Engagement', date: daysFromNow(42) },
+        { name: 'Haldi', date: daysFromNow(45) },
+        { name: 'Mehendi', date: daysFromNow(46) },
+        { name: 'Sangeet', date: daysFromNow(46) },
+        { name: 'Main Wedding', date: daysFromNow(47) },
+        { name: 'Reception', date: daysFromNow(48) },
+      ],
+      guests: [
+        ...weddingGuests('Main Wedding'),
+        { name: 'Priya Nair', side: 'Bride', ceremony: 'Mehendi', rsvp: 'yes', count: 2 },
+        { name: 'Vikram Joshi', side: 'Groom', ceremony: 'Sangeet', rsvp: 'yes', count: 2 },
+      ],
+    },
+    {
+      name: 'Sara & Imran Nikah',
+      event_type: 'wedding',
+      sub_type: 'Muslim / Nikah',
+      event_date: daysFromNow(60),
+      end_date: daysFromNow(61),
+      location: 'Hyderabad Grand Ballroom',
+      budget: 900000,
+      notes: 'Demo Nikah + Walima',
+      answers: {
+        days: 2,
+        guest_estimate: 280,
+        wedding_style: 'Muslim / Nikah',
+        venue_budget: 250000,
+        food_budget: 300000,
+      },
+      ceremonies: [
+        { name: 'Nikah', date: daysFromNow(60) },
+        { name: 'Walima', date: daysFromNow(61) },
+        { name: 'Reception', date: daysFromNow(61) },
+      ],
+      guests: weddingGuests('Nikah'),
+    },
+    {
+      name: 'Rachel & John Church Wedding',
+      event_type: 'wedding',
+      sub_type: 'Christian',
+      event_date: daysFromNow(90),
+      location: 'St. Mary Church, Goa',
+      budget: 750000,
+      notes: 'Demo Christian wedding',
+      answers: {
+        days: 1,
+        guest_estimate: 180,
+        wedding_style: 'Christian',
+        venue_budget: 200000,
+      },
+      ceremonies: [
+        { name: 'Main Wedding', date: daysFromNow(90) },
+        { name: 'Reception', date: daysFromNow(90) },
+      ],
+      guests: weddingGuests('Main Wedding'),
+    },
+    {
+      name: 'Gurpreet & Simran Anand Karaj',
+      event_type: 'wedding',
+      sub_type: 'Sikh',
+      event_date: daysFromNow(75),
+      location: 'Amritsar Heritage Hall',
+      budget: 1100000,
+      notes: 'Demo Sikh wedding',
+      answers: { days: 2, guest_estimate: 400, wedding_style: 'Sikh' },
+      ceremonies: [
+        { name: 'Engagement', date: daysFromNow(70) },
+        { name: 'Main Wedding', date: daysFromNow(75) },
+        { name: 'Reception', date: daysFromNow(75) },
+      ],
+      guests: weddingGuests('Main Wedding'),
+    },
+    {
+      name: 'Maya & Alex Interfaith Wedding',
+      event_type: 'wedding',
+      sub_type: 'Interfaith',
+      event_date: daysFromNow(100),
+      location: 'Udaipur Lakeside',
+      budget: 1300000,
+      notes: 'Demo interfaith celebration',
+      answers: { days: 3, guest_estimate: 220, wedding_style: 'Interfaith' },
+      ceremonies: [
+        { name: 'Engagement', date: daysFromNow(95) },
+        { name: 'Main Wedding', date: daysFromNow(100) },
+        { name: 'Reception', date: daysFromNow(101) },
+      ],
+      guests: weddingGuests('Main Wedding'),
+    },
+    {
+      name: 'Court Marriage — Neha & Arjun',
+      event_type: 'wedding',
+      sub_type: 'Civil / Court',
+      event_date: daysFromNow(30),
+      location: 'City Civil Court + Rooftop Dinner',
+      budget: 150000,
+      notes: 'Demo civil wedding + dinner',
+      answers: { days: 1, guest_estimate: 40, wedding_style: 'Civil / Court' },
+      ceremonies: [
+        { name: 'Main Wedding', date: daysFromNow(30) },
+        { name: 'Reception', date: daysFromNow(30) },
+      ],
+      guests: weddingGuests('Reception'),
+    },
+    {
+      name: 'Aanya 5th Birthday Bash',
+      event_type: 'birthday',
+      sub_type: 'Kids party',
+      event_date: daysFromNow(18),
+      location: 'Jump Zone, Pune',
+      budget: 45000,
+      notes: 'Demo kids birthday',
+      answers: {
+        days: 1,
+        celebrant: 'Aanya',
+        age: 5,
+        theme: 'Kids party',
+        guest_estimate: 35,
+      },
+      ceremonies: [{ name: 'Party', date: daysFromNow(18) }],
+      guests: [
+        { name: 'Kid guest A', side: 'School', ceremony: 'Party', rsvp: 'yes', count: 1 },
+        { name: 'Kid guest B', side: 'Cousins', ceremony: 'Party', rsvp: 'yes', count: 2 },
+        { name: 'Riya Aunt', side: 'Family', ceremony: 'Party', rsvp: 'maybe', count: 2 },
+        { name: 'Uncle Sam', side: 'Family', ceremony: 'Party', rsvp: 'yes', count: 2 },
+      ],
+    },
+    {
+      name: 'Rohan Surprise 30th',
+      event_type: 'birthday',
+      sub_type: 'Surprise',
+      event_date: daysFromNow(25),
+      location: 'The Yellow Chilli, Delhi',
+      budget: 60000,
+      notes: 'Demo surprise birthday dinner',
+      answers: {
+        days: 1,
+        celebrant: 'Rohan',
+        age: 30,
+        theme: 'Surprise',
+        guest_estimate: 40,
+      },
+      ceremonies: [{ name: 'Dinner', date: daysFromNow(25) }],
+      guests: [
+        { name: 'Office friend 1', side: 'Friends', ceremony: 'Dinner', rsvp: 'yes', count: 1 },
+        { name: 'Office friend 2', side: 'Friends', ceremony: 'Dinner', rsvp: 'yes', count: 1 },
+        { name: 'College batch', side: 'Friends', ceremony: 'Dinner', rsvp: 'maybe', count: 4 },
+      ],
+    },
+    {
+      name: 'Silver Jubilee — Meera & Dev',
+      event_type: 'anniversary',
+      sub_type: '25 years',
+      event_date: daysFromNow(55),
+      location: 'Taj Vivanta, Bengaluru',
+      budget: 200000,
+      notes: 'Demo 25th anniversary',
+      answers: {
+        days: 1,
+        years: 25,
+        partner_names: 'Meera & Dev',
+        guest_estimate: 80,
+      },
+      ceremonies: [{ name: 'Celebration', date: daysFromNow(55) }],
+      guests: [
+        { name: 'Family table 1', side: 'Family', ceremony: 'Celebration', rsvp: 'yes', count: 4 },
+        { name: 'Family table 2', side: 'Family', ceremony: 'Celebration', rsvp: 'yes', count: 3 },
+        { name: 'Neighbors', side: 'Friends', ceremony: 'Celebration', rsvp: 'maybe', count: 2 },
+      ],
+    },
+    {
+      name: '1st Anniversary Dinner',
+      event_type: 'anniversary',
+      sub_type: '1 year',
+      event_date: daysFromNow(12),
+      location: 'Olive Bar & Kitchen',
+      budget: 25000,
+      notes: 'Demo intimate anniversary',
+      answers: { days: 1, years: 1, partner_names: 'Isha & Karan', guest_estimate: 2 },
+      ceremonies: [{ name: 'Dinner', date: daysFromNow(12) }],
+      guests: [
+        { name: 'Isha', side: 'Couple', ceremony: 'Dinner', rsvp: 'yes', count: 1 },
+        { name: 'Karan', side: 'Couple', ceremony: 'Dinner', rsvp: 'yes', count: 1 },
+      ],
+    },
+    {
+      name: 'New Home Gruhapravesh',
+      event_type: 'housewarming',
+      sub_type: 'Gruhapravesh',
+      event_date: daysFromNow(22),
+      location: 'Sector 62, Noida',
+      budget: 80000,
+      notes: 'Demo housewarming / pooja',
+      answers: {
+        days: 1,
+        sub_type: 'Gruhapravesh',
+        priority: 'Rituals',
+        guest_estimate: 60,
+      },
+      ceremonies: [
+        { name: 'Pooja', date: daysFromNow(22) },
+        { name: 'Lunch', date: daysFromNow(22) },
+      ],
+      guests: [
+        { name: 'Panditji', side: 'Rituals', ceremony: 'Pooja', rsvp: 'yes', count: 1 },
+        { name: 'Parents', side: 'Family', ceremony: 'Pooja', rsvp: 'yes', count: 4 },
+        { name: 'Colleagues', side: 'Friends', ceremony: 'Lunch', rsvp: 'maybe', count: 6 },
+      ],
+    },
+    {
+      name: 'Apartment Warming Party',
+      event_type: 'housewarming',
+      sub_type: 'Casual',
+      event_date: daysFromNow(35),
+      location: 'Whitefield, Bengaluru',
+      budget: 40000,
+      notes: 'Demo casual housewarming',
+      answers: { days: 1, priority: 'Guest experience', guest_estimate: 45 },
+      ceremonies: [{ name: 'Party', date: daysFromNow(35) }],
+      guests: [
+        { name: 'Building friends', side: 'Neighbors', ceremony: 'Party', rsvp: 'yes', count: 8 },
+        { name: 'College friends', side: 'Friends', ceremony: 'Party', rsvp: 'yes', count: 5 },
+      ],
+    },
+    {
+      name: 'Q3 All-Hands Meet',
+      event_type: 'corporate',
+      sub_type: 'Town hall',
+      event_date: daysFromNow(14),
+      location: 'WeWork Galaxy, Mumbai',
+      budget: 350000,
+      notes: 'Demo corporate event',
+      answers: {
+        days: 1,
+        sub_type: 'Company town hall',
+        priority: 'Guest experience',
+        guest_estimate: 200,
+      },
+      ceremonies: [
+        { name: 'Keynote', date: daysFromNow(14) },
+        { name: 'Networking', date: daysFromNow(14) },
+      ],
+      guests: [
+        { name: 'Leadership', side: 'Internal', ceremony: 'Keynote', rsvp: 'yes', count: 12 },
+        { name: 'Engineering', side: 'Internal', ceremony: 'Keynote', rsvp: 'yes', count: 40 },
+        { name: 'Partners', side: 'External', ceremony: 'Networking', rsvp: 'maybe', count: 15 },
+      ],
+    },
+    {
+      name: 'Product Launch Evening',
+      event_type: 'corporate',
+      sub_type: 'Launch',
+      event_date: daysFromNow(50),
+      location: 'JW Marriott, Hyderabad',
+      budget: 500000,
+      notes: 'Demo product launch',
+      answers: { days: 1, priority: 'Photography', guest_estimate: 150 },
+      ceremonies: [
+        { name: 'Demo', date: daysFromNow(50) },
+        { name: 'Reception', date: daysFromNow(50) },
+      ],
+      guests: [
+        { name: 'Press desk', side: 'Media', ceremony: 'Demo', rsvp: 'yes', count: 10 },
+        { name: 'VIP clients', side: 'Clients', ceremony: 'Reception', rsvp: 'yes', count: 25 },
+      ],
+    },
+    {
+      name: 'Community Charity Gala',
+      event_type: 'other',
+      sub_type: 'Charity fundraiser',
+      event_date: daysFromNow(40),
+      location: 'City Convention Center',
+      budget: 275000,
+      notes: 'Demo custom / other event',
+      answers: {
+        days: 1,
+        sub_type: 'Charity fundraiser',
+        priority: 'Budget control',
+        guest_estimate: 120,
+      },
+      ceremonies: [
+        { name: 'Auction', date: daysFromNow(40) },
+        { name: 'Dinner', date: daysFromNow(40) },
+      ],
+      guests: [
+        { name: 'Sponsor A', side: 'Sponsors', ceremony: 'Dinner', rsvp: 'yes', count: 4 },
+        { name: 'Volunteer team', side: 'Organizers', ceremony: 'Auction', rsvp: 'yes', count: 8 },
+      ],
+    },
+    {
+      name: 'College Reunion 2015 Batch',
+      event_type: 'other',
+      sub_type: 'Reunion',
+      event_date: daysFromNow(70),
+      location: 'Alumni Club, Chennai',
+      budget: 90000,
+      notes: 'Demo reunion event',
+      answers: { days: 1, sub_type: 'College reunion', priority: 'Guest experience', guest_estimate: 90 },
+      ceremonies: [{ name: 'Meetup', date: daysFromNow(70) }],
+      guests: [
+        { name: 'Batch coordinator', side: 'Organizers', ceremony: 'Meetup', rsvp: 'yes', count: 1 },
+        { name: 'Hostel wing A', side: 'Alumni', ceremony: 'Meetup', rsvp: 'maybe', count: 12 },
+      ],
+    },
+  ];
+
+  for (const def of defs) {
+    await insertDemoEvent(userId, def);
+  }
 }
 
 const EXPENSE_CATS = ['Ecommerce', 'Grocery', 'Food', 'Travel', 'Electronics', 'Miscellaneous', 'Other'];
@@ -139,13 +612,13 @@ export async function resetGuestDemoData(userId) {
   await query('DELETE FROM assets WHERE user_id = $1', [userId]);
   await query('DELETE FROM money_given WHERE user_id = $1', [userId]);
   await query('DELETE FROM custom_categories WHERE user_id = $1', [userId]);
-  // Events intentionally not seeded; still clear any guest-created events.
+  // Events cascade items/guests; re-seed includes every event type.
   await query('DELETE FROM events WHERE user_id = $1', [userId]);
   await seedGuestDemoData(userId);
 }
 
 /**
- * Insert baseline demo data for every module except Events (≥20 rows each).
+ * Insert baseline demo data for every module (≥20 rows where listed; all event types).
  */
 export async function seedGuestDemoData(userId) {
   // Daily expenses — 24 rows across categories
@@ -301,6 +774,9 @@ export async function seedGuestDemoData(userId) {
       /* ignore duplicates if unique index exists */
     }
   }
+
+  // Events — every type (wedding styles + birthday, anniversary, housewarming, corporate, other)
+  await seedDemoEvents(userId);
 }
 
 /**
