@@ -3320,11 +3320,13 @@ table.data-table tbody tr:hover {
 .ceremony-card {
   position: relative;
   padding: 1.05rem 1.1rem 1.15rem;
-  border-radius: 16px;
+  border-radius: 18px;
   border: 1px solid;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.75) inset;
   overflow: hidden;
-  min-height: 148px;
+  min-height: 158px;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -3333,7 +3335,9 @@ table.data-table tbody tr:hover {
 
 .ceremony-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22);
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.85) inset;
 }
 
 .ceremony-card-top {
@@ -3362,26 +3366,38 @@ table.data-table tbody tr:hover {
   margin: 0;
   font-size: 0.88rem;
   font-weight: 600;
-  opacity: 0.92;
-  color: var(--text);
+  opacity: 0.9;
 }
 
 .ceremony-card-quote {
-  margin: 0.35rem 0 0;
-  padding: 0;
+  margin: 0.4rem 0 0;
+  padding: 0.55rem 0.65rem;
   border: none;
-  font-size: 0.82rem;
+  border-radius: 12px;
+  font-size: 0.86rem;
   font-style: italic;
-  line-height: 1.45;
-  opacity: 0.95;
+  font-weight: 500;
+  line-height: 1.5;
   flex: 1;
+  /* Soft glass panel under quote for contrast on colored cards */
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+  /* color set inline from theme.text (deep tint matching ceremony) */
 }
 
 .ceremony-card-edit-btn {
   flex-shrink: 0;
   padding: 0.25rem 0.55rem;
   font-size: 0.75rem;
-  opacity: 0.9;
+  opacity: 0.95;
+  color: inherit;
+  border-color: rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.ceremony-card-edit-btn:hover {
+  background: rgba(255, 255, 255, 0.8);
 }
 
 .ceremony-card--editing {

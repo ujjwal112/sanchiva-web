@@ -582,11 +582,11 @@ export default function EventDetail() {
                               Edit
                             </button>
                           </div>
-                          <p className="ceremony-card-date">
+                          <p className="ceremony-card-date" style={{ color: theme.text }}>
                             {card.date ? formatDate(card.date) : 'Date not set'}
                           </p>
                           <blockquote className="ceremony-card-quote" style={{ color: theme.text }}>
-                            “{card.quote}”
+                            “{card.quote || theme.quote}”
                           </blockquote>
                         </>
                       )}
