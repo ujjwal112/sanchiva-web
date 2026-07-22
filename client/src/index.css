@@ -1210,39 +1210,38 @@ button {
 .auth-form .field label {
   font-size: 0.82rem;
   margin-bottom: 0.3rem;
-  color: #1a1a1a;
+  color: rgba(255, 255, 255, 0.88);
   font-weight: 500;
 }
 
+/* Dark glass inputs — match ref panel */
 .auth-form .field input,
 .auth-form .field .password-input-field {
   width: 100%;
   min-height: 48px;
   border-radius: 14px !important;
-  background: rgba(255, 255, 255, 0.88) !important;
-  backdrop-filter: blur(12px) saturate(160%);
-  -webkit-backdrop-filter: blur(12px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.95) !important;
-  outline: 1px solid rgba(0, 0, 0, 0.08);
-  outline-offset: -1px;
-  color: #0a0a0a !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  outline: none;
+  color: #fff !important;
   font-weight: 500;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.95) inset, 0 6px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1) inset, 0 6px 18px rgba(0, 0, 0, 0.2);
 }
 
 .auth-form .field input::placeholder,
 .auth-form .field .password-input-field::placeholder {
-  color: #5a5a5a;
+  color: rgba(255, 255, 255, 0.48);
   opacity: 1;
 }
 
 .auth-form .field input:focus,
 .auth-form .field .password-input-field:focus {
-  background: #fff !important;
-  border-color: rgba(255, 255, 255, 1) !important;
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08), 0 1px 0 rgba(255, 255, 255, 1) inset,
-    0 8px 22px rgba(0, 0, 0, 0.1);
-  outline-color: rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.42) !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1), 0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 8px 22px rgba(0, 0, 0, 0.25);
 }
 
 /* Password show/hide peek control */
@@ -1291,18 +1290,18 @@ button {
   text-align: center;
   margin-top: 1.15rem;
   font-size: 0.9rem;
-  color: #2a2a2a !important;
+  color: rgba(255, 255, 255, 0.72) !important;
 }
 
 .auth-switch a {
-  color: #0a0a0a;
+  color: #fff;
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .auth-switch a:hover {
-  color: #000;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .auth-email-chip {
@@ -1313,30 +1312,35 @@ button {
   margin-bottom: 0.85rem;
   padding: 0.7rem 0.9rem;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 4px 14px rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1) inset, 0 4px 14px rgba(0, 0, 0, 0.18);
   font-size: 0.9rem;
-  color: #0a0a0a;
+  color: #fff;
 }
 
 .auth-email-chip .muted {
-  color: #3a3a3a !important;
+  color: rgba(255, 255, 255, 0.62) !important;
 }
 
 .auth-email-chip strong {
   flex: 1;
   min-width: 0;
   word-break: break-all;
-  color: #0a0a0a;
+  color: #fff;
   font-weight: 600;
+}
+
+.auth-email-chip .btn-ghost {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
 }
 
 .auth-text-btn {
   background: none;
   border: none;
   padding: 0;
-  color: #0a0a0a;
+  color: #fff;
   font-weight: 600;
   cursor: pointer;
   font-size: inherit;
@@ -1345,7 +1349,7 @@ button {
 }
 
 .auth-text-btn:hover {
-  color: #000;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 @media (max-width: 800px) {
@@ -1368,7 +1372,10 @@ button {
   }
 }
 
-/* Login / signup page — liquid glass card with readable dark text */
+/*
+ * Login / signup — dark liquid glass matching design/refimage
+ * (frosted charcoal panel, soft rim, white readable type)
+ */
 .login-page {
   min-height: 100vh;
   display: grid;
@@ -1380,31 +1387,33 @@ button {
 
 .login-card {
   width: min(420px, 100%);
-  padding: 2.1rem 1.85rem !important;
+  padding: 2.15rem 1.9rem !important;
   text-align: center;
   position: relative;
-  /* Solid-enough liquid glass so iridescent bg doesn’t wash out text */
+  /* Ref: dark translucent glass, not milky white fog */
   background: linear-gradient(
-      155deg,
-      rgba(255, 255, 255, 0.82) 0%,
-      rgba(255, 255, 255, 0.62) 42%,
-      rgba(255, 255, 255, 0.72) 100%
+      160deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.04) 42%,
+      rgba(0, 0, 0, 0.08) 100%
     ),
-    rgba(248, 249, 252, 0.78) !important;
-  backdrop-filter: blur(40px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(40px) saturate(190%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.95) !important;
-  outline: 1px solid rgba(0, 0, 0, 0.08);
-  outline-offset: -1px;
-  border-radius: 24px !important;
+    rgba(28, 24, 26, 0.62) !important;
+  backdrop-filter: blur(36px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(170%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  outline: none;
+  border-radius: 28px !important;
   box-shadow:
-    0 28px 64px rgba(0, 0, 0, 0.28),
-    0 2px 0 rgba(255, 255, 255, 0.98) inset,
-    0 -1px 0 rgba(0, 0, 0, 0.04) inset !important;
-  color: #0a0a0a;
+    0 28px 70px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.25) inset !important;
+  color: #fff;
   overflow: hidden;
+  isolation: isolate;
 }
 
+/* Kill generic .card light sheen on auth panels */
+.login-card.card::before,
 .login-card::before {
   content: '';
   position: absolute;
@@ -1412,23 +1421,29 @@ button {
   border-radius: inherit;
   background: linear-gradient(
     155deg,
-    rgba(255, 255, 255, 0.72) 0%,
-    rgba(255, 255, 255, 0.14) 38%,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0.04) 36%,
     transparent 58%,
-    rgba(255, 255, 255, 0.12) 100%
+    rgba(255, 255, 255, 0.05) 100%
   );
   pointer-events: none;
   z-index: 0;
 }
 
+.login-card.card::after,
 .login-card::after {
   content: '';
   position: absolute;
   top: 0;
-  left: 12%;
-  right: 12%;
+  left: 10%;
+  right: 10%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 1), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.45),
+    transparent
+  );
   pointer-events: none;
   z-index: 1;
 }
@@ -1442,7 +1457,7 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
   margin-bottom: 1rem;
 }
 
@@ -1451,7 +1466,7 @@ button {
   font-size: 1.85rem;
   font-weight: 500;
   letter-spacing: normal;
-  color: #0a0a0a !important;
+  color: #fff !important;
   background: none;
   -webkit-background-clip: unset;
   background-clip: unset;
@@ -1459,20 +1474,20 @@ button {
 
 .login-page .muted,
 .login-page .login-sub {
-  color: #2e2e2e !important;
+  color: rgba(255, 255, 255, 0.68) !important;
 }
 
 .login-page .login-back-link {
-  color: #2a2a2a !important;
+  color: rgba(255, 255, 255, 0.72) !important;
   font-weight: 500;
 }
 
 .login-page .login-back-link:hover {
-  color: #0a0a0a !important;
+  color: #fff !important;
 }
 
 .login-motto {
-  color: #1a1a1a;
+  color: rgba(255, 255, 255, 0.88);
   font-weight: 500;
   font-size: 0.95rem;
 }
@@ -1481,7 +1496,7 @@ button {
   margin-bottom: 1.25rem;
   font-size: 0.92rem;
   line-height: 1.45;
-  color: #2e2e2e !important;
+  color: rgba(255, 255, 255, 0.68) !important;
 }
 
 .login-buttons {
@@ -1499,36 +1514,37 @@ button {
   min-height: 48px;
   border-radius: 75px;
   font-weight: 500;
-  border: 1px solid rgba(0, 0, 0, 0.78);
-  background: rgba(255, 255, 255, 0.55);
-  color: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
   transition: transform 0.35s var(--ease-glide), background 0.35s ease, color 0.35s ease,
-    box-shadow 0.35s ease;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 6px 16px rgba(0, 0, 0, 0.08);
+    border-color 0.35s ease, box-shadow 0.35s ease;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
 .login-btn:hover:not(:disabled) {
-  transform: translateY(-1px) scale(1.01);
-  background: #0a0a0a;
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.2);
   color: #fff;
-  border-color: #0a0a0a;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
 .login-btn.btn-primary,
 .btn-primary.login-btn {
-  background: #0a0a0a;
-  border-color: #0a0a0a;
-  color: #fff;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22), 0 1px 0 rgba(255, 255, 255, 0.12) inset;
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(255, 255, 255, 0.95);
+  color: #121012;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3), 0 1px 0 rgba(255, 255, 255, 0.85) inset;
 }
 
 .login-btn.btn-primary:hover:not(:disabled),
 .btn-primary.login-btn:hover:not(:disabled) {
-  background: #1a1a1a;
-  color: #fff;
+  background: #fff;
+  color: #0a0a0a;
   filter: none;
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+  border-color: #fff;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
 }
 
 .login-btn:disabled {
@@ -1543,22 +1559,27 @@ button {
   display: grid;
   place-items: center;
   font-weight: 800;
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.12);
   color: inherit;
 }
 
+.login-btn.btn-primary .login-btn-icon {
+  background: rgba(0, 0, 0, 0.08);
+  color: #121012;
+}
+
 .login-btn:hover:not(:disabled) .login-btn-icon {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .login-google:hover:not(:disabled) {
-  border-color: rgba(66, 133, 244, 0.55);
+  border-color: rgba(120, 170, 255, 0.65);
 }
 .login-facebook:hover:not(:disabled) {
-  border-color: rgba(24, 119, 242, 0.55);
+  border-color: rgba(100, 160, 255, 0.65);
 }
 .login-microsoft:hover:not(:disabled) {
-  border-color: rgba(0, 164, 239, 0.55);
+  border-color: rgba(120, 210, 255, 0.65);
 }
 
 .login-divider {
@@ -1566,7 +1587,7 @@ button {
   align-items: center;
   gap: 0.75rem;
   margin: 0.35rem 0;
-  color: #3a3a3a;
+  color: rgba(255, 255, 255, 0.55);
   font-size: 0.8rem;
   font-weight: 500;
 }
@@ -1576,17 +1597,17 @@ button {
   content: '';
   flex: 1;
   height: 1px;
-  background: rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .login-guest {
-  background: rgba(255, 255, 255, 0.7);
-  border-color: rgba(0, 0, 0, 0.55);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.28);
 }
 
 .login-guest:hover:not(:disabled) {
-  border-color: #0a0a0a;
-  background: #0a0a0a;
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.16);
   color: #fff;
 }
 
@@ -1598,9 +1619,9 @@ button {
   margin-bottom: 1rem;
   padding: 0.7rem 0.9rem;
   border-radius: 12px;
-  background: rgba(180, 40, 50, 0.1);
-  border: 1px solid rgba(140, 30, 40, 0.35);
-  color: #7a1820;
+  background: rgba(255, 90, 100, 0.16);
+  border: 1px solid rgba(255, 140, 150, 0.4);
+  color: #ffc9ce;
   font-size: 0.88rem;
   font-weight: 500;
   text-align: left;
@@ -1611,17 +1632,17 @@ button {
   margin-top: 1rem;
   font-size: 0.78rem;
   line-height: 1.45;
-  color: #3a3a3a !important;
+  color: rgba(255, 255, 255, 0.55) !important;
 }
 
-/* Password peek on auth glass cards */
+/* Password peek on dark auth glass */
 .login-page .password-peek-btn {
-  color: #4a4a4a;
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .login-page .password-peek-btn:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: #0a0a0a;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
 
