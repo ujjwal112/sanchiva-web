@@ -107,8 +107,12 @@ export default function Landing() {
       // Direct mapping — snappy card switches
       const p = clamp(-rect.top / scrollable, 0, 1);
       setProgress(p);
-      // Each segment of progress = one card (only one visible)
-      const idx = Math.min(FEATURES.length - 1, Math.floor(p * FEATURES.length * 0.999));
+      // Each segment of progress = one card (only one visible).
+      // At the very end (p ≈ 1), always keep the last card active.
+      const idx =
+        p >= 0.995
+          ? FEATURES.length - 1
+          : Math.min(FEATURES.length - 1, Math.floor(p * FEATURES.length));
       setActiveIndex(idx);
     };
 
@@ -205,7 +209,9 @@ export default function Landing() {
                 </div>
                 <div className="landing-features-counter" aria-live="polite">
                   <span className="landing-features-counter-num">
-                    {String(activeIndex + 1).padStart(2, '0')}
+                    {String(
+                      (progress >= 0.995 ? FEATURES.length - 1 : activeIndex) + 1
+                    ).padStart(2, '0')}
                   </span>
                   <span className="landing-features-counter-sep">/</span>
                   <span className="landing-features-counter-total">
@@ -217,9 +223,14 @@ export default function Landing() {
 
             <div className="landing-features-stage landing-features-stage--solo">
               {FEATURES.map((f, i) => {
-                const isFront = reduceMotion || i === activeIndex;
-                // Within the active segment, fade out near the end and next fades in
-                const seg = 1 / FEATURES.length;
+                const n = FEATURES.length;
+                const isLast = i === n - 1;
+                // Prefer sticky active index; force last card when scrub is fully complete
+                const showIndex =
+                  progress >= 0.995 ? n - 1 : activeIndex;
+                const isFront = reduceMotion || i === showIndex;
+
+                const seg = 1 / n;
                 const local = clamp((progress - i * seg) / seg, 0, 1);
                 let opacity = 0;
                 let y = 28;
@@ -229,14 +240,27 @@ export default function Landing() {
                   opacity = 1;
                   y = 0;
                   scale = 1;
-                } else if (i === activeIndex) {
-                  // Enter fast, hold readable, exit fast near end of segment
-                  if (local < 0.12) {
+                } else if (i === showIndex) {
+                  // Last card never exits — stay fully visible at the bottom of the section
+                  if (isLast) {
+                    if (local < 0.15) {
+                      const t = local / 0.15;
+                      opacity = t;
+                      y = 20 * (1 - t);
+                      scale = 0.97 + 0.03 * t;
+                    } else {
+                      opacity = 1;
+                      y = 0;
+                      scale = 1;
+                    }
+                  } else if (local < 0.12) {
+                    // Enter fast
                     const t = local / 0.12;
                     opacity = t;
                     y = 24 * (1 - t);
                     scale = 0.96 + 0.04 * t;
                   } else if (local > 0.88) {
+                    // Exit fast toward next card (not used for last)
                     const t = (local - 0.88) / 0.12;
                     opacity = 1 - t;
                     y = -18 * t;
