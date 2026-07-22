@@ -25,40 +25,27 @@ ChartJS.register(
   Filler
 );
 
-/** Light theme palette */
-const PALETTE_LIGHT = [
-  '#3ecf8e',
-  '#ff9f1c',
-  '#7c6cff',
-  '#22d3ee',
-  '#f43f5e',
-  '#a3e635',
-  '#fb7185',
-  '#38bdf8',
-  '#c084fc',
-  '#fbbf24',
-  '#34d399',
-  '#e879f9',
-];
-
 /**
- * Dark theme palette — brighter / neon-glass so series pop on dark cards
- * (mint, amber, violet, cyan, rose, lime…)
+ * Colorful chart palette — liquid-glass friendly (mint / amber / coral / violet / cyan).
+ * Matches landing iridescent accents on light glass cards.
  */
-const PALETTE_DARK = [
-  '#5eead4', // teal mint
+const PALETTE = [
+  '#3ecf8e', // mint
+  '#ff9f1c', // amber
+  '#7c6cff', // violet
+  '#22d3ee', // cyan
+  '#f43f5e', // rose
+  '#a3e635', // lime
+  '#fb7185', // soft coral
+  '#38bdf8', // sky
+  '#c084fc', // purple
   '#fbbf24', // gold
-  '#a78bfa', // soft violet
-  '#67e8f9', // bright cyan
-  '#fb7185', // rose
-  '#bef264', // lime
-  '#f472b6', // pink
-  '#60a5fa', // blue
-  '#c4b5fd', // lavender
-  '#fcd34d', // yellow
-  '#6ee7b7', // emerald
+  '#34d399', // emerald
   '#e879f9', // fuchsia
 ];
+
+const PALETTE_SOFT = PALETTE.map((hex) => withAlpha(hex, 0.78));
+const PALETTE_GLOW = PALETTE.map((hex) => withAlpha(hex, 0.22));
 
 function withAlpha(hex, alpha) {
   const h = hex.replace('#', '');
@@ -70,43 +57,28 @@ function withAlpha(hex, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function colorAt(i) {
+  return PALETTE[i % PALETTE.length];
+}
+
+function softAt(i) {
+  return PALETTE_SOFT[i % PALETTE_SOFT.length];
+}
+
+const fontFamily = "'Inter', system-ui, sans-serif";
+
 function isAppDark() {
   if (typeof document === 'undefined') return false;
   return document.documentElement.getAttribute('data-theme') === 'dark';
 }
 
-function palette() {
-  return isAppDark() ? PALETTE_DARK : PALETTE_LIGHT;
-}
-
-function colorAt(i) {
-  const p = palette();
-  return p[i % p.length];
-}
-
-function softAt(i) {
-  // Dark mode: more opaque fills so bars/slices don’t look muddy
-  return withAlpha(colorAt(i), isAppDark() ? 0.88 : 0.78);
-}
-
-function glowAt(i) {
-  return withAlpha(colorAt(i), isAppDark() ? 0.35 : 0.22);
-}
-
-const fontFamily = "'Inter', system-ui, sans-serif";
-
 function chartChrome() {
   const dark = isAppDark();
   return {
-    dark,
-    legend: dark ? 'rgba(255,255,255,0.88)' : '#3a3a3a',
-    ticks: dark ? 'rgba(255,255,255,0.72)' : '#5a5a5a',
-    grid: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0, 0, 0, 0.06)',
-    // Dark: subtle ring between slices; light: white glass edge
-    pieBorder: dark ? 'rgba(12, 12, 16, 0.92)' : 'rgba(255, 255, 255, 0.92)',
-    pieHoverBorder: dark ? 'rgba(255,255,255,0.85)' : '#fff',
-    tooltipBg: dark ? 'rgba(18, 16, 24, 0.94)' : 'rgba(28, 24, 26, 0.88)',
-    tooltipBorder: dark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.18)',
+    legend: dark ? 'rgba(255,255,255,0.78)' : '#3a3a3a',
+    ticks: dark ? 'rgba(255,255,255,0.62)' : '#5a5a5a',
+    grid: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0, 0, 0, 0.06)',
+    pieBorder: dark ? 'rgba(20, 18, 22, 0.85)' : 'rgba(255, 255, 255, 0.92)',
   };
 }
 
@@ -120,19 +92,19 @@ function baseOptions() {
         position: 'bottom',
         labels: {
           color: c.legend,
-          boxWidth: 12,
-          boxHeight: 12,
-          borderRadius: 4,
+          boxWidth: 11,
+          boxHeight: 11,
+          borderRadius: 3,
           useBorderRadius: true,
           padding: 14,
           font: { family: fontFamily, size: 11, weight: '500' },
         },
       },
       tooltip: {
-        backgroundColor: c.tooltipBg,
+        backgroundColor: 'rgba(28, 24, 26, 0.88)',
         titleColor: '#fff',
-        bodyColor: 'rgba(255,255,255,0.9)',
-        borderColor: c.tooltipBorder,
+        bodyColor: 'rgba(255,255,255,0.88)',
+        borderColor: 'rgba(255,255,255,0.18)',
         borderWidth: 1,
         padding: 12,
         cornerRadius: 12,
@@ -151,7 +123,7 @@ function scaleOpts() {
     ticks: {
       color: c.ticks,
       font: { family: fontFamily, size: 11 },
-      padding: 8,
+      padding: 6,
     },
     grid: {
       color: c.grid,
@@ -172,17 +144,16 @@ export function PieChart({ labels = [], values = [], doughnut = false }) {
         data: values,
         backgroundColor: labels.map((_, i) => softAt(i)),
         borderColor: chrome.pieBorder,
-        borderWidth: chrome.dark ? 2.5 : 3,
-        hoverOffset: 12,
-        hoverBorderColor: chrome.pieHoverBorder,
+        borderWidth: 3,
+        hoverOffset: 10,
+        hoverBorderColor: '#fff',
         hoverBorderWidth: 3,
-        hoverBackgroundColor: labels.map((_, i) => colorAt(i)),
       },
     ],
   };
   const options = {
     ...base,
-    cutout: doughnut ? (chrome.dark ? '62%' : '58%') : undefined,
+    cutout: doughnut ? '58%' : undefined,
     plugins: {
       ...base.plugins,
       legend: {
@@ -204,7 +175,7 @@ export function PieChart({ labels = [], values = [], doughnut = false }) {
   };
   const Comp = doughnut ? Doughnut : Pie;
   return (
-    <div className={`chart-box chart-box--${theme}`} key={theme}>
+    <div className="chart-box" key={theme}>
       {labels.length ? (
         <Comp data={data} options={options} />
       ) : (
@@ -216,7 +187,6 @@ export function PieChart({ labels = [], values = [], doughnut = false }) {
 
 export function BarChart({ labels = [], values = [], label = 'Amount', horizontal = false }) {
   const { theme } = useTheme();
-  const dark = isAppDark();
   const data = {
     labels,
     datasets: [
@@ -225,8 +195,8 @@ export function BarChart({ labels = [], values = [], label = 'Amount', horizonta
         data: values,
         backgroundColor: labels.map((_, i) => softAt(i)),
         hoverBackgroundColor: labels.map((_, i) => colorAt(i)),
-        borderColor: labels.map((_, i) => withAlpha(colorAt(i), dark ? 0.65 : 0.35)),
-        borderWidth: dark ? 1.5 : 1,
+        borderColor: labels.map((_, i) => withAlpha(colorAt(i), 0.35)),
+        borderWidth: 1,
         borderRadius: 10,
         borderSkipped: false,
         maxBarThickness: 42,
@@ -243,7 +213,7 @@ export function BarChart({ labels = [], values = [], label = 'Amount', horizonta
     },
   };
   return (
-    <div className={`chart-box chart-box--${theme}`} key={theme}>
+    <div className="chart-box" key={theme}>
       {labels.length ? (
         <Bar data={data} options={options} />
       ) : (
@@ -255,7 +225,6 @@ export function BarChart({ labels = [], values = [], label = 'Amount', horizonta
 
 export function MultiBarChart({ labels = [], datasets = [] }) {
   const { theme } = useTheme();
-  const dark = isAppDark();
   const data = {
     labels,
     datasets: datasets.map((ds, i) => ({
@@ -263,8 +232,8 @@ export function MultiBarChart({ labels = [], datasets = [] }) {
       data: ds.values,
       backgroundColor: softAt(i),
       hoverBackgroundColor: colorAt(i),
-      borderColor: withAlpha(colorAt(i), dark ? 0.65 : 0.4),
-      borderWidth: dark ? 1.5 : 1,
+      borderColor: withAlpha(colorAt(i), 0.4),
+      borderWidth: 1,
       borderRadius: 8,
       borderSkipped: false,
       maxBarThickness: 36,
@@ -276,7 +245,7 @@ export function MultiBarChart({ labels = [], datasets = [] }) {
     scales: { x: scales, y: scales },
   };
   return (
-    <div className={`chart-box chart-box--${theme}`} key={theme}>
+    <div className="chart-box" key={theme}>
       {labels.length ? (
         <Bar data={data} options={options} />
       ) : (
@@ -288,46 +257,33 @@ export function MultiBarChart({ labels = [], datasets = [] }) {
 
 export function LineChart({ labels = [], values = [], label = 'Total' }) {
   const { theme } = useTheme();
-  const dark = isAppDark();
-  const lineColor = dark ? '#a78bfa' : '#7c6cff';
-  const pointHover = dark ? '#67e8f9' : '#22d3ee';
-
   const data = {
     labels,
     datasets: [
       {
         label,
         data: values,
-        borderColor: lineColor,
+        borderColor: '#7c6cff',
         backgroundColor: (ctx) => {
           const chart = ctx.chart;
           const { ctx: c, chartArea } = chart;
-          if (!chartArea) {
-            return dark ? 'rgba(167, 139, 250, 0.2)' : 'rgba(124, 108, 255, 0.12)';
-          }
+          if (!chartArea) return 'rgba(124, 108, 255, 0.12)';
           const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-          if (dark) {
-            g.addColorStop(0, 'rgba(167, 139, 250, 0.45)');
-            g.addColorStop(0.45, 'rgba(103, 232, 249, 0.18)');
-            g.addColorStop(1, 'rgba(94, 234, 212, 0.02)');
-          } else {
-            g.addColorStop(0, 'rgba(124, 108, 255, 0.35)');
-            g.addColorStop(0.55, 'rgba(34, 211, 238, 0.12)');
-            g.addColorStop(1, 'rgba(62, 207, 142, 0.02)');
-          }
+          g.addColorStop(0, 'rgba(124, 108, 255, 0.35)');
+          g.addColorStop(0.55, 'rgba(34, 211, 238, 0.12)');
+          g.addColorStop(1, 'rgba(62, 207, 142, 0.02)');
           return g;
         },
         fill: true,
         tension: 0.42,
-        borderWidth: dark ? 3 : 2.5,
-        pointBackgroundColor: dark ? '#1a1820' : '#fff',
-        pointBorderColor: lineColor,
+        borderWidth: 2.5,
+        pointBackgroundColor: '#fff',
+        pointBorderColor: '#7c6cff',
         pointBorderWidth: 2,
         pointRadius: 4,
-        pointHoverRadius: 7,
-        pointHoverBackgroundColor: pointHover,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: '#22d3ee',
         pointHoverBorderColor: '#fff',
-        pointHoverBorderWidth: 2,
       },
     ],
   };
@@ -337,7 +293,7 @@ export function LineChart({ labels = [], values = [], label = 'Total' }) {
     scales: { x: scales, y: scales },
   };
   return (
-    <div className={`chart-box chart-box--${theme}`} key={theme}>
+    <div className="chart-box" key={theme}>
       {labels.length ? (
         <Line data={data} options={options} />
       ) : (
