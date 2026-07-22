@@ -105,14 +105,14 @@ export default function Landing() {
       const rect = pin.getBoundingClientRect();
       const scrollable = Math.max(1, pin.offsetHeight - window.innerHeight);
       // Direct mapping — snappy card switches
+      // When pin top is still below viewport top (not sticky yet), p can be < 0 → clamp to 0
       const p = clamp(-rect.top / scrollable, 0, 1);
       setProgress(p);
       // Each segment of progress = one card (only one visible).
-      // At the very end (p ≈ 1), always keep the last card active.
-      const idx =
-        p >= 0.995
-          ? FEATURES.length - 1
-          : Math.min(FEATURES.length - 1, Math.floor(p * FEATURES.length));
+      // Start: always first card; end: always last card.
+      let idx = Math.min(FEATURES.length - 1, Math.floor(p * FEATURES.length));
+      if (p <= 0.02) idx = 0;
+      if (p >= 0.995) idx = FEATURES.length - 1;
       setActiveIndex(idx);
     };
 
@@ -210,7 +210,11 @@ export default function Landing() {
                 <div className="landing-features-counter" aria-live="polite">
                   <span className="landing-features-counter-num">
                     {String(
-                      (progress >= 0.995 ? FEATURES.length - 1 : activeIndex) + 1
+                      (progress <= 0.02
+                        ? 0
+                        : progress >= 0.995
+                          ? FEATURES.length - 1
+                          : activeIndex) + 1
                     ).padStart(2, '0')}
                   </span>
                   <span className="landing-features-counter-sep">/</span>
@@ -224,10 +228,11 @@ export default function Landing() {
             <div className="landing-features-stage landing-features-stage--solo">
               {FEATURES.map((f, i) => {
                 const n = FEATURES.length;
+                const isFirst = i === 0;
                 const isLast = i === n - 1;
-                // Prefer sticky active index; force last card when scrub is fully complete
+                // Force first card at top of section, last card at bottom
                 const showIndex =
-                  progress >= 0.995 ? n - 1 : activeIndex;
+                  progress <= 0.02 ? 0 : progress >= 0.995 ? n - 1 : activeIndex;
                 const isFront = reduceMotion || i === showIndex;
 
                 const seg = 1 / n;
@@ -241,10 +246,22 @@ export default function Landing() {
                   y = 0;
                   scale = 1;
                 } else if (i === showIndex) {
-                  // Last card never exits — stay fully visible at the bottom of the section
-                  if (isLast) {
-                    if (local < 0.15) {
-                      const t = local / 0.15;
+                  if (isFirst) {
+                    // First card: always fully visible when active (no empty intro fade)
+                    if (local > 0.88) {
+                      const t = (local - 0.88) / 0.12;
+                      opacity = 1 - t;
+                      y = -18 * t;
+                      scale = 1 - 0.03 * t;
+                    } else {
+                      opacity = 1;
+                      y = 0;
+                      scale = 1;
+                    }
+                  } else if (isLast) {
+                    // Last card: never exits — stay fully visible at the bottom
+                    if (local < 0.12) {
+                      const t = local / 0.12;
                       opacity = t;
                       y = 20 * (1 - t);
                       scale = 0.97 + 0.03 * t;
@@ -254,13 +271,13 @@ export default function Landing() {
                       scale = 1;
                     }
                   } else if (local < 0.12) {
-                    // Enter fast
+                    // Middle cards: enter fast
                     const t = local / 0.12;
                     opacity = t;
                     y = 24 * (1 - t);
                     scale = 0.96 + 0.04 * t;
                   } else if (local > 0.88) {
-                    // Exit fast toward next card (not used for last)
+                    // Middle cards: exit fast toward next
                     const t = (local - 0.88) / 0.12;
                     opacity = 1 - t;
                     y = -18 * t;
