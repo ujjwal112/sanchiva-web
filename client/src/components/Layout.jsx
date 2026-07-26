@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import Logo from './Logo';
 import UserMenu from './UserMenu';
-import ThemeToggle from './ThemeToggle';
+import { resizeAllCharts } from './Charts';
 
 const titles = {
   '/dashboard': { title: 'Dashboard', sub: 'Overview of expenses, loans & money flow' },
   '/daily-expense': { title: 'Daily Expense', sub: 'Log spends and review week / month insights' },
   '/loans-credit': { title: 'Loans & Credit Cards', sub: 'EMIs, loan progress and card spends' },
-  '/monetary': { title: 'Monetary', sub: 'Income, assets and money given to people' },
+  '/monetary': { title: 'Monetary', sub: 'Live rates, income, assets and money given' },
   '/events': { title: 'Events', sub: 'Create events and manage your list' },
   '/about': {
     title: 'About Sanchiva',
@@ -48,6 +47,22 @@ export default function Layout() {
     }
   }, [collapsed]);
 
+  // Reflow Chart.js when sidebar width animates (esp. expand — canvas was too wide)
+  useEffect(() => {
+    const delays = [0, 50, 120, 220, 360, 450];
+    const timers = delays.map((ms) =>
+      window.setTimeout(() => {
+        try {
+          window.dispatchEvent(new Event('resize'));
+        } catch {
+          /* ignore */
+        }
+        resizeAllCharts();
+      }, ms)
+    );
+    return () => timers.forEach((id) => clearTimeout(id));
+  }, [collapsed]);
+
   const toggleCollapse = () => setCollapsed((c) => !c);
 
   const onMenuToggle = () => {
@@ -62,12 +77,7 @@ export default function Layout() {
     <div
       className={`app-shell${collapsed ? ' sidebar-collapsed' : ''}${mobileOpen ? ' sidebar-drawer-open' : ''}`}
     >
-      <Sidebar
-        open={mobileOpen}
-        onClose={() => setMobileOpen(false)}
-        collapsed={collapsed}
-        onToggleCollapse={toggleCollapse}
-      />
+      <Sidebar open={mobileOpen} onClose={() => setMobileOpen(false)} collapsed={collapsed} />
       <main className="main">
         <div className="topbar">
           <div className="topbar-left">
@@ -80,14 +90,12 @@ export default function Layout() {
             >
               ☰
             </button>
-            <Logo size={36} className="topbar-logo" />
             <div>
               <h2>{meta.title}</h2>
               <p>{meta.sub}</p>
             </div>
           </div>
           <div className="topbar-right">
-            <ThemeToggle />
             <UserMenu />
           </div>
         </div>

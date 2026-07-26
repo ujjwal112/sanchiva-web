@@ -1,17 +1,20 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import Logo from './Logo';
+import ThemeToggle from './ThemeToggle';
+import { useCurrency } from '../currency/CurrencyContext';
 
-const links = [
-  { to: '/dashboard', label: 'Dashboard', icon: '◈', end: true },
-  { to: '/daily-expense', label: 'Daily Expense', icon: '₹' },
-  { to: '/loans-credit', label: 'Loans / Credit Card', icon: '◫' },
-  { to: '/monetary', label: 'Monetary', icon: '◎' },
-  { to: '/events', label: 'Events', icon: '✦' },
-  { to: '/about', label: 'About', icon: 'ⓘ' },
-];
-
-export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }) {
+export default function Sidebar({ open, onClose, collapsed }) {
   const { pathname } = useLocation();
+  const { symbol: currencySymbol } = useCurrency();
+
+  const links = [
+    { to: '/dashboard', label: 'Dashboard', icon: '◈', end: true },
+    { to: '/daily-expense', label: 'Daily Expense', icon: currencySymbol || '₹' },
+    { to: '/loans-credit', label: 'Loans / Credit Card', icon: '◫' },
+    { to: '/monetary', label: 'Monetary', icon: '◎' },
+    { to: '/events', label: 'Events', icon: '✦' },
+    { to: '/about', label: 'About', icon: 'ⓘ' },
+  ];
 
   return (
     <>
@@ -21,20 +24,16 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }) 
         aria-label="Main navigation"
       >
         <div className="brand">
-          <Logo size={collapsed ? 34 : 42} className="brand-logo" />
-          <div className="brand-text">
-            <h1>Sanchiva</h1>
-            <span>Everything that matters</span>
+          <div className="brand-identity">
+            <Logo size={collapsed ? 34 : 40} className="brand-logo" />
+            <div className="brand-text">
+              <h1>Sanchiva</h1>
+              <span>Everything that matters</span>
+            </div>
           </div>
-          <button
-            type="button"
-            className="sidebar-collapse-btn"
-            onClick={onToggleCollapse}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            <span aria-hidden>{collapsed ? '»' : '«'}</span>
-          </button>
+          <div className="brand-actions">
+            <ThemeToggle className="sidebar-theme-toggle" />
+          </div>
         </div>
 
         <ul className="nav-list">

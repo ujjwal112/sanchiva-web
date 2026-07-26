@@ -126,6 +126,50 @@ export async function verifyPassword(password, passwordHash) {
   return bcrypt.compare(String(password), passwordHash);
 }
 
+/**
+ * Signup email probe: whether this email is already registered (non-guest)
+ * and how (local password vs Google, etc.).
+ */
+export async function lookupEmailForSignup(email) {
+  const emailNorm = String(email || '')
+    .trim()
+    .toLowerCase();
+  if (!emailNorm) {
+    const err = new Error('Email is required');
+    err.status = 400;
+    throw err;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) {
+    const err = new Error('Enter a valid email address');
+    err.status = 400;
+    throw err;
+  }
+
+  const { rows } = await query(
+    `SELECT provider FROM users
+     WHERE LOWER(email) = $1 AND provider <> 'guest'
+     ORDER BY CASE provider
+       WHEN 'local' THEN 0
+       WHEN 'google' THEN 1
+       WHEN 'microsoft' THEN 2
+       WHEN 'facebook' THEN 3
+       ELSE 9
+     END
+     LIMIT 1`,
+    [emailNorm]
+  );
+
+  if (!rows[0]) {
+    return { exists: false, email: emailNorm, provider: null };
+  }
+
+  return {
+    exists: true,
+    email: emailNorm,
+    provider: rows[0].provider || 'local',
+  };
+}
+
 /** Create local email/password user (provider = local) */
 export async function createLocalUser({ name, email, password }) {
   const emailNorm = String(email || '')

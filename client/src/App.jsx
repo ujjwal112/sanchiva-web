@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
+import { CurrencyProvider } from './currency/CurrencyContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import AtmosphereBackground from './components/AtmosphereBackground';
@@ -18,37 +19,39 @@ import AuthCallback from './pages/AuthCallback';
 export default function App() {
   return (
     <AuthProvider>
-      <div className="app-root">
-        <AtmosphereBackground />
-        <div className="app-content">
-          <Routes>
-            {/* Public */}
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
+      <CurrencyProvider>
+        <div className="app-root">
+          <AtmosphereBackground />
+          <div className="app-content">
+            <Routes>
+              {/* Public */}
+              <Route path="/" element={<Landing />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
 
-            {/* App (requires login) */}
-            <Route
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="daily-expense" element={<DailyExpense />} />
-              <Route path="loans-credit" element={<LoansCredit />} />
-              <Route path="monetary" element={<Monetary />} />
-              <Route path="events" element={<Events />} />
-              <Route path="events/:eventId" element={<EventDetail />} />
-              <Route path="about" element={<About />} />
-            </Route>
+              {/* App (requires login) */}
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="daily-expense" element={<DailyExpense />} />
+                <Route path="loans-credit" element={<LoansCredit />} />
+                <Route path="monetary" element={<Monetary />} />
+                <Route path="events" element={<Events />} />
+                <Route path="events/:eventId" element={<EventDetail />} />
+                <Route path="about" element={<About />} />
+              </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
         </div>
-      </div>
+      </CurrencyProvider>
     </AuthProvider>
   );
 }

@@ -10,8 +10,8 @@ function readTheme() {
   } catch {
     /* ignore */
   }
-  // Default for the logged-in app: dark theme
-  return 'dark';
+  // Default for the logged-in app: light theme
+  return 'light';
 }
 
 function applyTheme(theme) {

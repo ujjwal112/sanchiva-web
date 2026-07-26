@@ -16,6 +16,8 @@ import creditCardsRouter from './routes/creditCards.js';
 import monetaryRouter from './routes/monetary.js';
 import eventsRouter from './routes/events.js';
 import dashboardRouter from './routes/dashboard.js';
+import fxRouter from './routes/fx.js';
+import metalsRouter from './routes/metals.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
@@ -81,6 +83,8 @@ app.use('/api/credit-cards', creditCardsRouter);
 app.use('/api/monetary', monetaryRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/fx', fxRouter);
+app.use('/api/metals', metalsRouter);
 
 const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
 if (fs.existsSync(clientDist)) {

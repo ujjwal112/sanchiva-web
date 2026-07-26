@@ -139,7 +139,13 @@ export const DateInput = forwardRef(function DateInput(
     const onKey = (e) => {
       if (e.key === 'Escape') setOpen(false);
     };
-    const onReposition = () => reposition();
+    // Reposition on page scroll/resize, but not when scrolling inside the popup
+    const onReposition = (e) => {
+      if (e?.type === 'scroll' && calRef.current && e.target instanceof Node) {
+        if (calRef.current === e.target || calRef.current.contains(e.target)) return;
+      }
+      reposition();
+    };
     document.addEventListener('mousedown', onDoc);
     document.addEventListener('keydown', onKey);
     window.addEventListener('resize', onReposition);
@@ -346,7 +352,13 @@ export function GlassSelect({
     const onKey = (e) => {
       if (e.key === 'Escape') setOpen(false);
     };
-    const onReposition = () => placeMenu();
+    // Reposition on page scroll/resize, but not when scrolling the option list
+    const onReposition = (e) => {
+      if (e?.type === 'scroll' && menuRef.current && e.target instanceof Node) {
+        if (menuRef.current === e.target || menuRef.current.contains(e.target)) return;
+      }
+      placeMenu();
+    };
     document.addEventListener('mousedown', onDoc);
     document.addEventListener('keydown', onKey);
     window.addEventListener('resize', onReposition);
@@ -368,30 +380,31 @@ export function GlassSelect({
     open &&
     typeof document !== 'undefined' &&
     createPortal(
-      <ul
+      <div
         ref={menuRef}
-        id={listId}
         className="glass-select-menu glass-select-menu--portal"
-        role="listbox"
         style={menuStyle}
       >
-        {items.map((item) => (
-          <li
-            key={item.value}
-            role="option"
-            aria-selected={selected?.value === item.value}
-            className={`glass-select-option${selected?.value === item.value ? ' is-active' : ''}`}
-            onClick={() => pick(item.value)}
-          >
-            {item.label}
-          </li>
-        ))}
-        {!items.length && (
-          <li className="glass-select-option is-empty" aria-disabled>
-            No options
-          </li>
-        )}
-      </ul>,
+        {/* Inner scroller keeps scrollbar + arrows clipped inside the rounded shell */}
+        <ul id={listId} className="glass-select-menu-list" role="listbox">
+          {items.map((item) => (
+            <li
+              key={item.value}
+              role="option"
+              aria-selected={selected?.value === item.value}
+              className={`glass-select-option${selected?.value === item.value ? ' is-active' : ''}`}
+              onClick={() => pick(item.value)}
+            >
+              {item.label}
+            </li>
+          ))}
+          {!items.length && (
+            <li className="glass-select-option is-empty" aria-disabled>
+              No options
+            </li>
+          )}
+        </ul>
+      </div>,
       document.body
     );
 
@@ -623,7 +636,11 @@ export function DataTable({
           <span className="muted list-count">
             Showing {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, total)} of {total}
           </span>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowDlPanel((v) => !v)}>
+          <button
+            type="button"
+            className="btn btn-sm list-download-btn"
+            onClick={() => setShowDlPanel((v) => !v)}
+          >
             ⬇ Download
           </button>
         </div>

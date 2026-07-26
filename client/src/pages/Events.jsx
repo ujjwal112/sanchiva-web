@@ -2,6 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api, formatEventStyleLabel } from '../api';
 import { Tabs, DateInput, GlassSelect, useToast } from '../components/ui';
+import { useCurrency } from '../currency/CurrencyContext';
+
+/** Swap currency markers in wizard copy to the user's display symbol */
+function withCurrencySymbol(text, symbol) {
+  if (text == null || text === '') return text;
+  const sym = symbol || '₹';
+  return String(text)
+    .replace(/\{currency\}/gi, sym)
+    .replace(/₹/g, sym);
+}
 
 const EVENT_TYPES = [
   { id: 'wedding', label: 'Wedding', icon: '💍' },
@@ -15,6 +25,7 @@ const EVENT_TYPES = [
 export default function Events() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { symbol: currencySymbol } = useCurrency();
   const initialTab = searchParams.get('tab') === 'list' ? 'list' : 'create';
   const [tab, setTab] = useState(initialTab);
   const [events, setEvents] = useState([]);
@@ -310,11 +321,11 @@ export default function Events() {
               <div className="wizard-chat" ref={wizardChatRef}>
                 {chat.map((m, i) => (
                   <div key={i} className={`bubble ${m.role === 'ai' ? 'ai' : 'user'}`}>
-                    {m.text}
+                    {withCurrencySymbol(m.text, currencySymbol)}
                   </div>
                 ))}
                 <div className="bubble ai wizard-current-q" ref={wizardQuestionRef}>
-                  <strong>{currentQ.label}</strong>
+                  <strong>{withCurrencySymbol(currentQ.label, currencySymbol)}</strong>
                   {currentQ.required && (
                     <span className="badge" style={{ marginLeft: 8 }}>
                       required
@@ -331,7 +342,7 @@ export default function Events() {
                       onChange={setCurrentAnswer}
                       placeholder="Select…"
                       options={currentQ.options || []}
-                      aria-label={currentQ.label || 'Select'}
+                      aria-label={withCurrencySymbol(currentQ.label, currencySymbol) || 'Select'}
                     />
                   </div>
                 )}

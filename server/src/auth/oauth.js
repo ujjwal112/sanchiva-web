@@ -14,6 +14,7 @@ import {
   deleteGuestUserCompletely,
   createLocalUser,
   authenticateLocalUser,
+  lookupEmailForSignup,
   publicUser,
 } from './tokens.js';
 import { requireAuth } from './middleware.js';
@@ -250,6 +251,21 @@ function tokenResponse(user, accessToken, refreshToken) {
     user: publicUser(user),
   };
 }
+
+/**
+ * Signup step 1: check if email is already registered and how (local / google / …).
+ * Does not return passwords or tokens.
+ */
+router.post('/check-email', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    const result = await lookupEmailForSignup(email);
+    res.json(result);
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({ error: err.message || 'Could not check email' });
+  }
+});
 
 /** Email/password signup */
 router.post('/register', async (req, res) => {

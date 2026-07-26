@@ -5,6 +5,7 @@ import { Tabs, DateInput, GlassSelect, useToast } from '../components/ui';
 import { PieChart, BarChart } from '../components/Charts';
 import { downloadExcel, downloadExcelMulti, downloadPdf } from '../utils/export';
 import { buildCeremonyCards, getCeremonyTheme } from '../utils/ceremonyThemes';
+import { useCurrency } from '../currency/CurrencyContext';
 
 const GUEST_PAGE_SIZE = 10;
 const TODO_PAGE_SIZE = 10;
@@ -13,6 +14,7 @@ export default function EventDetail() {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const { show, Toast } = useToast();
+  const { symbol: currencySymbol } = useCurrency();
 
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -819,7 +821,7 @@ export default function EventDetail() {
                 />
               </div>
               <div className="field">
-                <label>Planned ₹</label>
+                <label>Planned ({currencySymbol})</label>
                 <input
                   type="number"
                   value={itemForm.planned_amount}
@@ -827,7 +829,7 @@ export default function EventDetail() {
                 />
               </div>
               <div className="field">
-                <label>Token paid ₹</label>
+                <label>Token paid ({currencySymbol})</label>
                 <input
                   type="number"
                   value={itemForm.token_paid}

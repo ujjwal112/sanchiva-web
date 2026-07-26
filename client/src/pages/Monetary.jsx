@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, formatCurrency, formatDate, todayISO, MONTHS } from '../api';
 import { Tabs, CategorySelect, DataTable, DateInput, GlassSelect, useToast, MonthYearFilters } from '../components/ui';
 import { PieChart, BarChart, categoryChartData } from '../components/Charts';
+import CurrencyConverter from '../components/CurrencyConverter';
+import MetalsConverter from '../components/MetalsConverter';
+import { useCurrency } from '../currency/CurrencyContext';
 
 const emptyIncome = {
   source_name: '',
@@ -14,7 +17,8 @@ const emptyAsset = { asset_type: '', custom_type: '', amount: '', notes: '' };
 const emptyGiven = { person_name: '', given_date: todayISO(), amount: '', notes: '' };
 
 export default function Monetary() {
-  const [tab, setTab] = useState('income');
+  const { symbol: currencySymbol } = useCurrency();
+  const [tab, setTab] = useState('overview');
   const [incomeTab, setIncomeTab] = useState('entry');
   const [assetTab, setAssetTab] = useState('entry');
   const [givenTab, setGivenTab] = useState('entry');
@@ -248,6 +252,7 @@ export default function Monetary() {
       {Toast}
       <Tabs
         tabs={[
+          { id: 'overview', label: 'Overview' },
           { id: 'income', label: 'Salary / Income' },
           { id: 'assets', label: 'Other Assets' },
           { id: 'lent', label: 'Money Lent' },
@@ -255,6 +260,13 @@ export default function Monetary() {
         active={tab}
         onChange={setTab}
       />
+
+      {tab === 'overview' && (
+        <div className="stack-sm monetary-overview" style={{ gap: '1.1rem', display: 'flex', flexDirection: 'column' }}>
+          <CurrencyConverter />
+          <MetalsConverter />
+        </div>
+      )}
 
       {tab === 'income' && (
         <>
@@ -283,7 +295,7 @@ export default function Monetary() {
                       />
                     </div>
                     <div className="field">
-                      <label>Amount (₹)</label>
+                      <label>Amount ({currencySymbol})</label>
                       <input
                         type="number"
                         min="0"
@@ -427,7 +439,7 @@ export default function Monetary() {
                       onCustomChange={(v) => setAssetForm({ ...assetForm, custom_type: v })}
                     />
                     <div className="field">
-                      <label>Amount (₹)</label>
+                      <label>Amount ({currencySymbol})</label>
                       <input
                         type="number"
                         min="0"
@@ -543,7 +555,7 @@ export default function Monetary() {
                       />
                     </div>
                     <div className="field">
-                      <label>Amount (₹)</label>
+                      <label>Amount ({currencySymbol})</label>
                       <input
                         type="number"
                         min="0"

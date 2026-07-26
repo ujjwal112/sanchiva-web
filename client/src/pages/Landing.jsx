@@ -1,174 +1,458 @@
-import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { useAuth } from '../auth/AuthContext';
 
-const FEATURES = [
+const FEATURE_CARDS = [
   {
-    icon: '◈',
     title: 'Dashboard',
-    tagline: 'Your money at a glance',
-    text: 'See KPIs, charts, and a clear snapshot of spends, loans, and assets in one calm view—so you always know where you stand without opening five apps.',
-    points: [
-      'Live totals for spends, EMIs, income & assets',
-      'Week and month charts that stay readable',
-      'Quick jump into any module from one home',
-    ],
+    text: 'See KPIs, charts, and a clear snapshot of spends, loans, and assets in one calm view so you always know where you stand.',
+    accent: 'blue',
+    mock: 'dashboard',
   },
   {
-    icon: '₹',
     title: 'Daily Expense',
-    tagline: 'Every rupee, tracked gently',
-    text: 'Log daily spends with categories, review week and month insights, and export Excel or PDF when you need a record—perfect for households and personal budgets.',
-    points: [
-      'Fast entry with categories you actually use',
-      'Week / month summaries and pie breakdowns',
-      'Excel & PDF export whenever you need it',
-    ],
+    text: 'Log daily spends with categories, review week and month insights, and export Excel or PDF whenever you need a record.',
+    accent: 'purple',
+    mock: 'expense',
   },
   {
-    icon: '◫',
     title: 'Loans & Credit Cards',
-    tagline: 'EMIs under control',
-    text: 'Track bank EMIs, credit card spends, and card EMIs with progress summaries—know what is due, what is left, and when each loan closes.',
-    points: [
-      'Bank loans with EMI date and close year',
-      'Credit card spends by type and card',
-      'Card EMI schedules with start / end periods',
-    ],
+    text: 'Track bank EMIs, credit card spends, and card EMIs with progress summaries so you know what is due and when each loan closes.',
+    accent: 'green',
+    mock: 'loans',
   },
   {
-    icon: '◎',
     title: 'Monetary',
-    tagline: 'Income, assets & money lent',
-    text: 'Record salary and side income, hold your FDs, MFs, crypto and gold in one place, and keep a clear list of money you have given to people.',
-    points: [
-      'Monthly income sources with balances',
-      'Assets across FD, RD, stocks, gold & more',
-      'Money given with dates and notes',
-    ],
+    text: 'Record salary and side income, hold FDs, MFs, crypto and gold in one place, and keep a clear list of money you have given.',
+    accent: 'pink',
+    mock: 'monetary',
   },
   {
-    icon: '✦',
+    title: 'Live Currency',
+    text: 'Convert any amount between major currencies with free live rates, quick picks, and an INR rates board for USD, EUR, GBP, AED, and more.',
+    accent: 'teal',
+    mock: 'currency',
+  },
+  {
+    title: 'Live Metals',
+    text: 'Check gold, silver, platinum, palladium, and copper with live spots, convert by weight and purity, and compare India city rates or country prices.',
+    accent: 'gold',
+    mock: 'metals',
+  },
+  {
     title: 'Events',
-    tagline: 'Weddings & celebrations, planned',
-    text: 'Plan weddings and life events with a smart wizard, ceremony cards, budgets, todos, and guest lists—so big days stay organised instead of living in chats and sheets.',
-    points: [
-      'Wizard for wedding, birthday, corporate & more',
-      'Ceremony cards with dates and blessings',
-      'Todos, budgets, guests and exports',
-    ],
+    text: 'Plan weddings and life events with a smart wizard, ceremony cards, budgets, todos, and guest lists, all in one place.',
+    accent: 'lavender',
+    mock: 'events',
   },
   {
-    icon: '🔒',
     title: 'Secure & personal',
-    tagline: 'Your vault, your rules',
-    text: 'Sign in with Google, email, or explore as Guest with sample data. Your account stays private; guest extras reset when you leave so demos stay clean.',
-    points: [
-      'Google, email/password, or Guest login',
-      'Per-user data with secure sessions',
-      'Guest demo data resets on logout',
-    ],
+    text: 'Sign in with Google, email, or explore as Guest. Your data stays private; guest demo data resets cleanly when you leave.',
+    accent: 'cyan',
+    mock: 'secure',
   },
 ];
 
-function clamp(n, min, max) {
-  return Math.min(max, Math.max(min, n));
+function FeatureMock({ type }) {
+  if (type === 'dashboard') {
+    return (
+      <div className="lf-mock lf-mock--dashboard">
+        <div className="lf-mock-row">
+          <span className="lf-pill lf-pill--blue">This month</span>
+          <span className="lf-mock-muted">Overview</span>
+        </div>
+        <div className="lf-kpi-grid">
+          <div className="lf-kpi">
+            <span>Spends</span>
+            <strong>₹24,800</strong>
+          </div>
+          <div className="lf-kpi">
+            <span>EMIs</span>
+            <strong>₹12,400</strong>
+          </div>
+          <div className="lf-kpi">
+            <span>Assets</span>
+            <strong>₹4.2L</strong>
+          </div>
+        </div>
+        <div className="lf-bars" aria-hidden>
+          <i style={{ height: '42%' }} />
+          <i style={{ height: '68%' }} />
+          <i style={{ height: '55%' }} />
+          <i style={{ height: '80%' }} />
+          <i style={{ height: '48%' }} />
+        </div>
+      </div>
+    );
+  }
+  if (type === 'expense') {
+    return (
+      <div className="lf-mock lf-mock--expense">
+        <div className="lf-mock-label">Add expense</div>
+        <div className="lf-field-row">
+          <span className="lf-field-prefix">₹</span>
+          <span className="lf-field-value">450</span>
+          <span className="lf-chip">Food</span>
+        </div>
+        <div className="lf-mini-list">
+          <div>
+            <span>Groceries</span>
+            <strong>₹1,200</strong>
+          </div>
+          <div>
+            <span>Fuel</span>
+            <strong>₹800</strong>
+          </div>
+          <div>
+            <span>Coffee</span>
+            <strong>₹180</strong>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (type === 'loans') {
+    return (
+      <div className="lf-mock lf-mock--loans">
+        <div className="lf-mock-label">Home loan EMI</div>
+        <div className="lf-progress-block">
+          <div className="lf-progress-meta">
+            <span>Paid</span>
+            <strong>62%</strong>
+          </div>
+          <div className="lf-progress-track">
+            <div className="lf-progress-fill" style={{ width: '62%' }} />
+          </div>
+        </div>
+        <div className="lf-mini-list">
+          <div>
+            <span>Due date</span>
+            <strong>5th</strong>
+          </div>
+          <div>
+            <span>Monthly</span>
+            <strong>₹18,500</strong>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (type === 'monetary') {
+    return (
+      <div className="lf-mock lf-mock--monetary">
+        <div className="lf-mock-label">Amount to track</div>
+        <div className="lf-field-row">
+          <span className="lf-field-prefix">₹</span>
+          <span className="lf-field-value">50,000</span>
+          <span className="lf-chip lf-chip--outline">FD</span>
+        </div>
+        <div className="lf-currency-row">
+          <span>Gold</span>
+          <span>MF</span>
+          <span className="is-active">FD</span>
+          <span>Stocks</span>
+        </div>
+      </div>
+    );
+  }
+  if (type === 'currency') {
+    return (
+      <div className="lf-mock lf-mock--currency">
+        <div className="lf-mock-row">
+          <span className="lf-mock-label" style={{ margin: 0 }}>
+            Convert
+          </span>
+          <span className="lf-pill lf-pill--teal">Live</span>
+        </div>
+        <div className="lf-field-row">
+          <span className="lf-field-prefix">₹</span>
+          <span className="lf-field-value">1,000</span>
+          <span className="lf-chip">INR</span>
+        </div>
+        <div className="lf-fx-result">
+          <span className="lf-mock-muted">→ USD</span>
+          <strong>$11.62</strong>
+        </div>
+        <div className="lf-mini-list">
+          <div>
+            <span>1 USD</span>
+            <strong>₹86.05</strong>
+          </div>
+          <div>
+            <span>1 EUR</span>
+            <strong>₹93.40</strong>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (type === 'metals') {
+    return (
+      <div className="lf-mock lf-mock--metals">
+        <div className="lf-mock-row">
+          <span className="lf-mock-label" style={{ margin: 0 }}>
+            Gold · 22K
+          </span>
+          <span className="lf-pill lf-pill--gold">Live</span>
+        </div>
+        <div className="lf-field-row">
+          <span className="lf-field-value">10 g</span>
+          <span className="lf-chip lf-chip--outline">Mumbai</span>
+        </div>
+        <div className="lf-fx-result">
+          <span className="lf-mock-muted">Estimated</span>
+          <strong>₹1,15,420</strong>
+        </div>
+        <div className="lf-mini-list">
+          <div>
+            <span>22K / g</span>
+            <strong>₹11,542</strong>
+          </div>
+          <div>
+            <span>Silver / g</span>
+            <strong>₹181</strong>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (type === 'events') {
+    return (
+      <div className="lf-mock lf-mock--events">
+        <div className="lf-mock-label">Wedding plan</div>
+        <div className="lf-event-line">
+          <span className="lf-icon-box">💍</span>
+          <div>
+            <strong>Mehendi</strong>
+            <span>12 guests · budget set</span>
+          </div>
+        </div>
+        <div className="lf-event-line">
+          <span className="lf-icon-box">🎉</span>
+          <div>
+            <strong>Reception</strong>
+            <span>Todos · 4 remaining</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="lf-mock lf-mock--secure">
+      <div className="lf-mock-label">Sign in</div>
+      <div className="lf-auth-btns">
+        <span className="lf-auth-btn">G · Google</span>
+        <span className="lf-auth-btn lf-auth-btn--ghost">Email</span>
+      </div>
+      <div className="lf-secure-note">
+        <span className="lf-lock">🔒</span>
+        <span>Private sessions · guest demo resets</span>
+      </div>
+    </div>
+  );
 }
 
-/**
- * Features: sticky vertical stack — scroll down and each card rolls
- * from front to back with smooth fade/scale (no horizontal scroll).
- */
+function HeroMock() {
+  return (
+    <div className="landing-hero-stack">
+      {/* Vault card shown in front by default */}
+      <div
+        className="landing-hero-card landing-hero-card--back"
+        tabIndex={0}
+        role="group"
+        aria-label="Your vault preview"
+      >
+        <div className="landing-hero-card-brand">
+          <Logo size={22} />
+          <span>Sanchiva</span>
+        </div>
+        <div className="landing-hero-profile">
+          <div className="landing-hero-avatar">U</div>
+          <div>
+            <strong>Your vault</strong>
+            <span>Personal finance</span>
+          </div>
+        </div>
+        <ul className="landing-hero-meta">
+          <li>
+            <span>📊</span> Live dashboard
+          </li>
+          <li>
+            <span>₹</span> Daily tracking
+          </li>
+          <li>
+            <span>✦</span> Events &amp; EMIs
+          </li>
+        </ul>
+      </div>
+      {/* Peeks behind; hover to bring fully forward */}
+      <div
+        className="landing-hero-card landing-hero-card--front"
+        tabIndex={0}
+        role="group"
+        aria-label="Money at a glance. Hover to bring this card forward."
+      >
+        <h4>Money at a glance</h4>
+        <div className="landing-hero-methods">
+          <div>
+            <span>◈</span> Dashboard
+          </div>
+          <div>
+            <span>₹</span> Expenses
+          </div>
+          <div>
+            <span>◫</span> Loans
+          </div>
+          <div>
+            <span>◎</span> Assets
+          </div>
+          <div>
+            <span>✦</span> Events
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SplitMock({ variant }) {
+  if (variant === 'complete') {
+    return (
+      <div className="landing-split-visual landing-split-visual--lavender" aria-hidden>
+        <div className="landing-split-card">
+          <h4>All set</h4>
+          <div className="landing-split-lines">
+            <div>
+              <span className="lf-icon-box">📅</span>
+              <div>
+                <strong>Month tracked</strong>
+                <span>Daily expenses logged</span>
+              </div>
+            </div>
+            <div>
+              <span className="lf-icon-box">💳</span>
+              <div>
+                <strong>EMIs on track</strong>
+                <span>₹12,400 paid this month</span>
+              </div>
+            </div>
+            <div>
+              <span className="lf-icon-box">👤</span>
+              <div>
+                <strong>Your account</strong>
+                <span>Secure &amp; private</span>
+              </div>
+            </div>
+            <div>
+              <span className="lf-icon-box lf-icon-box--pink">₹</span>
+              <div>
+                <strong>Export ready</strong>
+                <span>Excel · PDF anytime</span>
+              </div>
+            </div>
+            <div>
+              <span className="lf-icon-box">◎</span>
+              <div>
+                <strong>Display currency</strong>
+                <span>₹ $ € £ · pick in profile</span>
+              </div>
+            </div>
+          </div>
+          <p className="landing-split-footnote">Your data stays in your vault.</p>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="landing-split-visual landing-split-visual--blue" aria-hidden>
+      <div className="landing-split-card">
+        <div className="landing-hero-card-brand">
+          <Logo size={22} />
+          <span>Sanchiva</span>
+        </div>
+        <div className="landing-hero-profile">
+          <div className="landing-hero-avatar">S</div>
+          <div>
+            <strong>Monthly plan</strong>
+            <span>Budget · Loans · Events</span>
+          </div>
+        </div>
+        <ul className="landing-hero-meta">
+          <li>
+            <span>⏱</span> Live totals
+          </li>
+          <li>
+            <span>📈</span> Charts &amp; exports
+          </li>
+          <li>
+            <span>🔒</span> Private by default
+          </li>
+        </ul>
+      </div>
+      <div className="landing-split-card landing-split-card--overlay">
+        <h4>What you track</h4>
+        <div className="landing-hero-methods">
+          <div>
+            <span>₹</span> Spends
+          </div>
+          <div>
+            <span>◫</span> EMIs
+          </div>
+          <div>
+            <span>◎</span> Income
+          </div>
+          <div>
+            <span>✦</span> Events
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Landing() {
   const { isAuthenticated, loading } = useAuth();
-  const pinRef = useRef(null);
-  const [progress, setProgress] = useState(0);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const apply = () => setReduceMotion(mq.matches);
-    apply();
-    mq.addEventListener?.('change', apply);
-    return () => mq.removeEventListener?.('change', apply);
-  }, []);
-
-  useEffect(() => {
-    if (reduceMotion) return undefined;
-    const pin = pinRef.current;
-    if (!pin) return undefined;
-
-    let raf = 0;
-    const measure = () => {
-      const rect = pin.getBoundingClientRect();
-      const scrollable = Math.max(1, pin.offsetHeight - window.innerHeight);
-      // Direct mapping — snappy card switches
-      // When pin top is still below viewport top (not sticky yet), p can be < 0 → clamp to 0
-      const p = clamp(-rect.top / scrollable, 0, 1);
-      setProgress(p);
-      // Each segment of progress = one card (only one visible).
-      // Start: always first card; end: always last card.
-      let idx = Math.min(FEATURES.length - 1, Math.floor(p * FEATURES.length));
-      if (p <= 0.02) idx = 0;
-      if (p >= 0.995) idx = FEATURES.length - 1;
-      setActiveIndex(idx);
-    };
-
-    const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(measure);
-    };
-
-    measure();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-    };
-  }, [reduceMotion]);
 
   if (!loading && isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Short pin so next feature appears quickly while scrolling
-  const pinHeightVh = 100 + FEATURES.length * 32;
-
   return (
     <div className="landing-page">
       <header className="landing-header">
         <Link to="/" className="landing-brand" aria-label="Sanchiva home">
-          <Logo size={40} />
+          <Logo size={36} />
           <div className="landing-brand-text">
             <strong>Sanchiva</strong>
-            <span className="muted">Everything that matters</span>
+            <span>Everything that matters</span>
           </div>
         </Link>
         <div className="landing-header-actions">
           <Link to="/login" className="btn btn-ghost landing-login-btn">
             Login
           </Link>
-          <Link to="/signup" className="btn btn-primary landing-login-btn">
-            Sign up
+          <Link to="/signup" className="btn btn-primary landing-login-btn landing-cta">
+            Get started
           </Link>
         </div>
       </header>
 
       <main className="landing-main">
-        <section className="landing-hero card">
+        {/* Hero: first_card style, mock left, copy right */}
+        <section className="landing-hero">
+          <div className="landing-hero-visual">
+            <HeroMock />
+          </div>
           <div className="landing-hero-copy">
             <p className="landing-eyebrow">Personal finance · Life events</p>
             <h1>
-              Everything that matters
-              <span className="landing-hero-accent">, one place.</span>
+              Everything that matters,
+              <br />
+              one place
             </h1>
-            <p className="landing-lead muted">
+            <p className="landing-lead">
               Sanchiva helps you collect, track, and protect what counts: daily expenses, loans,
-              credit cards, income, assets, money lent, and big life events, all in a calm modern
+              credit cards, income, assets, money lent, and big life events in a calm modern
               workspace.
             </p>
             <div className="landing-hero-actions">
@@ -180,194 +464,52 @@ export default function Landing() {
               </a>
             </div>
           </div>
-          <div className="landing-hero-visual" aria-hidden>
-            <Logo size={120} className="landing-hero-logo" />
-            <div className="landing-hero-glow" />
+        </section>
+
+        {/* Features */}
+        <section id="features" className="landing-features" aria-label="Features">
+          <div className="landing-features-intro">
+            <h2>One app for money and moments</h2>
+            <p>
+              Whether you track daily spends, check live rates, or plan a wedding, tailor every
+              module to how you live: clear tools, one white-and-simple experience.
+            </p>
+          </div>
+
+          <div className="landing-feature-grid">
+            {FEATURE_CARDS.map((f) => (
+              <article key={f.title} className={`landing-feature-card accent-${f.accent}`}>
+                <div className="landing-feature-card-copy">
+                  <h3>{f.title}</h3>
+                  <p>{f.text}</p>
+                </div>
+                <div className="landing-feature-card-stage">
+                  <div className="landing-feature-blob" aria-hidden />
+                  <FeatureMock type={f.mock} />
+                </div>
+              </article>
+            ))}
           </div>
         </section>
-      </main>
 
-      {/* Full-bleed vertical stack theater */}
-      <section
-        id="features"
-        ref={pinRef}
-        className={`landing-features-stack${reduceMotion ? ' is-static' : ''}`}
-        style={reduceMotion ? undefined : { height: `${pinHeightVh}vh` }}
-        aria-label="Features"
-      >
-        <div className="landing-features-sticky">
-          <div className="landing-features-sticky-inner">
-            <div className="landing-section-head landing-features-head">
-              <p className="landing-eyebrow">What you can do</p>
-              <div className="landing-features-head-row">
-                <div>
-                  <h2>One app for money and moments</h2>
-                  <p className="muted">
-                    Scroll down to move through each feature one at a time — only the front card stays
-                    on screen.
-                  </p>
-                </div>
-                <div className="landing-features-counter" aria-live="polite">
-                  <span className="landing-features-counter-num">
-                    {String(
-                      (progress <= 0.02
-                        ? 0
-                        : progress >= 0.995
-                          ? FEATURES.length - 1
-                          : activeIndex) + 1
-                    ).padStart(2, '0')}
-                  </span>
-                  <span className="landing-features-counter-sep">/</span>
-                  <span className="landing-features-counter-total">
-                    {String(FEATURES.length).padStart(2, '0')}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="landing-features-stage landing-features-stage--solo">
-              {FEATURES.map((f, i) => {
-                const n = FEATURES.length;
-                const isFirst = i === 0;
-                const isLast = i === n - 1;
-                // Force first card at top of section, last card at bottom
-                const showIndex =
-                  progress <= 0.02 ? 0 : progress >= 0.995 ? n - 1 : activeIndex;
-                const isFront = reduceMotion || i === showIndex;
-
-                const seg = 1 / n;
-                const local = clamp((progress - i * seg) / seg, 0, 1);
-                let opacity = 0;
-                let y = 28;
-                let scale = 0.96;
-
-                if (reduceMotion) {
-                  opacity = 1;
-                  y = 0;
-                  scale = 1;
-                } else if (i === showIndex) {
-                  if (isFirst) {
-                    // First card: always fully visible when active (no empty intro fade)
-                    if (local > 0.88) {
-                      const t = (local - 0.88) / 0.12;
-                      opacity = 1 - t;
-                      y = -18 * t;
-                      scale = 1 - 0.03 * t;
-                    } else {
-                      opacity = 1;
-                      y = 0;
-                      scale = 1;
-                    }
-                  } else if (isLast) {
-                    // Last card: never exits — stay fully visible at the bottom
-                    if (local < 0.12) {
-                      const t = local / 0.12;
-                      opacity = t;
-                      y = 20 * (1 - t);
-                      scale = 0.97 + 0.03 * t;
-                    } else {
-                      opacity = 1;
-                      y = 0;
-                      scale = 1;
-                    }
-                  } else if (local < 0.12) {
-                    // Middle cards: enter fast
-                    const t = local / 0.12;
-                    opacity = t;
-                    y = 24 * (1 - t);
-                    scale = 0.96 + 0.04 * t;
-                  } else if (local > 0.88) {
-                    // Middle cards: exit fast toward next
-                    const t = (local - 0.88) / 0.12;
-                    opacity = 1 - t;
-                    y = -18 * t;
-                    scale = 1 - 0.03 * t;
-                  } else {
-                    opacity = 1;
-                    y = 0;
-                    scale = 1;
-                  }
-                }
-
-                return (
-                  <article
-                    key={f.title}
-                    className={`landing-feature-card landing-feature-card--stack${isFront ? ' is-front' : ''}`}
-                    style={{
-                      zIndex: isFront ? 20 : 1,
-                      opacity,
-                      transform: `translate3d(-50%, calc(-50% + ${y}px), 0) scale(${scale})`,
-                      pointerEvents: isFront ? 'auto' : 'none',
-                      visibility: opacity < 0.02 && !reduceMotion ? 'hidden' : 'visible',
-                    }}
-                    aria-hidden={!isFront}
-                  >
-                    <div className="landing-feature-card-inner">
-                      <div className="landing-feature-card-top">
-                        <span className="landing-feature-icon" aria-hidden>
-                          {f.icon}
-                        </span>
-                        <span className="landing-feature-index" aria-hidden>
-                          {String(i + 1).padStart(2, '0')}
-                        </span>
-                      </div>
-                      <p className="landing-feature-tagline">{f.tagline}</p>
-                      <h3>{f.title}</h3>
-                      <p className="landing-feature-text muted">{f.text}</p>
-                      <ul className="landing-feature-points">
-                        {f.points.map((pt) => (
-                          <li key={pt}>{pt}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-
-            <div className="landing-features-progress" aria-hidden>
-              <div
-                className="landing-features-progress-bar"
-                style={{ transform: `scaleX(${Math.max(0.06, progress)})` }}
-              />
-            </div>
+        {/* Split: 3rd_card style */}
+        <section className="landing-split landing-split--reverse">
+          <div className="landing-split-copy">
+            <h2>Built as your personal vault</h2>
+            <p>
+              Collection, accumulation, preservation: Sanchiva gathers wealth and values over time.
+              Charts and exports when you need insight, event planning when life gets bigger than a
+              spreadsheet.
+            </p>
+            <ul className="landing-bullets">
+              <li>Per-user data with secure JWT sessions</li>
+              <li>Google sign-in or try instantly as Guest</li>
+              <li>Excel &amp; PDF downloads across modules</li>
+              <li>Event wizard with ceremonies, todos, and guests</li>
+              <li>Display currency from your profile (₹, $, €, £, and more)</li>
+            </ul>
           </div>
-        </div>
-      </section>
-
-      <main className="landing-main landing-main--after-features">
-        <section className="landing-section">
-          <div className="card landing-about-block">
-            <div>
-              <p className="landing-eyebrow">About Sanchiva</p>
-              <h2>Collection · Accumulation · Preservation</h2>
-              <p className="muted">
-                The name <strong>Sanchiva</strong> echoes collection, accumulation, preservation, and
-                savings: wealth and values gathered over time. The product is designed as a personal
-                vault: charts and exports when you need insight, and event planning when life gets
-                bigger than a spreadsheet.
-              </p>
-              <ul className="landing-bullets">
-                <li>Per-user data with secure JWT sessions</li>
-                <li>Google sign-in or try instantly as Guest</li>
-                <li>Excel &amp; PDF downloads across modules</li>
-                <li>Event wizard with ceremony dates, todos, and guests</li>
-              </ul>
-            </div>
-            <div className="landing-cta-panel">
-              <Logo size={56} />
-              <h3>Ready to start?</h3>
-              <p className="muted">Create an account or log in with Google or email and password.</p>
-              <div className="landing-cta-panel-actions">
-                <Link to="/signup" className="btn btn-primary">
-                  Sign up
-                </Link>
-                <Link to="/login" className="btn btn-ghost">
-                  Login
-                </Link>
-              </div>
-            </div>
-          </div>
+          <SplitMock variant="complete" />
         </section>
       </main>
 

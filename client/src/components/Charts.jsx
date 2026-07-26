@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -24,6 +25,61 @@ ChartJS.register(
   LineElement,
   Filler
 );
+
+/** Resize all Chart.js instances (e.g. after sidebar collapse/expand). */
+export function resizeAllCharts() {
+  try {
+    const instances = ChartJS.instances || {};
+    Object.keys(instances).forEach((id) => {
+      try {
+        instances[id]?.resize?.();
+      } catch {
+        /* ignore */
+      }
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Chart container that reflows Chart.js when its box size changes
+ * (sidebar open/close, window resize, etc.).
+ */
+function ChartBox({ children, className = '', remountKey }) {
+  const boxRef = useRef(null);
+
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+
+    let raf = 0;
+    let timer = 0;
+    const kick = () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timer);
+      raf = requestAnimationFrame(() => {
+        resizeAllCharts();
+        // second pass after CSS transition settles
+        timer = window.setTimeout(() => resizeAllCharts(), 80);
+      });
+    };
+
+    const ro = new ResizeObserver(kick);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+      clearTimeout(timer);
+    };
+  }, []);
+
+  return (
+    <div className={`chart-box ${className}`.trim()} ref={boxRef} key={remountKey}>
+      {children}
+    </div>
+  );
+}
 
 /**
  * Colorful chart palette — liquid-glass friendly (mint / amber / coral / violet / cyan).
@@ -172,13 +228,13 @@ export function PieChart({ labels = [], values = [], doughnut = false }) {
   };
   const Comp = doughnut ? Doughnut : Pie;
   return (
-    <div className="chart-box" key={`pie-${theme}`}>
+    <ChartBox remountKey={`pie-${theme}`}>
       {labels.length ? (
         <Comp data={data} options={options} />
       ) : (
         <div className="empty">No data yet</div>
       )}
-    </div>
+    </ChartBox>
   );
 }
 
@@ -210,13 +266,13 @@ export function BarChart({ labels = [], values = [], label = 'Amount', horizonta
     },
   };
   return (
-    <div className="chart-box" key={`bar-${theme}`}>
+    <ChartBox remountKey={`bar-${theme}`}>
       {labels.length ? (
         <Bar data={data} options={options} />
       ) : (
         <div className="empty">No data yet</div>
       )}
-    </div>
+    </ChartBox>
   );
 }
 
@@ -242,13 +298,13 @@ export function MultiBarChart({ labels = [], datasets = [] }) {
     scales: { x: scales, y: scales },
   };
   return (
-    <div className="chart-box" key={`mbar-${theme}`}>
+    <ChartBox remountKey={`mbar-${theme}`}>
       {labels.length ? (
         <Bar data={data} options={options} />
       ) : (
         <div className="empty">No data yet</div>
       )}
-    </div>
+    </ChartBox>
   );
 }
 
@@ -290,13 +346,13 @@ export function LineChart({ labels = [], values = [], label = 'Total' }) {
     scales: { x: scales, y: scales },
   };
   return (
-    <div className="chart-box" key={`line-${theme}`}>
+    <ChartBox remountKey={`line-${theme}`}>
       {labels.length ? (
         <Line data={data} options={options} />
       ) : (
         <div className="empty">No data yet</div>
       )}
-    </div>
+    </ChartBox>
   );
 }
 

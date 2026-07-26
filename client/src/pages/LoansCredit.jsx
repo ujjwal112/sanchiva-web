@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, formatCurrency, formatDate, todayISO, MONTHS } from '../api';
+import { useCurrency } from '../currency/CurrencyContext';
 import { Tabs, CategorySelect, DataTable, DateInput, GlassSelect, useToast } from '../components/ui';
 import { PieChart, BarChart, MultiBarChart, categoryChartData } from '../components/Charts';
 
@@ -34,6 +35,7 @@ const emptyEmi = {
 };
 
 export default function LoansCredit() {
+  const { symbol: currencySymbol } = useCurrency();
   const [topTab, setTopTab] = useState('loans');
   const [loanTab, setLoanTab] = useState('entry');
   const [ccTab, setCcTab] = useState('spends');
@@ -379,7 +381,7 @@ export default function LoansCredit() {
                       />
                     </div>
                     <div className="field">
-                      <label>EMI amount (₹)</label>
+                      <label>EMI amount ({currencySymbol})</label>
                       <input
                         type="number"
                         min="0"
@@ -573,7 +575,7 @@ export default function LoansCredit() {
                           />
                         </div>
                         <div className="field">
-                          <label>Amount (₹)</label>
+                          <label>Amount ({currencySymbol})</label>
                           <input
                             type="number"
                             min="0"
@@ -717,7 +719,7 @@ export default function LoansCredit() {
                           />
                         </div>
                         <div className="field">
-                          <label>Amount (₹)</label>
+                          <label>Amount ({currencySymbol})</label>
                           <input
                             type="number"
                             min="0"

@@ -1,5 +1,7 @@
 // Production: set VITE_API_URL to your API origin if split hosting
 // Same-origin (Render): leave empty
+import { getActiveCurrencyMeta } from './currency/CurrencyContext';
+
 export const API_ORIGIN = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const BASE = `${API_ORIGIN}/api`;
 
@@ -81,13 +83,26 @@ export const api = {
   del: (path) => request(path, { method: 'DELETE' }),
 };
 
+/**
+ * Format money with the user's display currency symbol (profile preference).
+ * Amounts are display-formatted only (stored values unchanged).
+ * Monetary Overview live converters use their own formatters and ignore this.
+ */
 export function formatCurrency(n) {
   const num = Number(n) || 0;
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(num);
+  const meta = getActiveCurrencyMeta();
+  const code = meta?.code || 'INR';
+  const locale = meta?.locale || 'en-IN';
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: code,
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+    }).format(num);
+  } catch {
+    return `${meta?.symbol || '₹'}${num.toLocaleString(locale)}`;
+  }
 }
 
 export function formatDate(d) {

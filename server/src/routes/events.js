@@ -201,7 +201,7 @@ router.get('/meta/wizard-questions/:eventType', (req, res) => {
     { id: 'event_date', label: 'When does the event start?', type: 'date', required: true },
     { id: 'days', label: 'How many days is the event?', type: 'number', required: true, default: 1 },
     { id: 'location', label: 'Where will it be held?', type: 'text' },
-    { id: 'budget', label: 'What is your total budget? (₹)', type: 'number' },
+    { id: 'budget', label: 'What is your total budget? ({currency})', type: 'number' },
     { id: 'guest_estimate', label: 'Approximate number of guests?', type: 'number' },
   ];
 
@@ -216,9 +216,9 @@ router.get('/meta/wizard-questions/:eventType', (req, res) => {
         required: true,
       },
       { id: 'bride_groom', label: 'Couple names (optional)', type: 'text' },
-      { id: 'venue_budget', label: 'Venue budget estimate (₹)', type: 'number' },
-      { id: 'photo_budget', label: 'Photography budget (₹)', type: 'number' },
-      { id: 'food_budget', label: 'Catering budget (₹)', type: 'number' },
+      { id: 'venue_budget', label: 'Venue budget estimate ({currency})', type: 'number' },
+      { id: 'photo_budget', label: 'Photography budget ({currency})', type: 'number' },
+      { id: 'food_budget', label: 'Catering budget ({currency})', type: 'number' },
       {
         id: 'ceremonies',
         label: 'Which ceremonies do you plan?',

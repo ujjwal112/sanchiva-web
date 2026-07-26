@@ -3,6 +3,7 @@ import { api, formatCurrency, formatDate, todayISO, MONTHS } from '../api';
 import { Tabs, CategorySelect, DataTable, DateInput, GlassSelect, useToast } from '../components/ui';
 import { PieChart, categoryChartData } from '../components/Charts';
 import { downloadExcel, downloadExcelMulti, downloadPdf } from '../utils/export';
+import { useCurrency } from '../currency/CurrencyContext';
 
 const emptyForm = {
   category: '',
@@ -20,6 +21,7 @@ const expenseExportCols = [
 ];
 
 export default function DailyExpense() {
+  const { symbol: currencySymbol } = useCurrency();
   const [mainTab, setMainTab] = useState('entry');
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
@@ -313,7 +315,7 @@ export default function DailyExpense() {
                   onCustomChange={(v) => set('custom_category', v)}
                 />
                 <div className="field">
-                  <label>Amount (₹)</label>
+                  <label>Amount ({currencySymbol})</label>
                   <input
                     type="number"
                     min="0"
@@ -435,7 +437,7 @@ export default function DailyExpense() {
                   <div className="data-filter-bar__btns">
                     <button
                       type="button"
-                      className="btn btn-primary"
+                      className="btn btn-download"
                       onClick={() => downloadSelectedMonth(exportFormat)}
                     >
                       Selected month
@@ -445,7 +447,7 @@ export default function DailyExpense() {
                     </button>
                     <button
                       type="button"
-                      className="btn btn-ghost"
+                      className="btn btn-download"
                       onClick={() => downloadAllMonths(exportFormat)}
                     >
                       All months
@@ -476,7 +478,7 @@ export default function DailyExpense() {
             <div className="flex-between" style={{ marginBottom: '0.85rem' }}>
               <div>
                 <h3 style={{ fontWeight: 600 }}>Weeks · {MONTHS[month - 1]} {year}</h3>
-                <p className="muted">Sunday → Saturday · slide to see more (2 at a time)</p>
+                <p className="muted">Sunday to Saturday · slide to see more (2 at a time)</p>
               </div>
               <div className="slider-controls">
                 <button
@@ -518,7 +520,7 @@ export default function DailyExpense() {
                     return (
                       <div className="card week-card" key={w.weekStart}>
                         <h3>
-                          {formatDate(w.weekStart)} – {formatDate(w.weekEnd)}
+                          {formatDate(w.weekStart)} - {formatDate(w.weekEnd)}
                         </h3>
                         <p className="muted">
                           Total {formatCurrency(w.total)} · {w.expenses.length} items
@@ -535,20 +537,45 @@ export default function DailyExpense() {
                               </span>
                               <span className="badge wl-cat">{e.category}</span>
                               <span className="wl-amt">{formatCurrency(e.amount)}</span>
-                              <span className="row-actions">
+                              <span className="row-actions row-actions--icons">
                                 <button
-                                  className="btn btn-ghost btn-sm"
+                                  className="btn-icon btn-icon-edit"
                                   type="button"
                                   onClick={() => onEdit(e)}
+                                  aria-label="Edit expense"
+                                  title="Edit"
                                 >
-                                  Edit
+                                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden>
+                                    <path
+                                      d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0 0-3L16.5 4.5a2.1 2.1 0 0 0-3 0L3 15v5Z"
+                                      stroke="currentColor"
+                                      strokeWidth="1.8"
+                                      strokeLinejoin="round"
+                                    />
+                                    <path
+                                      d="M12.5 6.5l5 5"
+                                      stroke="currentColor"
+                                      strokeWidth="1.8"
+                                      strokeLinecap="round"
+                                    />
+                                  </svg>
                                 </button>
                                 <button
-                                  className="btn btn-danger btn-sm"
+                                  className="btn-icon btn-icon-delete"
                                   type="button"
                                   onClick={() => onDelete(e)}
+                                  aria-label="Delete expense"
+                                  title="Delete"
                                 >
-                                  Del
+                                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden>
+                                    <path
+                                      d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M8 7v12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7"
+                                      stroke="currentColor"
+                                      strokeWidth="1.8"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
                                 </button>
                               </span>
                             </div>

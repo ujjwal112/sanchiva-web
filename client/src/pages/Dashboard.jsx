@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api, formatCurrency, MONTHS } from '../api';
 import { PieChart, BarChart, LineChart, MultiBarChart, categoryChartData } from '../components/Charts';
+import { useCurrency } from '../currency/CurrencyContext';
 
 export default function Dashboard() {
+  const { currency, symbol: currencySymbol } = useCurrency();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
 
@@ -46,9 +48,13 @@ export default function Dashboard() {
                 {MONTHS[(data.month || 1) - 1]} {data.year}
               </p>
             </div>
-            <div className="kpi-icon">₹</div>
+            <div className="kpi-icon" key={`spend-${currency}`} title={currency}>
+              {currencySymbol || currency}
+            </div>
           </div>
-          <div className="metric">{formatCurrency(k.monthExpenseTotal)}</div>
+          <div className="metric" key={`spend-m-${currency}`}>
+            {formatCurrency(k.monthExpenseTotal)}
+          </div>
         </div>
         <div className="card">
           <div className="flex-between">
@@ -58,7 +64,9 @@ export default function Dashboard() {
             </div>
             <div className="kpi-icon">↑</div>
           </div>
-          <div className="metric">{formatCurrency(k.monthIncome)}</div>
+          <div className="metric" key={`income-m-${currency}`}>
+            {formatCurrency(k.monthIncome)}
+          </div>
         </div>
         <div className="card">
           <div className="flex-between">
@@ -68,7 +76,9 @@ export default function Dashboard() {
             </div>
             <div className="kpi-icon">◎</div>
           </div>
-          <div className="metric">{formatCurrency(k.monthBalance)}</div>
+          <div className="metric" key={`bal-m-${currency}`}>
+            {formatCurrency(k.monthBalance)}
+          </div>
         </div>
         <div className="card">
           <div className="flex-between">
@@ -80,7 +90,9 @@ export default function Dashboard() {
             </div>
             <div className="kpi-icon">◫</div>
           </div>
-          <div className="metric">{formatCurrency(k.monthlyEmi)}</div>
+          <div className="metric" key={`emi-m-${currency}`}>
+            {formatCurrency(k.monthlyEmi)}
+          </div>
         </div>
       </div>
 
