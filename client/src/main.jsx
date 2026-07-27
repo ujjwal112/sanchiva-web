@@ -3,8 +3,8 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { ThemeProvider } from './theme/ThemeContext';
-/* Design tokens from /design folder */
-import '../../design/variables.css';
+/* Design tokens (kept inside client so deploys don't need /design) */
+import './design-tokens.css';
 import './index.css';
 
 // Apply saved theme before paint when possible (default: light for the app)

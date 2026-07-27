@@ -1,5 +1,5 @@
 :root {
-  /* monopo saigon — aliases (tokens from design/variables.css) */
+  /* monopo saigon — aliases (tokens from design-tokens.css) */
   --bg-deep: var(--color-obsidian);
   --bg-mid: var(--color-paper);
   --text: var(--color-obsidian);
