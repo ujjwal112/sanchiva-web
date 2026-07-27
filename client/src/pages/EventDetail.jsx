@@ -769,10 +769,18 @@ export default function EventDetail() {
               </h3>
             </div>
             <div className="event-export-actions">
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => exportTodos('excel')}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm list-download-btn"
+                onClick={() => exportTodos('excel')}
+              >
                 ⬇ Excel
               </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => exportTodos('pdf')}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm list-download-btn"
+                onClick={() => exportTodos('pdf')}
+              >
                 ⬇ PDF
               </button>
             </div>
@@ -950,10 +958,18 @@ export default function EventDetail() {
               </h3>
             </div>
             <div className="event-export-actions">
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => exportGuests('excel')}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm list-download-btn"
+                onClick={() => exportGuests('excel')}
+              >
                 ⬇ Excel
               </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => exportGuests('pdf')}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm list-download-btn"
+                onClick={() => exportGuests('pdf')}
+              >
                 ⬇ PDF
               </button>
             </div>

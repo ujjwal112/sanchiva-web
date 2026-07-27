@@ -495,26 +495,25 @@ export default function MetalsConverter() {
           style={rightColHeight != null ? { height: `${rightColHeight}px` } : undefined}
         >
           <div className="metals-rates__chrome">
-            <div className="metals-rates__head">
-              <h4 className="fx-panel-title">
-                Live rates · {metalData?.name || 'Metal'} ({metal === 'gold' ? '22K' : 'Fine'})
-              </h4>
-              <div className="metals-mode-toggle metals-rates__mode">
-                <button
-                  type="button"
-                  className={`fx-chip${boardMode === 'countries' ? ' is-active' : ''}`}
-                  onClick={() => setBoardMode('countries')}
-                >
-                  Countries
-                </button>
-                <button
-                  type="button"
-                  className={`fx-chip${boardMode === 'india' ? ' is-active' : ''}`}
-                  onClick={() => setBoardMode('india')}
-                >
-                  India states
-                </button>
-              </div>
+            <h4 className="fx-panel-title metals-rates__title">
+              Live rates · {metalData?.name || 'Metal'} ({metal === 'gold' ? '22K' : 'Fine'})
+            </h4>
+
+            <div className="metals-mode-toggle metals-rates__mode">
+              <button
+                type="button"
+                className={`fx-chip${boardMode === 'countries' ? ' is-active' : ''}`}
+                onClick={() => setBoardMode('countries')}
+              >
+                Countries
+              </button>
+              <button
+                type="button"
+                className={`fx-chip${boardMode === 'india' ? ' is-active' : ''}`}
+                onClick={() => setBoardMode('india')}
+              >
+                India states
+              </button>
             </div>
 
             <div className="metals-tabs metals-metal-tabs">

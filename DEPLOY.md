@@ -102,8 +102,7 @@ The server serves the built React app from `client/dist` on the same URL.
 
 ## Local secrets (never on GitHub)
 
-- `server/.env` — local only  
-- `keystore` / mobile secrets — not in this repo  
+- `server/.env` — local only
 
 ---
 

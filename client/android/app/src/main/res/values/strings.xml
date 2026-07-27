@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Sanchiva</string>
-    <string name="title_activity_main">Sanchiva</string>
-    <string name="package_name">com.sanchiva.app</string>
-    <string name="custom_url_scheme">com.sanchiva.app</string>
-</resources>

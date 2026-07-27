@@ -45,21 +45,19 @@ function MoonIcon() {
 
 /**
  * Theme switch: OFF = light (sun), ON = dark (moon).
- * Temporarily disabled — theme stays on current (default light).
  */
 export default function ThemeToggle({ className = '' }) {
-  const { isDark } = useTheme();
+  const { isDark, setTheme } = useTheme();
 
   return (
     <button
       type="button"
-      className={`theme-switch theme-switch--disabled ${isDark ? 'is-on' : 'is-off'} ${className}`.trim()}
+      className={`theme-switch ${isDark ? 'is-on' : 'is-off'} ${className}`.trim()}
       role="switch"
       aria-checked={isDark}
-      aria-disabled="true"
-      disabled
-      aria-label="Theme switch (temporarily disabled)"
-      title="Theme switch is temporarily disabled"
+      aria-label={isDark ? 'Dark theme on, switch to light' : 'Light theme on, switch to dark'}
+      title={isDark ? 'Dark theme' : 'Light theme'}
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
     >
       <span className="theme-switch-track" aria-hidden>
         <span className="theme-switch-thumb" key={isDark ? 'dark' : 'light'}>

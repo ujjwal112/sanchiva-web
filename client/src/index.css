@@ -514,11 +514,16 @@ img.sanchiva-logo-mark {
   border: none;
 }
 
-/* Soft blue lift on dark surfaces (sidebar / dark chrome) */
+/* Flat logo — no glow on sidebar or dark theme */
 .sidebar .sanchiva-logo-mark-wrap,
 .sidebar img.sanchiva-logo-mark,
-html[data-theme='dark'] img.sanchiva-logo-mark {
-  filter: drop-shadow(0 2px 10px rgba(37, 99, 235, 0.4));
+html[data-theme='dark'] img.sanchiva-logo-mark,
+.login-heading-logo,
+.login-heading-logo img,
+.signup-info-brand img,
+.signup-info-brand .sanchiva-logo-mark-wrap {
+  filter: none !important;
+  box-shadow: none !important;
 }
 
 .sanchiva-logo-wordmark {
@@ -2469,8 +2474,13 @@ html[data-theme='dark'] .login-page {
   margin-bottom: 0.25rem;
 }
 
-.login-heading-logo {
-  border-radius: 10px;
+.login-heading-logo,
+.login-heading-logo .sanchiva-logo-mark-wrap,
+.login-heading-logo img {
+  border-radius: 0;
+  filter: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 .login-title {
@@ -3804,6 +3814,59 @@ html[data-theme='light'] .event-list-actions .btn-danger.btn-sm:hover {
   color: #ffffff !important;
 }
 
+/*
+ * Dark theme text Delete — liquid glass (like Edit/ghost) but red.
+ * Default state must be clearly visible (not only on hover).
+ * Does NOT target icon delete (.btn-icon-delete).
+ */
+html[data-theme='dark'] .row-actions .btn-danger,
+html[data-theme='dark'] .row-actions .btn-danger.btn-sm,
+html[data-theme='dark'] .event-list-actions .btn-danger,
+html[data-theme='dark'] .event-list-actions .btn-danger.btn-sm,
+html[data-theme='dark'] .btn.btn-danger.btn-sm:not(.btn-icon):not(.btn-icon-delete),
+html[data-theme='dark'] .btn.btn-danger:not(.btn-icon):not(.btn-icon-delete) {
+  background: rgba(153, 27, 27, 0.42) !important;
+  border: 1px solid rgba(185, 28, 28, 0.7) !important;
+  color: #fca5a5 !important;
+  backdrop-filter: blur(16px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 4px 16px rgba(127, 29, 29, 0.35) !important;
+}
+
+html[data-theme='dark'] .row-actions .btn-danger:hover,
+html[data-theme='dark'] .row-actions .btn-danger.btn-sm:hover,
+html[data-theme='dark'] .event-list-actions .btn-danger:hover,
+html[data-theme='dark'] .event-list-actions .btn-danger.btn-sm:hover,
+html[data-theme='dark'] .btn.btn-danger.btn-sm:not(.btn-icon):not(.btn-icon-delete):hover,
+html[data-theme='dark'] .btn.btn-danger:not(.btn-icon):not(.btn-icon-delete):hover {
+  background: rgba(127, 29, 29, 0.62) !important;
+  border-color: rgba(220, 38, 38, 0.85) !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 8px 22px rgba(127, 29, 29, 0.45) !important;
+}
+
+/* Keep icon delete buttons solid red (unchanged) */
+html[data-theme='dark'] .btn-icon-delete,
+html[data-theme='dark'] .btn-icon.btn-icon-delete {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.35) !important;
+}
+
+html[data-theme='dark'] .btn-icon-delete:hover,
+html[data-theme='dark'] .btn-icon.btn-icon-delete:hover {
+  background: #b91c1c !important;
+  border-color: #b91c1c !important;
+  color: #ffffff !important;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -5022,6 +5085,52 @@ html[data-theme='dark'] .glass-select-trigger .glass-select-chevron {
   border-color: rgba(255, 255, 255, 0.8);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
   transform: none;
+}
+
+/* Light theme: My Events + event export buttons solid blue */
+html:not([data-theme='dark']) .event-back-my-events.btn,
+html[data-theme='light'] .event-back-my-events.btn,
+html.theme-light .event-back-my-events.btn,
+html:not([data-theme='dark']) .event-back-my-events,
+html[data-theme='light'] .event-back-my-events,
+html.theme-light .event-back-my-events {
+  background: #2563eb !important;
+  border: 1px solid #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html:not([data-theme='dark']) .event-back-my-events.btn:hover,
+html[data-theme='light'] .event-back-my-events.btn:hover,
+html.theme-light .event-back-my-events.btn:hover,
+html:not([data-theme='dark']) .event-back-my-events:hover,
+html[data-theme='light'] .event-back-my-events:hover,
+html.theme-light .event-back-my-events:hover {
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.32) !important;
+}
+
+html:not([data-theme='dark']) .event-export-actions .list-download-btn,
+html[data-theme='light'] .event-export-actions .list-download-btn,
+html.theme-light .event-export-actions .list-download-btn {
+  background: #2563eb !important;
+  border: 1px solid #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html:not([data-theme='dark']) .event-export-actions .list-download-btn:hover,
+html[data-theme='light'] .event-export-actions .list-download-btn:hover,
+html.theme-light .event-export-actions .list-download-btn:hover {
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
 }
 
 .todo-edit-banner {
@@ -6291,22 +6400,17 @@ html[data-theme='dark'] .metals-spot-chip strong {
   flex: 0 0 auto;
 }
 
-.metals-rates__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 0.75rem;
-  flex-wrap: wrap;
-}
-
-.metals-rates__head .fx-panel-title {
+/* Title first, then Countries / India states below it */
+.metals-rates__title {
   margin: 0;
-  flex: 1 1 auto;
-  min-width: 0;
+  width: 100%;
 }
 
 .metals-rates__mode {
-  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  width: 100%;
 }
 
 /* List fills all remaining height of the right column */
@@ -6509,19 +6613,13 @@ html[data-theme='light'] .sidebar-footer .muted {
 
 .about-hero__logo-wrap {
   flex-shrink: 0;
-  padding: 0.55rem;
-  border-radius: 22px;
-  /* Soft blue glass frame — logo itself has no plate */
-  background: linear-gradient(
-    145deg,
-    rgba(37, 99, 235, 0.14) 0%,
-    rgba(34, 211, 238, 0.1) 100%
-  );
-  border: 1px solid rgba(37, 99, 235, 0.28);
-  box-shadow:
-    0 12px 32px rgba(37, 99, 235, 0.22),
-    0 0 0 1px rgba(34, 211, 238, 0.1);
-  animation: pulse-glow-brand 4s ease-in-out infinite;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  animation: none;
+  filter: none;
 }
 
 .about-hero__logo-wrap .sanchiva-logo-mark-wrap,
@@ -6530,6 +6628,8 @@ img.about-hero__logo {
   display: block;
   border-radius: 0;
   background: transparent !important;
+  filter: none !important;
+  box-shadow: none !important;
 }
 
 .about-logo-meaning {
@@ -6576,10 +6676,12 @@ img.about-hero__logo {
 }
 
 .about-creator__logo,
-img.about-creator__logo {
+img.about-creator__logo,
+.about-creator .sanchiva-logo-mark-wrap {
   flex-shrink: 0;
-  filter: drop-shadow(0 6px 18px rgba(37, 99, 235, 0.4));
-  border-radius: 12px;
+  filter: none !important;
+  box-shadow: none !important;
+  border-radius: 0;
 }
 
 .about-hero__name {
