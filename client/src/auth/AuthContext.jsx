@@ -7,7 +7,12 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const logout = useCallback(async () => {
+  /**
+   * Log out. Pass { redirectTo: '/' } to leave immediately without flashing
+   * protected routes (which would otherwise Navigate to /login).
+   */
+  const logout = useCallback(async (opts = {}) => {
+    const redirectTo = typeof opts?.redirectTo === 'string' ? opts.redirectTo : null;
     const access = getAccessToken();
     const refresh = getRefreshToken();
     try {
@@ -25,6 +30,11 @@ export function AuthProvider({ children }) {
       /* ignore */
     }
     clearTokens();
+    if (redirectTo) {
+      // Full navigation — skip setUser so ProtectedRoute never renders /login
+      window.location.replace(redirectTo);
+      return;
+    }
     setUser(null);
   }, []);
 

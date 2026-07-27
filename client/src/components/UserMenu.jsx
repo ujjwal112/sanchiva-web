@@ -94,9 +94,8 @@ export default function UserMenu() {
             onClick={() => {
               setOpen(false);
               setCurrencyOpen(false);
-              logout().then(() => {
-                window.location.href = '/';
-              });
+              // Hard redirect to landing inside logout — avoids /login flash
+              void logout({ redirectTo: '/' });
             }}
           >
             Logout
