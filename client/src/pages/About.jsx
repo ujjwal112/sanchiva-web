@@ -44,7 +44,7 @@ export default function About() {
               <strong>Loans / Credit Card:</strong> EMIs, progress, card spends
             </li>
             <li>
-              <strong>Monetary:</strong> income, assets, money lent, plus Overview with live tools
+              <strong>Monetary:</strong> live currency & metals, income, assets, money lent
             </li>
             <li>
               <strong>Events:</strong> plan weddings, birthdays and more with smart checklists
@@ -57,10 +57,10 @@ export default function About() {
       </div>
 
       <div className="card about-block about-features">
-        <h3>Live rates (Monetary → Overview)</h3>
+        <h3>Live rates (Monetary → Live currency / Live metals)</h3>
         <p className="muted about-features__lead">
-          Free live market data on the Monetary Overview tab so you can check values while you track income
-          and assets. These tools are separate from display currency.
+          Free live market data on the Monetary Live currency and Live metals tabs so you can check values
+          while you track income and assets. These tools are separate from display currency.
         </p>
         <div className="grid grid-2 about-features__grid">
           <div className="about-feature-card">

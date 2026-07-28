@@ -20,6 +20,14 @@ const UNIT_OPTIONS = [
   { value: 'oz', label: 'Troy ounce' },
 ];
 
+/** Traditional Indian tola weight used for jewellery gold rates */
+const TOLA_GRAMS = 11.6638038;
+
+const GOLD_UNIT_OPTIONS = [
+  ...UNIT_OPTIONS,
+  { value: 'tola', label: 'Tola (≈11.66 g)' },
+];
+
 const GOLD_PURITY = [
   { value: 'k24', label: '24K (pure)' },
   { value: 'k22', label: '22K' },
@@ -208,11 +216,14 @@ export default function MetalsConverter() {
     return metalData.purePerGramInr;
   }, [metalData, metal, purity]);
 
+  const unitOptions = metal === 'gold' ? GOLD_UNIT_OPTIONS : UNIT_OPTIONS;
+
   const grams = useMemo(() => {
     const n = Number(amount);
     if (!Number.isFinite(n) || n < 0) return null;
     if (unit === 'oz') return n * 31.1034768;
     if (unit === '10g') return n * 10;
+    if (unit === 'tola') return n * TOLA_GRAMS;
     return n;
   }, [amount, unit]);
 
@@ -278,11 +289,14 @@ export default function MetalsConverter() {
       purityLocal = pureUsd * usdToDisplay * prem * (map[purity] ?? 22 / 24);
     }
     const k22Local = pureUsd * usdToDisplay * prem * (22 / 24);
+    // 1 tola at selected gold purity (or pure for non-gold — unused in UI)
+    const tolaLocal = purityLocal * TOLA_GRAMS;
     return {
       spotLocal,
       pureLocal,
       purityLocal,
       k22Local,
+      tolaLocal,
       perKgLocal: pureLocal * 1000,
       currency: displayCurrency,
       quoteLabel,
@@ -339,7 +353,11 @@ export default function MetalsConverter() {
                 value={metal}
                 onChange={(v) => {
                   setMetal(v);
-                  if (v !== 'gold') setPurity('k22');
+                  if (v !== 'gold') {
+                    setPurity('k22');
+                    // Tola is gold-only; reset unit when leaving gold
+                    setUnit((u) => (u === 'tola' ? 'gram' : u));
+                  }
                 }}
                 options={METAL_OPTIONS}
                 placeholder="Metal"
@@ -369,7 +387,7 @@ export default function MetalsConverter() {
               </div>
               <div className="field">
                 <label>Unit</label>
-                <GlassSelect value={unit} onChange={setUnit} options={UNIT_OPTIONS} placeholder="Unit" />
+                <GlassSelect value={unit} onChange={setUnit} options={unitOptions} placeholder="Unit" />
               </div>
             </div>
 
@@ -476,8 +494,19 @@ export default function MetalsConverter() {
               </div>
               {metal === 'gold' ? (
                 <div className="metals-spot-chip">
-                  <span className="muted">22K / g</span>
-                  <strong>{formatDisplay(displayRates.k22Local)}</strong>
+                  <span className="muted">
+                    1 tola rate
+                    {purity === 'k24'
+                      ? ' · 24K'
+                      : purity === 'k22'
+                        ? ' · 22K'
+                        : purity === 'k18'
+                          ? ' · 18K'
+                          : purity === 'k14'
+                            ? ' · 14K'
+                            : ''}
+                  </span>
+                  <strong>{formatDisplay(displayRates.tolaLocal)}</strong>
                 </div>
               ) : (
                 <div className="metals-spot-chip">
@@ -522,7 +551,13 @@ export default function MetalsConverter() {
                   key={m.value}
                   type="button"
                   className={`fx-chip${metal === m.value ? ' is-active' : ''}`}
-                  onClick={() => setMetal(m.value)}
+                  onClick={() => {
+                    setMetal(m.value);
+                    if (m.value !== 'gold') {
+                      setPurity('k22');
+                      setUnit((u) => (u === 'tola' ? 'gram' : u));
+                    }
+                  }}
                 >
                   {m.label}
                 </button>

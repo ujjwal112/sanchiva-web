@@ -3717,9 +3717,25 @@ html[data-theme='dark'] .signup-page .login-btn-outline {
 
 .form-actions {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 0.6rem;
-  flex-wrap: wrap;
   align-items: center;
+}
+
+/* In form grids, span full row so Update + Cancel sit side by side (not stacked) */
+.form-grid > .form-actions {
+  grid-column: 1 / -1;
+  width: 100%;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.form-grid > .form-actions .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* Tables / lists */
@@ -3774,9 +3790,9 @@ table.data-table tbody tr:hover {
  * Light theme list actions: Edit = solid blue, Delete = solid red
  * (DataTable, week lines, event guests/todos, event list delete)
  */
+/* List/table Edit only — not ceremony cards */
 html[data-theme='light'] .row-actions .btn-ghost,
-html[data-theme='light'] .row-actions .btn-ghost.btn-sm,
-html[data-theme='light'] .ceremony-card-edit-btn.btn-ghost {
+html[data-theme='light'] .row-actions .btn-ghost.btn-sm {
   background: #2563eb !important;
   border: 1px solid #2563eb !important;
   color: #ffffff !important;
@@ -3786,11 +3802,53 @@ html[data-theme='light'] .ceremony-card-edit-btn.btn-ghost {
 }
 
 html[data-theme='light'] .row-actions .btn-ghost:hover,
-html[data-theme='light'] .row-actions .btn-ghost.btn-sm:hover,
-html[data-theme='light'] .ceremony-card-edit-btn.btn-ghost:hover {
+html[data-theme='light'] .row-actions .btn-ghost.btn-sm:hover {
   background: #1d4ed8 !important;
   border-color: #1d4ed8 !important;
   color: #ffffff !important;
+}
+
+/*
+ * Ceremony card Edit — soft tint of THAT card’s accent (not solid blue).
+ * Accent/border/text come from CSS vars set inline on the button.
+ */
+html:not([data-theme='dark']) .ceremony-card-edit-btn,
+html[data-theme='light'] .ceremony-card-edit-btn,
+html.theme-light .ceremony-card-edit-btn,
+html:not([data-theme='dark']) .ceremony-card-edit-btn.btn-ghost,
+html[data-theme='light'] .ceremony-card-edit-btn.btn-ghost,
+html.theme-light .ceremony-card-edit-btn.btn-ghost {
+  background: color-mix(
+    in srgb,
+    var(--ceremony-edit-color, #6d28d9) 18%,
+    #ffffff
+  ) !important;
+  border: 1px solid var(--ceremony-edit-border, rgba(0, 0, 0, 0.16)) !important;
+  color: var(--ceremony-edit-text, var(--ceremony-edit-color, #334155)) !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.75) inset,
+    0 2px 8px color-mix(in srgb, var(--ceremony-edit-color, #000) 12%, transparent) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  font-weight: 650;
+}
+
+html:not([data-theme='dark']) .ceremony-card-edit-btn:hover,
+html[data-theme='light'] .ceremony-card-edit-btn:hover,
+html.theme-light .ceremony-card-edit-btn:hover,
+html:not([data-theme='dark']) .ceremony-card-edit-btn.btn-ghost:hover,
+html[data-theme='light'] .ceremony-card-edit-btn.btn-ghost:hover,
+html.theme-light .ceremony-card-edit-btn.btn-ghost:hover {
+  background: color-mix(
+    in srgb,
+    var(--ceremony-edit-color, #6d28d9) 28%,
+    #ffffff
+  ) !important;
+  border-color: var(--ceremony-edit-color, #334155) !important;
+  color: var(--ceremony-edit-text, var(--ceremony-edit-color, #0f172a)) !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 4px 12px color-mix(in srgb, var(--ceremony-edit-color, #000) 18%, transparent) !important;
 }
 
 html[data-theme='light'] .row-actions .btn-danger,
@@ -5133,6 +5191,8 @@ html.theme-light .event-export-actions .list-download-btn:hover {
   color: #ffffff !important;
 }
 
+/* Edit mode banner + row highlight — match primary blue theme (light + dark) */
+.list-edit-banner,
 .todo-edit-banner {
   display: flex;
   align-items: center;
@@ -5140,19 +5200,75 @@ html.theme-light .event-export-actions .list-download-btn:hover {
   gap: 0.75rem;
   flex-wrap: wrap;
   padding: 0.65rem 0.85rem;
-  margin-bottom: 0.85rem;
+  margin-bottom: 1rem;
   border-radius: 12px;
-  background: rgba(24, 111, 100, 0.14);
-  border: 1px solid rgba(24, 111, 100, 0.35);
   font-size: 0.9rem;
+  /* Light theme default: soft blue glass */
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  color: #1e3a8a;
 }
 
+.list-edit-banner strong,
 .todo-edit-banner strong {
-  color: var(--text);
+  color: #1d4ed8;
+  font-weight: 650;
 }
 
+/* Light theme list-row being edited */
 .row-editing {
-  background: rgba(24, 111, 100, 0.08);
+  background: rgba(37, 99, 235, 0.08) !important;
+  box-shadow: inset 3px 0 0 #2563eb;
+}
+
+html[data-theme='light'] .list-edit-banner,
+html[data-theme='light'] .todo-edit-banner,
+html.theme-light .list-edit-banner,
+html.theme-light .todo-edit-banner,
+html:not([data-theme='dark']) .list-edit-banner,
+html:not([data-theme='dark']) .todo-edit-banner {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(37, 99, 235, 0.28);
+  color: #1e3a8a;
+}
+
+html[data-theme='light'] .list-edit-banner strong,
+html[data-theme='light'] .todo-edit-banner strong,
+html.theme-light .list-edit-banner strong,
+html.theme-light .todo-edit-banner strong,
+html:not([data-theme='dark']) .list-edit-banner strong,
+html:not([data-theme='dark']) .todo-edit-banner strong {
+  color: #1d4ed8;
+}
+
+html[data-theme='light'] .row-editing,
+html.theme-light .row-editing,
+html:not([data-theme='dark']) .row-editing {
+  background: rgba(37, 99, 235, 0.08) !important;
+  box-shadow: inset 3px 0 0 #2563eb;
+}
+
+/* Dark theme: soft blue glass on dark surfaces */
+html[data-theme='dark'] .list-edit-banner,
+html[data-theme='dark'] .todo-edit-banner,
+html.theme-dark .list-edit-banner,
+html.theme-dark .todo-edit-banner {
+  background: rgba(59, 130, 246, 0.16);
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #bfdbfe;
+}
+
+html[data-theme='dark'] .list-edit-banner strong,
+html[data-theme='dark'] .todo-edit-banner strong,
+html.theme-dark .list-edit-banner strong,
+html.theme-dark .todo-edit-banner strong {
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .row-editing,
+html.theme-dark .row-editing {
+  background: rgba(59, 130, 246, 0.14) !important;
+  box-shadow: inset 3px 0 0 #3b82f6;
 }
 
 .event-export-actions {
@@ -5244,16 +5360,23 @@ html.theme-light .event-export-actions .list-download-btn:hover {
 
 .ceremony-card-edit-btn {
   flex-shrink: 0;
-  padding: 0.25rem 0.55rem;
+  padding: 0.28rem 0.7rem;
   font-size: 0.75rem;
-  opacity: 0.95;
-  color: inherit;
-  border-color: rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.55);
+  line-height: 1.2;
+  opacity: 1;
+  border-radius: 999px;
+  cursor: pointer;
+  /* Fallback until ceremony vars are applied inline */
+  color: var(--ceremony-edit-text, var(--ceremony-edit-color, #334155));
+  border: 1px solid var(--ceremony-edit-border, rgba(0, 0, 0, 0.14));
+  background: color-mix(in srgb, var(--ceremony-edit-color, #6d28d9) 18%, #ffffff);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 2px 6px rgba(0, 0, 0, 0.05);
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .ceremony-card-edit-btn:hover {
-  background: rgba(255, 255, 255, 0.8);
+  background: color-mix(in srgb, var(--ceremony-edit-color, #6d28d9) 28%, #ffffff);
+  border-color: var(--ceremony-edit-color, #334155);
 }
 
 .ceremony-card--editing {
@@ -5927,7 +6050,7 @@ html.theme-dark .data-filter-bar__btns .btn.btn-download .btn-sub {
   width: 42px;
   min-width: 42px;
   height: 42px;
-  border-radius: 12px;
+  border-radius: 999px; /* circle — matches live card icons */
   display: grid;
   place-items: center;
   font-size: clamp(0.72rem, 1.8vw, 1.15rem);
@@ -5936,11 +6059,22 @@ html.theme-dark .data-filter-bar__btns .btn.btn-download .btn-sub {
   padding: 0 0.2rem;
   text-align: center;
   word-break: keep-all;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--glass-border);
-  color: inherit;
+  /* Light default = same soft blue glass as live “view more” chips */
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  color: #1d4ed8;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.65) inset;
   flex-shrink: 0;
   box-sizing: border-box;
+}
+
+/* Dark: soft white glass (same as live card icons in dark) */
+html[data-theme='dark'] .kpi-icon,
+html.theme-dark .kpi-icon {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.16));
+  color: #f4f4f5;
+  box-shadow: none;
 }
 
 /* ── Live currency converter (Dashboard) — split layout ── */
@@ -6970,6 +7104,209 @@ html[data-theme='dark'] .about-feature-card {
 
 .stat-row:last-child {
   border-bottom: none;
+}
+
+/* Dashboard live currency / metals mini cards */
+.dash-live-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.dash-live-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 0.45rem;
+}
+
+.dash-live-card__head h3 {
+  margin-bottom: 0.15rem;
+}
+
+.dash-live-list {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.dash-live-empty {
+  padding: 0.75rem 0;
+  font-size: 0.88rem;
+}
+
+.dash-live-row {
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dash-live-row__label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.dash-live-code {
+  font-weight: 650;
+  font-size: 0.92rem;
+}
+
+.dash-live-name {
+  font-size: 0.75rem;
+}
+
+.dash-live-row strong {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+/* Icon-only “view more” — same circle chip as .kpi-icon (light + dark) */
+.dash-live-more {
+  flex-shrink: 0;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  text-decoration: none;
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.65) inset;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.dash-live-more__icon {
+  display: block;
+}
+
+.dash-live-more:hover {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(37, 99, 235, 0.45);
+  color: #1e40af;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 4px 12px rgba(37, 99, 235, 0.15);
+  transform: translateY(-1px);
+}
+
+.dash-live-more:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/*
+ * Dark theme only: same glass as KPI icons, keep circle shape
+ */
+html[data-theme='dark'] .dash-live-more,
+html.theme-dark .dash-live-more,
+html[data-theme='dark'] span.dash-live-more.dash-quick-stats__badge,
+html.theme-dark span.dash-live-more.dash-quick-stats__badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px; /* circle */
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.16));
+  color: #f4f4f5;
+  box-shadow: none;
+}
+
+html[data-theme='dark'] .dash-live-more:hover,
+html.theme-dark .dash-live-more:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  box-shadow: none;
+  transform: none;
+}
+
+html[data-theme='dark'] .dash-live-more:focus-visible,
+html.theme-dark .dash-live-more:focus-visible {
+  outline-color: rgba(255, 255, 255, 0.45);
+}
+
+/* Quick stats badge reuses .dash-live-more surface; kill hover (not a link) */
+span.dash-live-more.dash-quick-stats__badge {
+  cursor: default;
+  pointer-events: none;
+}
+
+span.dash-live-more.dash-quick-stats__badge:hover {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(37, 99, 235, 0.28);
+  color: #1d4ed8;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.65) inset;
+  transform: none;
+}
+
+html[data-theme='dark'] span.dash-live-more.dash-quick-stats__badge:hover,
+html.theme-dark span.dash-live-more.dash-quick-stats__badge:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--glass-border, rgba(255, 255, 255, 0.16));
+  color: #f4f4f5;
+  box-shadow: none;
+  transform: none;
+}
+
+.dash-quick-stats__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.dash-quick-stats__row {
+  padding: 0.55rem 0.15rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.dash-quick-stats__row:last-child {
+  border-bottom: none;
+  padding-bottom: 0.15rem;
+}
+
+.dash-quick-stats__row strong {
+  font-weight: 650;
+  color: var(--color-obsidian, #0f172a);
+}
+
+html[data-theme='dark'] .dash-quick-stats__row,
+html.theme-dark .dash-quick-stats__row {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme='dark'] .dash-quick-stats__row strong,
+html.theme-dark .dash-quick-stats__row strong {
+  color: #f4f4f5;
+}
+
+/* Shared polish: live + quick stats rows feel like the same family */
+.dash-live-card .dash-live-row {
+  padding: 0.55rem 0.1rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.dash-live-card .dash-live-row:last-child {
+  border-bottom: none;
+}
+
+html[data-theme='dark'] .dash-live-card .dash-live-row,
+html.theme-dark .dash-live-card .dash-live-row {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.dash-live-card .dash-live-code {
+  letter-spacing: 0.01em;
+}
+
+.dash-live-card .dash-live-row strong {
+  font-weight: 650;
 }
 
 /* Animations */

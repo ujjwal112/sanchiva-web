@@ -86,7 +86,7 @@ export const api = {
 /**
  * Format money with the user's display currency symbol (profile preference).
  * Amounts are display-formatted only (stored values unchanged).
- * Monetary Overview live converters use their own formatters and ignore this.
+ * Monetary Live currency / Live metals converters use their own formatters and ignore this.
  */
 export function formatCurrency(n) {
   const num = Number(n) || 0;

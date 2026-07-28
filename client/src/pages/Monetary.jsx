@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api, formatCurrency, formatDate, todayISO, MONTHS } from '../api';
 import { Tabs, CategorySelect, DataTable, DateInput, GlassSelect, useToast, MonthYearFilters } from '../components/ui';
 import { PieChart, BarChart, categoryChartData } from '../components/Charts';
@@ -16,12 +17,44 @@ const emptyIncome = {
 const emptyAsset = { asset_type: '', custom_type: '', amount: '', notes: '' };
 const emptyGiven = { person_name: '', given_date: todayISO(), amount: '', notes: '' };
 
+const MONETARY_TABS = new Set(['currency', 'metals', 'income', 'assets', 'lent']);
+
+function tabFromSearch(params) {
+  const t = String(params.get('tab') || '').toLowerCase();
+  // Legacy overview → live currency
+  if (t === 'overview') return 'currency';
+  if (MONETARY_TABS.has(t)) return t;
+  return 'currency';
+}
+
 export default function Monetary() {
   const { symbol: currencySymbol } = useCurrency();
-  const [tab, setTab] = useState('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTab] = useState(() => tabFromSearch(searchParams));
   const [incomeTab, setIncomeTab] = useState('entry');
   const [assetTab, setAssetTab] = useState('entry');
   const [givenTab, setGivenTab] = useState('entry');
+
+  // Sync tab from URL (dashboard View more, browser back/forward)
+  useEffect(() => {
+    const next = tabFromSearch(searchParams);
+    setTab((prev) => (prev === next ? prev : next));
+  }, [searchParams]);
+
+  const changeTab = useCallback(
+    (id) => {
+      setTab(id);
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev);
+          p.set('tab', id);
+          return p;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
 
   const [incomeForm, setIncomeForm] = useState(emptyIncome);
   const [incomeEdit, setIncomeEdit] = useState(null);
@@ -100,7 +133,7 @@ export default function Monetary() {
       year: row.year,
     });
     setIncomeTab('entry');
-    setTab('income');
+    changeTab('income');
   };
 
   const deleteIncome = async (row) => {
@@ -144,7 +177,7 @@ export default function Monetary() {
       notes: row.notes || '',
     });
     setAssetTab('entry');
-    setTab('assets');
+    changeTab('assets');
   };
 
   const deleteAsset = async (row) => {
@@ -188,7 +221,7 @@ export default function Monetary() {
       notes: row.notes || '',
     });
     setGivenTab('entry');
-    setTab('lent');
+    changeTab('lent');
   };
 
   const deleteGiven = async (row) => {
@@ -252,18 +285,24 @@ export default function Monetary() {
       {Toast}
       <Tabs
         tabs={[
-          { id: 'overview', label: 'Overview' },
+          { id: 'currency', label: 'Live currency' },
+          { id: 'metals', label: 'Live metals' },
           { id: 'income', label: 'Salary / Income' },
           { id: 'assets', label: 'Other Assets' },
           { id: 'lent', label: 'Money Lent' },
         ]}
         active={tab}
-        onChange={setTab}
+        onChange={changeTab}
       />
 
-      {tab === 'overview' && (
-        <div className="stack-sm monetary-overview" style={{ gap: '1.1rem', display: 'flex', flexDirection: 'column' }}>
+      {tab === 'currency' && (
+        <div className="stack-sm monetary-live-panel">
           <CurrencyConverter />
+        </div>
+      )}
+
+      {tab === 'metals' && (
+        <div className="stack-sm monetary-live-panel">
           <MetalsConverter />
         </div>
       )}

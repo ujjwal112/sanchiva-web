@@ -641,7 +641,16 @@ export default function EventDetail() {
                           </h4>
                           <button
                             type="button"
-                            className="btn btn-ghost btn-sm ceremony-card-edit-btn"
+                            className="btn btn-sm ceremony-card-edit-btn"
+                            style={{
+                              // Tint matches this ceremony card (not global solid blue)
+                              ['--ceremony-edit-color']: theme.accent,
+                              ['--ceremony-edit-border']: theme.border,
+                              ['--ceremony-edit-text']: theme.text,
+                              color: theme.text,
+                              borderColor: theme.border,
+                              background: `color-mix(in srgb, ${theme.accent} 18%, #ffffff)`,
+                            }}
                             onClick={() => {
                               cancelAddCeremony();
                               startEditCeremony(card);
@@ -789,13 +798,10 @@ export default function EventDetail() {
           {/* Entry / edit form at top of list */}
           <div id="todo-entry-form">
             {editingTodo && (
-              <div className="todo-edit-banner">
+              <div className="list-edit-banner">
                 <span>
-                  Editing task: <strong>{editingTodo.title || 'Untitled'}</strong>. Change the task name and other fields below, then click Update todo.
+                  Editing task: <strong>{editingTodo.title || 'Untitled'}</strong>. Change the fields below, then click Update todo.
                 </span>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={resetItemForm}>
-                  Cancel edit
-                </button>
               </div>
             )}
             <form
@@ -844,7 +850,7 @@ export default function EventDetail() {
                   onChange={(e) => setItemForm({ ...itemForm, token_paid: e.target.value })}
                 />
               </div>
-              <div className="form-actions" style={{ alignItems: 'end' }}>
+              <div className="form-actions form-actions--inline">
                 <button className="btn btn-primary" type="submit">
                   {editingTodo ? 'Update todo' : 'Add task'}
                 </button>
@@ -1007,7 +1013,18 @@ export default function EventDetail() {
             </div>
           )}
 
-          <form onSubmit={addGuest} className="form-grid event-add-form" style={{ borderTop: 'none', paddingTop: 0 }}>
+          {editingGuest && (
+            <div className="list-edit-banner">
+              <span>
+                Editing guest: <strong>{editingGuest.name || 'Untitled'}</strong>. Change the fields below, then click Update guest.
+              </span>
+            </div>
+          )}
+          <form
+            onSubmit={addGuest}
+            className="form-grid event-add-form"
+            style={{ borderTop: 'none', paddingTop: 0 }}
+          >
             <div className="field">
               <label>Guest name</label>
               <input
@@ -1063,7 +1080,7 @@ export default function EventDetail() {
                 aria-label="RSVP"
               />
             </div>
-            <div className="form-actions" style={{ alignItems: 'end' }}>
+            <div className="form-actions form-actions--inline">
               <button className="btn btn-primary" type="submit" disabled={!ceremonyTabs.length}>
                 {editingGuest ? 'Update guest' : 'Add guest'}
               </button>
@@ -1100,7 +1117,7 @@ export default function EventDetail() {
               </thead>
               <tbody>
                 {pagedGuests.map((g) => (
-                  <tr key={g.id}>
+                  <tr key={g.id} className={editingGuest?.id === g.id ? 'row-editing' : ''}>
                     <td>{g.name}</td>
                     <td>{g.side || '-'}</td>
                     <td>{g.count}</td>

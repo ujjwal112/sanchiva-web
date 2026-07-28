@@ -8,7 +8,7 @@ const titles = {
   '/dashboard': { title: 'Dashboard', sub: 'Overview of expenses, loans & money flow' },
   '/daily-expense': { title: 'Daily Expense', sub: 'Log spends and review week / month insights' },
   '/loans-credit': { title: 'Loans & Credit Cards', sub: 'EMIs, loan progress and card spends' },
-  '/monetary': { title: 'Monetary', sub: 'Live rates, income, assets and money given' },
+  '/monetary': { title: 'Monetary', sub: 'Live currency & metals, income, assets and money given' },
   '/events': { title: 'Events', sub: 'Create events and manage your list' },
   '/about': {
     title: 'About Sanchiva',
