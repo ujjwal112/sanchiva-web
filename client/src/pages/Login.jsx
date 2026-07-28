@@ -61,7 +61,7 @@ export default function Login() {
     setMessage('');
     if (!googleEnabled) {
       setMessage(
-        'Google login is not configured yet. Use email login, Guest, or add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on Render (see AUTH_SETUP.md).'
+        'Google login is not configured yet. Use email login, Guest, or add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on Render (see docs/AUTH_SETUP.md).'
       );
       return;
     }

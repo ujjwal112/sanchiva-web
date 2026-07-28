@@ -98,9 +98,11 @@ sanchiva-web/
       export.js           Excel / PDF helpers
   server/                 Express API + PostgreSQL
     src/routes/events.js  Wizard, items, guests, ceremony_details
-  render.yaml             Render Blueprint (web + Postgres)
-  DEPLOY.md               Deploy walkthrough
-  AUTH_SETUP.md           OAuth provider setup (Google / Facebook / Microsoft)
+  render.yaml             Render Blueprint (web + Neon DATABASE_URL)
+  docs/
+    DEPLOY.md             Deploy walkthrough
+    AUTH_SETUP.md         OAuth provider setup (Google / Facebook / Microsoft)
+    NEON_MIGRATION.md     Render Postgres → Neon migration
   .env.example            Environment variable template
 ```
 
@@ -140,7 +142,7 @@ npm run dev
 | Events | http://localhost:5173/events |
 | Event detail | http://localhost:5173/events/:id |
 
-Guest login works locally without OAuth. Social logins need client IDs (see **AUTH_SETUP.md**).
+Guest login works locally without OAuth. Social logins need client IDs (see **[docs/AUTH_SETUP.md](./docs/AUTH_SETUP.md)**).
 
 ### Docker Postgres (optional)
 
@@ -153,15 +155,15 @@ npm run db:init
 
 ## Production deploy (Render)
 
-Full steps: **[DEPLOY.md](./DEPLOY.md)**
+Full steps: **[docs/DEPLOY.md](./docs/DEPLOY.md)** · Neon DB: **[docs/NEON_MIGRATION.md](./docs/NEON_MIGRATION.md)**
 
 **Short version:**
 1. Code is on GitHub: `ujjwal112/sanchiva-web`  
-2. Deploy with [Render](https://render.com) using `render.yaml` (API + UI + Postgres)  
-3. Set environment variables (JWT secrets, `APP_URL`, `API_URL`, optional OAuth keys)  
+2. Deploy with [Render](https://render.com) using `render.yaml` (API + UI; DB on Neon)  
+3. Set environment variables (`DATABASE_URL` from Neon, JWT secrets, `APP_URL`, `API_URL`, optional OAuth keys)  
 4. Open https://sanchiva.onrender.com  
 
-OAuth keys: **[AUTH_SETUP.md](./AUTH_SETUP.md)**
+OAuth keys: **[docs/AUTH_SETUP.md](./docs/AUTH_SETUP.md)**
 
 ### Useful production URLs
 

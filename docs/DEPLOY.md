@@ -17,7 +17,7 @@ Render free Postgres can expire. Use Neon instead:
 3. On Render **web service** → Environment → set `DATABASE_URL` to that string  
 4. Redeploy (start command can keep `npm run db:init --prefix server && npm start --prefix server`)
 
-Full dump/restore from Render → Neon: **[docs/NEON_MIGRATION.md](docs/NEON_MIGRATION.md)**
+Full dump/restore from Render → Neon: **[NEON_MIGRATION.md](./NEON_MIGRATION.md)**
 
 ---
 
