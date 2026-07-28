@@ -1,7 +1,9 @@
-# Render Blueprint — one web service + managed Postgres
+# Render Blueprint — web service only (Postgres on Neon)
 # https://render.com/docs/blueprint-spec
-# After deploy: open the service Shell and run: npm run db:init --prefix server
-# Or set a one-off job / use the start script that applies schema.
+#
+# Set DATABASE_URL in the Render dashboard to your Neon pooled URL:
+#   postgresql://...?sslmode=require
+# Do not commit real secrets into this file.
 
 services:
   - type: web
@@ -16,15 +18,11 @@ services:
         value: production
       - key: NODE_VERSION
         value: "20"
+      # Neon (or any Postgres). Set the value in Render Dashboard → Environment.
+      # sync: false keeps dashboard value from being overwritten by the blueprint.
       - key: DATABASE_URL
-        fromDatabase:
-          name: sanchiva-db
-          property: connectionString
+        sync: false
       - key: CLIENT_ORIGIN
         value: "*"
-
-databases:
-  - name: sanchiva-db
-    plan: free
-    databaseName: sanchiva
-    user: sanchiva
+      - key: PGSSL
+        value: "true"

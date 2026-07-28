@@ -4,9 +4,20 @@
 
 1. **Code** → GitHub  
 2. **API + UI** → Render (recommended single service)  
-3. **Database** → Render Postgres (or Neon)
+3. **Database** → **Neon free Postgres** (recommended) or Render Postgres  
 
 GitHub alone stores code. GitHub Pages cannot run Express/PostgreSQL.
+
+### Database: Neon (recommended free tier)
+
+Render free Postgres can expire. Use Neon instead:
+
+1. Create a project at [https://console.neon.tech](https://console.neon.tech)  
+2. Copy the **pooled** connection string  
+3. On Render **web service** → Environment → set `DATABASE_URL` to that string  
+4. Redeploy (start command can keep `npm run db:init --prefix server && npm start --prefix server`)
+
+Full dump/restore from Render → Neon: **[docs/NEON_MIGRATION.md](docs/NEON_MIGRATION.md)**
 
 ---
 
