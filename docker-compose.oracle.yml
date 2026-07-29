@@ -2,8 +2,9 @@
 # Usage on the VM:
 #   docker compose -f docker-compose.oracle.yml up -d --build
 #
-# Open firewall ports 80 (and 443 if you add Caddy later).
-# App: http://YOUR_PUBLIC_IP/   API health: http://YOUR_PUBLIC_IP/api/health
+# App listens on host 127.0.0.1:5000 only (not public 80).
+# Put Caddy on 80/443 → reverse_proxy 127.0.0.1:5000 for HTTPS.
+# See docs/ORACLE_HTTPS.md
 
 services:
   db:
@@ -46,8 +47,9 @@ services:
       API_URL: ${API_URL:-http://localhost}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    # Localhost only so Caddy (or host) owns public 80/443
     ports:
-      - "80:5000"
+      - "127.0.0.1:5000:5000"
     networks:
       - sanchiva
 
