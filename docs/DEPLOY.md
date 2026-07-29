@@ -8,15 +8,20 @@
 
 GitHub alone stores code. GitHub Pages cannot run Express/PostgreSQL.
 
-### Preferred: Vercel (frontend + API)
+### Preferred always-on free: Oracle Cloud VM (UI + API + DB)
 
-One project serves React + Express `/api`:
+Docker Compose on one free VM — no serverless cold starts:
 
-→ Full guide: **[VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md)**
+→ Full guide: **[ORACLE_DEPLOY.md](./ORACLE_DEPLOY.md)**  
+→ Files: `Dockerfile`, `docker-compose.oracle.yml`, `.env.oracle.example`
+
+### Alternative: Vercel (frontend + API serverless)
+
+→ **[VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md)** — UI fast, API can cold-start on free tier
 
 ### Alternative: Render (single web service)
 
-Still works with `render.yaml` (API + built client). Use if you prefer always-on Node over Vercel serverless.
+Still works with `render.yaml`. Free tier sleeps; paid is always-on.
 
 ### Database: Supabase (recommended free tier)
 
