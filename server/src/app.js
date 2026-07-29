@@ -65,7 +65,7 @@ app.get('/api/openapi.json', (_req, res) => {
   res.json(openapi);
 });
 
-// swagger-ui-express is heavy / flaky on serverless — skip on Vercel
+// Local/Render: full swagger-ui-express. Vercel: CDN Swagger UI (serverless-safe).
 if (!isVercel) {
   try {
     const swaggerUi = (await import('swagger-ui-express')).default;
@@ -87,10 +87,37 @@ if (!isVercel) {
   }
 } else {
   app.get('/api/docs', (_req, res) => {
-    res.type('html').send(
-      '<!doctype html><meta charset="utf-8"><title>API Docs</title>' +
-        '<p>Swagger UI is disabled on Vercel serverless. Use <a href="/api/openapi.json">/api/openapi.json</a> or local/Render.</p>'
-    );
+    res.type('html').send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sanchiva API Docs</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css" />
+  <style>
+    body { margin: 0; background: #fafafa; }
+    .topbar { display: none; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js" crossorigin></script>
+  <script>
+    window.onload = function () {
+      window.ui = SwaggerUIBundle({
+        url: '/api/openapi.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        persistAuthorization: true,
+        displayRequestDuration: true,
+        tryItOutEnabled: true,
+        presets: [SwaggerUIBundle.presets.apis],
+        layout: 'BaseLayout'
+      });
+    };
+  </script>
+</body>
+</html>`);
   });
 }
 
