@@ -1,109 +1,13 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
-import passport from 'passport';
-import swaggerUi from 'swagger-ui-express';
-import pool from './db.js';
+import app from './app.js';
 
-import authRouter, { configurePassport } from './auth/oauth.js';
-import categoriesRouter from './routes/categories.js';
-import expensesRouter from './routes/expenses.js';
-import loansRouter from './routes/loans.js';
-import creditCardsRouter from './routes/creditCards.js';
-import monetaryRouter from './routes/monetary.js';
-import eventsRouter from './routes/events.js';
-import dashboardRouter from './routes/dashboard.js';
-import fxRouter from './routes/fx.js';
-import metalsRouter from './routes/metals.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
-
-const openapi = JSON.parse(fs.readFileSync(path.join(__dirname, 'openapi.json'), 'utf8'));
-
-const app = express();
 const PORT = process.env.PORT || 5000;
 
-const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(null, true);
-    },
-    credentials: true,
-  })
-);
-app.use(express.json());
-app.use(passport.initialize());
-configurePassport();
-
-app.get('/api/openapi.json', (_req, res) => {
-  res.json(openapi);
-});
-app.use(
-  '/api/docs',
-  swaggerUi.serve,
-  swaggerUi.setup(openapi, {
-    customSiteTitle: 'Sanchiva API Docs',
-    swaggerOptions: {
-      persistAuthorization: true,
-      displayRequestDuration: true,
-      tryItOutEnabled: true,
-      // Show Authorize (lock) so users can paste JWT Bearer access token
-      initOAuth: false,
-    },
-  })
-);
-
-app.get('/api/health', async (_req, res) => {
-  try {
-    await pool.query('SELECT 1');
-    res.json({ ok: true, db: true, env: process.env.NODE_ENV || 'development' });
-  } catch (err) {
-    res.status(500).json({ ok: false, db: false, error: err.message });
-  }
-});
-
-app.use('/api/auth', authRouter);
-app.use('/api/categories', categoriesRouter);
-app.use('/api/expenses', expensesRouter);
-app.use('/api/loans', loansRouter);
-app.use('/api/credit-cards', creditCardsRouter);
-app.use('/api/monetary', monetaryRouter);
-app.use('/api/events', eventsRouter);
-app.use('/api/dashboard', dashboardRouter);
-app.use('/api/fx', fxRouter);
-app.use('/api/metals', metalsRouter);
-
-const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
-if (fs.existsSync(clientDist)) {
-  app.use(express.static(clientDist));
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api')) return next();
-    res.sendFile(path.join(clientDist, 'index.html'));
+// Vercel imports the app as a serverless function — do not call listen there.
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Sanchiva API running on port ${PORT}`);
+    console.log(`Swagger UI: http://localhost:${PORT}/api/docs`);
   });
 }
 
-app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(500).json({ error: err.message || 'Server error' });
-});
-
-app.listen(PORT, () => {
-  console.log(`Sanchiva API running on port ${PORT}`);
-  console.log(`Swagger UI: http://localhost:${PORT}/api/docs`);
-  if (fs.existsSync(clientDist)) {
-    console.log(`Serving frontend from ${clientDist}`);
-  }
-});
+export default app;

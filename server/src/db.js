@@ -18,7 +18,9 @@ const needsSsl =
   process.env.PGSSL === 'true' ||
   process.env.NODE_ENV === 'production' ||
   (connectionString &&
-    /render\.com|neon\.tech|supabase\.co|amazonaws\.com|azure\.com/i.test(connectionString));
+    /render\.com|neon\.tech|supabase\.co|pooler\.supabase\.com|amazonaws\.com|azure\.com/i.test(
+      connectionString
+    ));
 
 const poolConfig = connectionString
   ? {

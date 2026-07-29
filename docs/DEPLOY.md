@@ -3,21 +3,32 @@
 **Sanchiva** needs three things online:
 
 1. **Code** → GitHub  
-2. **API + UI** → Render (recommended single service)  
-3. **Database** → **Neon free Postgres** (recommended) or Render Postgres  
+2. **API + UI** → **Vercel** (see [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md)) or Render  
+3. **Database** → **Supabase Postgres** (recommended free) — Neon free sleeps and cold-starts  
 
 GitHub alone stores code. GitHub Pages cannot run Express/PostgreSQL.
 
-### Database: Neon (recommended free tier)
+### Preferred: Vercel (frontend + API)
 
-Render free Postgres can expire. Use Neon instead:
+One project serves React + Express `/api`:
 
-1. Create a project at [https://console.neon.tech](https://console.neon.tech)  
-2. Copy the **pooled** connection string  
+→ Full guide: **[VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md)**
+
+### Alternative: Render (single web service)
+
+Still works with `render.yaml` (API + built client). Use if you prefer always-on Node over Vercel serverless.
+
+### Database: Supabase (recommended free tier)
+
+Neon free scales to zero (slow first API after idle). Prefer Supabase:
+
+1. Create a project at [https://supabase.com/dashboard](https://supabase.com/dashboard)  
+2. **Connect** → copy **Session pooler** URI (or Direct) + `?sslmode=require`  
 3. On Render **web service** → Environment → set `DATABASE_URL` to that string  
-4. Redeploy (start command can keep `npm run db:init --prefix server && npm start --prefix server`)
+4. Redeploy (`npm run db:init --prefix server && npm start --prefix server`)
 
-Full dump/restore from Render → Neon: **[NEON_MIGRATION.md](./NEON_MIGRATION.md)**
+Full Neon → Supabase dump/restore: **[SUPABASE_MIGRATION.md](./SUPABASE_MIGRATION.md)**  
+Older Neon-only notes: **[NEON_MIGRATION.md](./NEON_MIGRATION.md)**
 
 ---
 
