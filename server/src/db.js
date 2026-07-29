@@ -14,18 +14,23 @@ types.setTypeParser(1114, (val) => val); // timestamp without time zone
 types.setTypeParser(1184, (val) => val); // timestamptz
 
 const connectionString = process.env.DATABASE_URL;
-const needsSsl =
-  process.env.PGSSL === 'true' ||
-  process.env.NODE_ENV === 'production' ||
-  (connectionString &&
-    /render\.com|neon\.tech|supabase\.co|pooler\.supabase\.com|amazonaws\.com|azure\.com/i.test(
-      connectionString
-    ));
+
+// PGSSL=false forces no SSL (Docker Postgres on same host/network).
+// Otherwise enable SSL for managed clouds or when PGSSL=true / production.
+const pgSslEnv = String(process.env.PGSSL || '').toLowerCase();
+const forceNoSsl = pgSslEnv === 'false' || pgSslEnv === '0' || pgSslEnv === 'off';
+const forceSsl = pgSslEnv === 'true' || pgSslEnv === '1' || pgSslEnv === 'on';
+const cloudDb =
+  connectionString &&
+  /render\.com|neon\.tech|supabase\.co|pooler\.supabase\.com|amazonaws\.com|azure\.com/i.test(
+    connectionString
+  );
+const needsSsl = !forceNoSsl && (forceSsl || cloudDb || process.env.NODE_ENV === 'production');
 
 const poolConfig = connectionString
   ? {
       connectionString,
-      ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
+      ssl: needsSsl ? { rejectUnauthorized: false } : false,
     }
   : {
       host: process.env.PGHOST || 'localhost',
@@ -33,6 +38,7 @@ const poolConfig = connectionString
       user: process.env.PGUSER || 'expense_user',
       password: process.env.PGPASSWORD || 'expense_pass',
       database: process.env.PGDATABASE || 'expense_tracker',
+      ssl: forceSsl ? { rejectUnauthorized: false } : false,
     };
 
 const pool = new Pool(poolConfig);
