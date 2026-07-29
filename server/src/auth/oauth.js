@@ -3,6 +3,7 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as FacebookStrategy } from 'passport-facebook';
 import { Strategy as MicrosoftStrategy } from 'passport-microsoft';
+import { OAuth2Client } from 'google-auth-library';
 import {
   findOrCreateOAuthUser,
   signAccessToken,
@@ -18,6 +19,15 @@ import {
   publicUser,
 } from './tokens.js';
 import { requireAuth } from './middleware.js';
+
+/** Accept web + optional Android/iOS OAuth client IDs as ID-token audience. */
+function googleAudiences() {
+  return [
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_ANDROID_CLIENT_ID,
+    process.env.GOOGLE_IOS_CLIENT_ID,
+  ].filter(Boolean);
+}
 
 const router = Router();
 
@@ -267,6 +277,95 @@ router.get(
   },
   issueTokensAndRedirect
 );
+
+/**
+ * Mobile / Flutter Google Sign-In.
+ * Body: { id_token?: string, access_token?: string }
+ * Verifies Google token, find-or-creates user, returns JWT pair (same shape as /login).
+ */
+router.post('/google/mobile', async (req, res) => {
+  try {
+    if (!providerEnabled('google')) {
+      return res.status(503).json({ error: 'Google login is not configured' });
+    }
+
+    const idToken =
+      req.body?.id_token || req.body?.idToken || req.body?.credential || null;
+    const accessToken =
+      req.body?.access_token || req.body?.accessToken || null;
+
+    let providerId;
+    let email;
+    let name;
+    let picture;
+
+    if (idToken) {
+      const audiences = googleAudiences();
+      if (!audiences.length) {
+        return res.status(503).json({ error: 'GOOGLE_CLIENT_ID not set' });
+      }
+      const client = new OAuth2Client(audiences[0]);
+      let ticket;
+      let lastErr;
+      for (const aud of audiences) {
+        try {
+          ticket = await client.verifyIdToken({ idToken, audience: aud });
+          break;
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      if (!ticket) {
+        return res.status(401).json({
+          error: lastErr?.message || 'Invalid Google ID token',
+        });
+      }
+      const payload = ticket.getPayload() || {};
+      providerId = String(payload.sub || '');
+      email = payload.email || `${providerId}@google.oauth`;
+      name = payload.name || payload.given_name || email.split('@')[0];
+      picture = payload.picture || null;
+    } else if (accessToken) {
+      const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!r.ok) {
+        const text = await r.text();
+        return res.status(401).json({
+          error: 'Invalid Google access token',
+          detail: text.slice(0, 200),
+        });
+      }
+      const info = await r.json();
+      providerId = String(info.sub || info.id || '');
+      email = info.email || `${providerId}@google.oauth`;
+      name = info.name || info.given_name || email.split('@')[0];
+      picture = info.picture || null;
+    } else {
+      return res.status(400).json({
+        error: 'id_token or access_token required',
+      });
+    }
+
+    if (!providerId) {
+      return res.status(401).json({ error: 'Could not read Google user id' });
+    }
+
+    const user = await findOrCreateOAuthUser({
+      provider: 'google',
+      providerId,
+      email,
+      name,
+      picture,
+    });
+    const appAccess = signAccessToken(user);
+    const appRefresh = await issueRefreshToken(user.id);
+    res.json(tokenResponse(user, appAccess, appRefresh));
+  } catch (err) {
+    console.error('[auth/google/mobile]', err);
+    res.status(500).json({ error: err.message || 'Google mobile login failed' });
+  }
+});
 
 router.get('/facebook', (req, res, next) => {
   if (!providerEnabled('facebook')) {
