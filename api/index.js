@@ -1,6 +1,6 @@
 /**
- * Vercel serverless entry — mounts the Express app for all /api/* routes.
- * Local/Render continue to use: node server/src/index.js
+ * Vercel serverless entry for /api/*
+ * Dependencies are hoisted at repo root (package.json) so the function can resolve them.
  */
 import app from '../server/src/app.js';
 
