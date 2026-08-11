@@ -5,18 +5,58 @@ import { PieChart, categoryChartData } from '../components/Charts';
 import { downloadExcel, downloadExcelMulti, downloadPdf } from '../utils/export';
 import { useCurrency } from '../currency/CurrencyContext';
 
+const PAID_VIA_OPTIONS = ['UPI', 'Card', 'Cash', 'Bank transfer', 'Other'];
+
+function paidViaDetailLabel(via) {
+  switch (via) {
+    case 'UPI':
+      return 'UPI bank';
+    case 'Card':
+      return 'Card name';
+    case 'Bank transfer':
+      return 'Bank name';
+    case 'Other':
+      return 'Payment note';
+    default:
+      return '';
+  }
+}
+
+function paidViaDetailPlaceholder(via) {
+  switch (via) {
+    case 'UPI':
+      return 'e.g. SBI, HDFC, GPay bank';
+    case 'Card':
+      return 'e.g. HDFC Millennia';
+    case 'Bank transfer':
+      return 'e.g. ICICI, Axis';
+    case 'Other':
+      return 'e.g. Wallet, voucher';
+    default:
+      return '';
+  }
+}
+
 const emptyForm = {
   category: '',
   custom_category: '',
   amount: '',
   expense_date: todayISO(),
   item_name: '',
+  paid_via: 'UPI',
+  paid_via_detail: '',
 };
 
 const expenseExportCols = [
   { key: 'expense_date', label: 'Date', export: (r) => String(r.expense_date).slice(0, 10) },
   { key: 'item_name', label: 'Item' },
   { key: 'category', label: 'Category' },
+  { key: 'paid_via', label: 'Paid via', export: (r) => r.paid_via || 'Cash' },
+  {
+    key: 'paid_via_detail',
+    label: 'Paid via detail',
+    export: (r) => r.paid_via_detail || '',
+  },
   { key: 'amount', label: 'Amount', export: (r) => Number(r.amount) },
 ];
 
@@ -76,6 +116,8 @@ export default function DailyExpense() {
         amount: Number(form.amount),
         expense_date: form.expense_date,
         item_name: form.item_name,
+        paid_via: form.paid_via || 'Cash',
+        paid_via_detail: form.paid_via === 'Cash' ? '' : form.paid_via_detail,
       };
       if (editingId) {
         await api.put(`/expenses/${editingId}`, payload);
@@ -100,6 +142,8 @@ export default function DailyExpense() {
       amount: row.amount,
       expense_date: String(row.expense_date).slice(0, 10),
       item_name: row.item_name,
+      paid_via: row.paid_via || 'Cash',
+      paid_via_detail: row.paid_via_detail || '',
     });
     setMainTab('entry');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -130,6 +174,18 @@ export default function DailyExpense() {
       label: 'Category',
       render: (r) => <span className="badge">{r.category}</span>,
       export: (r) => r.category,
+    },
+    {
+      key: 'paid_via',
+      label: 'Paid via',
+      render: (r) => <span className="badge">{r.paid_via || 'Cash'}</span>,
+      export: (r) => r.paid_via || 'Cash',
+    },
+    {
+      key: 'paid_via_detail',
+      label: 'Via detail',
+      render: (r) => r.paid_via_detail || '—',
+      export: (r) => r.paid_via_detail || '',
     },
     {
       key: 'amount',
@@ -342,6 +398,31 @@ export default function DailyExpense() {
                     placeholder="e.g. Milk, Uber, Amazon order"
                   />
                 </div>
+                <div className="field">
+                  <label>Paid via</label>
+                  <GlassSelect
+                    value={form.paid_via || 'UPI'}
+                    onChange={(v) =>
+                      setForm((f) => ({
+                        ...f,
+                        paid_via: v,
+                        paid_via_detail: v === 'Cash' ? '' : f.paid_via_detail,
+                      }))
+                    }
+                    placeholder="Payment method"
+                    options={PAID_VIA_OPTIONS.map((m) => ({ value: m, label: m }))}
+                  />
+                </div>
+                {form.paid_via && form.paid_via !== 'Cash' && (
+                  <div className="field">
+                    <label>{paidViaDetailLabel(form.paid_via)}</label>
+                    <input
+                      value={form.paid_via_detail}
+                      onChange={(e) => set('paid_via_detail', e.target.value)}
+                      placeholder={paidViaDetailPlaceholder(form.paid_via)}
+                    />
+                  </div>
+                )}
               </div>
               <div className="form-actions">
                 <button className="btn btn-primary" type="submit">

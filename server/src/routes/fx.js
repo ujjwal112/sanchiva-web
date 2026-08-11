@@ -15,14 +15,30 @@ const cache = new Map(); // base -> { at, payload }
 
 const UPSTREAM_TIMEOUT_MS = 4500;
 
+/** Normalize upstream dates to `YYYY-MM-DD` (never sliced HTTP strings like "Sat, 08 Au"). */
+function normalizeFxDate(data) {
+  const isoLike = (v) => {
+    if (v == null) return null;
+    const s = String(v).trim();
+    // Already ISO calendar date
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    const d = new Date(s);
+    if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+    return null;
+  };
+
+  return (
+    isoLike(data.date) ||
+    isoLike(data.time_last_update_utc) ||
+    isoLike(data.time_last_update) ||
+    new Date().toISOString().slice(0, 10)
+  );
+}
+
 function parseRatesPayload(data, fallbackBase) {
   const rates = data.rates || {};
   const from = (data.base || data.base_code || fallbackBase).toUpperCase();
-  const date =
-    data.date ||
-    (data.time_last_update_utc
-      ? String(data.time_last_update_utc).slice(0, 10)
-      : new Date().toISOString().slice(0, 10));
+  const date = normalizeFxDate(data);
 
   if (!rates || typeof rates !== 'object' || !Object.keys(rates).length) {
     return null;

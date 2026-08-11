@@ -111,10 +111,40 @@ router.get('/summary/months', async (req, res) => {
   }
 });
 
+const PAID_VIA_OPTIONS = new Set(['UPI', 'Card', 'Cash', 'Bank transfer', 'Other']);
+
+function normalizePaidVia(raw) {
+  const v = String(raw || 'Cash').trim();
+  if (PAID_VIA_OPTIONS.has(v)) return v;
+  // tolerate lowercase / aliases
+  const lower = v.toLowerCase();
+  if (lower === 'upi') return 'UPI';
+  if (lower === 'card' || lower === 'credit card' || lower === 'debit card') return 'Card';
+  if (lower === 'cash') return 'Cash';
+  if (lower === 'bank transfer' || lower === 'bank' || lower === 'neft' || lower === 'imps') {
+    return 'Bank transfer';
+  }
+  if (lower === 'other') return 'Other';
+  return 'Cash';
+}
+
+function normalizePaidViaDetail(paidVia, detail) {
+  if (paidVia === 'Cash') return '';
+  return String(detail || '').trim().slice(0, 150);
+}
+
 router.post('/', async (req, res) => {
   try {
     const uid = userId(req);
-    let { category, amount, expense_date, item_name, custom_category } = req.body;
+    let {
+      category,
+      amount,
+      expense_date,
+      item_name,
+      custom_category,
+      paid_via,
+      paid_via_detail,
+    } = req.body;
     if (category === 'Other' && custom_category) {
       category = custom_category.trim();
       await maybeAddCategory(uid, category);
@@ -122,10 +152,13 @@ router.post('/', async (req, res) => {
     if (!category || amount == null || !expense_date || !item_name) {
       return res.status(400).json({ error: 'category, amount, expense_date, item_name required' });
     }
+    const via = normalizePaidVia(paid_via);
+    const detail = normalizePaidViaDetail(via, paid_via_detail);
     const { rows } = await query(
-      `INSERT INTO daily_expenses (user_id, category, amount, expense_date, item_name)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [uid, category, amount, expense_date, item_name]
+      `INSERT INTO daily_expenses
+         (user_id, category, amount, expense_date, item_name, paid_via, paid_via_detail)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [uid, category, amount, expense_date, item_name, via, detail]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -136,10 +169,28 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const uid = userId(req);
-    let { category, amount, expense_date, item_name, custom_category } = req.body;
+    let {
+      category,
+      amount,
+      expense_date,
+      item_name,
+      custom_category,
+      paid_via,
+      paid_via_detail,
+    } = req.body;
     if (category === 'Other' && custom_category) {
       category = custom_category.trim();
       await maybeAddCategory(uid, category);
+    }
+    const via =
+      paid_via !== undefined && paid_via !== null ? normalizePaidVia(paid_via) : null;
+    let detail = null;
+    if (paid_via_detail !== undefined || via !== null) {
+      const viaForDetail = via || 'Cash';
+      detail = normalizePaidViaDetail(
+        viaForDetail,
+        paid_via_detail !== undefined ? paid_via_detail : ''
+      );
     }
     const { rows } = await query(
       `UPDATE daily_expenses
@@ -147,9 +198,11 @@ router.put('/:id', async (req, res) => {
            amount = COALESCE($2, amount),
            expense_date = COALESCE($3, expense_date),
            item_name = COALESCE($4, item_name),
+           paid_via = COALESCE($5, paid_via),
+           paid_via_detail = COALESCE($6, paid_via_detail),
            updated_at = NOW()
-       WHERE id = $5 AND user_id = $6 RETURNING *`,
-      [category, amount, expense_date, item_name, req.params.id, uid]
+       WHERE id = $7 AND user_id = $8 RETURNING *`,
+      [category, amount, expense_date, item_name, via, detail, req.params.id, uid]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Not found' });
     res.json(rows[0]);

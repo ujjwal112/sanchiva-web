@@ -86,6 +86,7 @@ router.post('/', async (req, res) => {
       emi_close_month,
       emi_close_year,
       emi_amount,
+      roi = 0,
       status = 'ongoing',
       start_month,
       start_year,
@@ -95,11 +96,15 @@ router.post('/', async (req, res) => {
     }
     const sm = start_month || new Date().getMonth() + 1;
     const sy = start_year || new Date().getFullYear();
+    const roiVal = Number(roi);
+    if (Number.isNaN(roiVal) || roiVal < 0) {
+      return res.status(400).json({ error: 'ROI must be a non-negative number' });
+    }
     const { rows } = await query(
       `INSERT INTO loans
-       (user_id, bank_name, emi_deduction_bank, emi_deduction_date, emi_close_month, emi_close_year, emi_amount, status, start_month, start_year)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-      [userId(req), bank_name, emi_deduction_bank, emi_deduction_date, emi_close_month, emi_close_year, emi_amount, status, sm, sy]
+       (user_id, bank_name, emi_deduction_bank, emi_deduction_date, emi_close_month, emi_close_year, emi_amount, roi, status, start_month, start_year)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      [userId(req), bank_name, emi_deduction_bank, emi_deduction_date, emi_close_month, emi_close_year, emi_amount, roiVal, status, sm, sy]
     );
     res.status(201).json({ ...rows[0], progress: loanProgress(rows[0]) });
   } catch (err) {
@@ -111,7 +116,7 @@ router.put('/:id', async (req, res) => {
   try {
     const fields = [
       'bank_name', 'emi_deduction_bank', 'emi_deduction_date', 'emi_close_month',
-      'emi_close_year', 'emi_amount', 'status', 'start_month', 'start_year',
+      'emi_close_year', 'emi_amount', 'roi', 'status', 'start_month', 'start_year',
     ];
     const sets = [];
     const params = [];

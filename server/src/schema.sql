@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS daily_expenses (
   amount NUMERIC(12, 2) NOT NULL CHECK (amount >= 0),
   expense_date DATE NOT NULL,
   item_name VARCHAR(255) NOT NULL,
+  paid_via VARCHAR(50) NOT NULL DEFAULT 'Cash',
+  paid_via_detail VARCHAR(150) NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -55,6 +57,7 @@ CREATE TABLE IF NOT EXISTS loans (
   emi_close_month INTEGER NOT NULL CHECK (emi_close_month BETWEEN 1 AND 12),
   emi_close_year INTEGER NOT NULL,
   emi_amount NUMERIC(12, 2) NOT NULL CHECK (emi_amount >= 0),
+  roi NUMERIC(7, 3) NOT NULL DEFAULT 0 CHECK (roi >= 0),
   status VARCHAR(20) NOT NULL DEFAULT 'ongoing' CHECK (status IN ('ongoing', 'closed')),
   start_month INTEGER DEFAULT EXTRACT(MONTH FROM CURRENT_DATE)::INTEGER,
   start_year INTEGER DEFAULT EXTRACT(YEAR FROM CURRENT_DATE)::INTEGER,
@@ -83,6 +86,7 @@ CREATE TABLE IF NOT EXISTS credit_card_emis (
   end_month INTEGER NOT NULL CHECK (end_month BETWEEN 1 AND 12),
   end_year INTEGER NOT NULL,
   amount NUMERIC(12, 2) NOT NULL CHECK (amount >= 0),
+  roi NUMERIC(7, 3) NOT NULL DEFAULT 0 CHECK (roi >= 0),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

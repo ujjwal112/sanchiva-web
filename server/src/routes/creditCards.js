@@ -147,15 +147,28 @@ router.get('/emis/summary', async (req, res) => {
 
 router.post('/emis', async (req, res) => {
   try {
-    const { emi_name, credit_card_name, start_month, start_year, end_month, end_year, amount } = req.body;
+    const {
+      emi_name,
+      credit_card_name,
+      start_month,
+      start_year,
+      end_month,
+      end_year,
+      amount,
+      roi = 0,
+    } = req.body;
     if (!emi_name || !credit_card_name || !start_month || !start_year || !end_month || !end_year || amount == null) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+    const roiVal = Number(roi);
+    if (Number.isNaN(roiVal) || roiVal < 0) {
+      return res.status(400).json({ error: 'ROI must be a non-negative number' });
+    }
     const { rows } = await query(
       `INSERT INTO credit_card_emis
-       (user_id, emi_name, credit_card_name, start_month, start_year, end_month, end_year, amount)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [userId(req), emi_name, credit_card_name, start_month, start_year, end_month, end_year, amount]
+       (user_id, emi_name, credit_card_name, start_month, start_year, end_month, end_year, amount, roi)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [userId(req), emi_name, credit_card_name, start_month, start_year, end_month, end_year, amount, roiVal]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -165,7 +178,7 @@ router.post('/emis', async (req, res) => {
 
 router.put('/emis/:id', async (req, res) => {
   try {
-    const fields = ['emi_name', 'credit_card_name', 'start_month', 'start_year', 'end_month', 'end_year', 'amount'];
+    const fields = ['emi_name', 'credit_card_name', 'start_month', 'start_year', 'end_month', 'end_year', 'amount', 'roi'];
     const sets = [];
     const params = [];
     for (const f of fields) {

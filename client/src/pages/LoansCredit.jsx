@@ -11,6 +11,7 @@ const emptyLoan = {
   emi_close_month: 12,
   emi_close_year: new Date().getFullYear() + 2,
   emi_amount: '',
+  roi: '',
   status: 'ongoing',
   start_month: new Date().getMonth() + 1,
   start_year: new Date().getFullYear(),
@@ -32,6 +33,7 @@ const emptyEmi = {
   end_month: 12,
   end_year: new Date().getFullYear() + 1,
   amount: '',
+  roi: '',
 };
 
 export default function LoansCredit() {
@@ -87,6 +89,7 @@ export default function LoansCredit() {
       const payload = {
         ...loanForm,
         emi_amount: Number(loanForm.emi_amount),
+        roi: loanForm.roi === '' || loanForm.roi == null ? 0 : Number(loanForm.roi),
         emi_deduction_date: Number(loanForm.emi_deduction_date),
         emi_close_month: Number(loanForm.emi_close_month),
         emi_close_year: Number(loanForm.emi_close_year),
@@ -117,6 +120,7 @@ export default function LoansCredit() {
       emi_close_month: row.emi_close_month,
       emi_close_year: row.emi_close_year,
       emi_amount: row.emi_amount,
+      roi: row.roi ?? '',
       status: row.status,
       start_month: row.start_month,
       start_year: row.start_year,
@@ -186,6 +190,7 @@ export default function LoansCredit() {
       const payload = {
         ...emiForm,
         amount: Number(emiForm.amount),
+        roi: emiForm.roi === '' || emiForm.roi == null ? 0 : Number(emiForm.roi),
         start_month: Number(emiForm.start_month),
         start_year: Number(emiForm.start_year),
         end_month: Number(emiForm.end_month),
@@ -216,6 +221,7 @@ export default function LoansCredit() {
       end_month: row.end_month,
       end_year: row.end_year,
       amount: row.amount,
+      roi: row.roi ?? '',
     });
     setEmiTab('entry');
     setCcTab('emi');
@@ -244,6 +250,12 @@ export default function LoansCredit() {
       label: 'EMI',
       render: (r) => formatCurrency(r.emi_amount),
       export: (r) => Number(r.emi_amount),
+    },
+    {
+      key: 'roi',
+      label: 'ROI %',
+      render: (r) => (r.roi == null || r.roi === '' ? '—' : `${Number(r.roi)}%`),
+      export: (r) => Number(r.roi || 0),
     },
     {
       key: 'status',
@@ -299,6 +311,12 @@ export default function LoansCredit() {
       label: 'Amount',
       render: (r) => formatCurrency(r.amount),
       export: (r) => Number(r.amount),
+    },
+    {
+      key: 'roi',
+      label: 'ROI %',
+      render: (r) => (r.roi == null || r.roi === '' ? '—' : `${Number(r.roi)}%`),
+      export: (r) => Number(r.roi || 0),
     },
   ];
 
@@ -388,6 +406,17 @@ export default function LoansCredit() {
                         required
                         value={loanForm.emi_amount}
                         onChange={(e) => setLoanForm({ ...loanForm, emi_amount: e.target.value })}
+                      />
+                    </div>
+                    <div className="field">
+                      <label>ROI / Interest rate (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="e.g. 10.5"
+                        value={loanForm.roi}
+                        onChange={(e) => setLoanForm({ ...loanForm, roi: e.target.value })}
                       />
                     </div>
                     <div className="field">
@@ -726,6 +755,17 @@ export default function LoansCredit() {
                             required
                             value={emiForm.amount}
                             onChange={(e) => setEmiForm({ ...emiForm, amount: e.target.value })}
+                          />
+                        </div>
+                        <div className="field">
+                          <label>ROI / Interest rate (%)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="e.g. 14.5"
+                            value={emiForm.roi}
+                            onChange={(e) => setEmiForm({ ...emiForm, roi: e.target.value })}
                           />
                         </div>
                       </div>

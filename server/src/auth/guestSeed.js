@@ -621,14 +621,33 @@ export async function resetGuestDemoData(userId) {
  * Insert baseline demo data for every module (≥20 rows where listed; all event types).
  */
 export async function seedGuestDemoData(userId) {
-  // Daily expenses — 24 rows across categories
+  // Daily expenses — 24 rows across categories + paid via methods
+  const paidViaOpts = [
+    ['UPI', 'SBI'],
+    ['UPI', 'HDFC'],
+    ['Card', 'HDFC Millennia'],
+    ['Card', 'Axis Ace'],
+    ['Cash', ''],
+    ['Bank transfer', 'ICICI'],
+    ['Other', 'Wallet'],
+  ];
   for (let i = 0; i < 24; i++) {
     const [item, cat] = EXPENSE_ITEMS[i % EXPENSE_ITEMS.length];
     const amount = (120 + ((i * 37) % 2800) + (i % 5) * 15).toFixed(2);
+    const [via, detail] = paidViaOpts[i % paidViaOpts.length];
     await query(
-      `INSERT INTO daily_expenses (user_id, category, amount, expense_date, item_name)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [userId, cat || EXPENSE_CATS[i % EXPENSE_CATS.length], amount, daysAgo(i % 45), `${item} #${i + 1}`]
+      `INSERT INTO daily_expenses
+         (user_id, category, amount, expense_date, item_name, paid_via, paid_via_detail)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        userId,
+        cat || EXPENSE_CATS[i % EXPENSE_CATS.length],
+        amount,
+        daysAgo(i % 45),
+        `${item} #${i + 1}`,
+        via,
+        detail,
+      ]
     );
   }
 

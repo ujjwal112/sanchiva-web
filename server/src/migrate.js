@@ -126,6 +126,38 @@ export async function runMigrations() {
     console.warn('  ! custom_categories unique index:', e.message);
   }
 
+  // ROI (rate of interest %) on loans and card EMIs
+  if (await tableExists('loans') && !(await columnExists('loans', 'roi'))) {
+    await query(
+      `ALTER TABLE loans
+       ADD COLUMN roi NUMERIC(7, 3) NOT NULL DEFAULT 0 CHECK (roi >= 0)`
+    );
+    console.log('  + loans.roi');
+  }
+  if (await tableExists('credit_card_emis') && !(await columnExists('credit_card_emis', 'roi'))) {
+    await query(
+      `ALTER TABLE credit_card_emis
+       ADD COLUMN roi NUMERIC(7, 3) NOT NULL DEFAULT 0 CHECK (roi >= 0)`
+    );
+    console.log('  + credit_card_emis.roi');
+  }
+
+  // Daily expense payment method (Paid via)
+  if (await tableExists('daily_expenses') && !(await columnExists('daily_expenses', 'paid_via'))) {
+    await query(
+      `ALTER TABLE daily_expenses
+       ADD COLUMN paid_via VARCHAR(50) NOT NULL DEFAULT 'Cash'`
+    );
+    console.log('  + daily_expenses.paid_via');
+  }
+  if (await tableExists('daily_expenses') && !(await columnExists('daily_expenses', 'paid_via_detail'))) {
+    await query(
+      `ALTER TABLE daily_expenses
+       ADD COLUMN paid_via_detail VARCHAR(150) NOT NULL DEFAULT ''`
+    );
+    console.log('  + daily_expenses.paid_via_detail');
+  }
+
   // Indexes that require user_id, only after column exists
   const indexes = [
     `CREATE INDEX IF NOT EXISTS idx_refresh_user ON refresh_tokens(user_id)`,
