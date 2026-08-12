@@ -12,6 +12,7 @@ export default function Sidebar({ open, onClose, collapsed }) {
     { to: '/daily-expense', label: 'Daily Expense', icon: currencySymbol || '₹' },
     { to: '/loans-credit', label: 'Loans / Credit Card', icon: '◫' },
     { to: '/monetary', label: 'Monetary', icon: '◎' },
+    { to: '/splits', label: 'Splits', icon: '⇋' },
     { to: '/events', label: 'Events', icon: '✦' },
     { to: '/about', label: 'About', icon: 'ⓘ' },
   ];
@@ -46,6 +47,7 @@ export default function Sidebar({ open, onClose, collapsed }) {
                 onClick={onClose}
                 className={({ isActive }) => {
                   if (l.to === '/events' && pathname.startsWith('/events')) return 'active';
+                  if (l.to === '/splits' && pathname.startsWith('/splits')) return 'active';
                   return isActive ? 'active' : '';
                 }}
               >

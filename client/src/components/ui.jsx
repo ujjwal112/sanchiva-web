@@ -1,4 +1,13 @@
-import { forwardRef, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../api';
 import { downloadExcel, downloadPdf, filterByMonthYear, filterByMonthYearFields } from '../utils/export';
@@ -815,10 +824,11 @@ function buildPageList(current, total) {
 
 export function useToast() {
   const [toast, setToast] = useState(null);
-  const show = (message, type = 'ok') => {
+  // Stable identity so useCallback/useEffect deps (e.g. Splits load) don't loop
+  const show = useCallback((message, type = 'ok') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 2800);
-  };
+  }, []);
   const Toast = toast ? (
     <div className={`toast ${toast.type === 'error' ? 'error' : ''}`}>{toast.message}</div>
   ) : null;

@@ -170,3 +170,63 @@ CREATE TABLE IF NOT EXISTS event_guests (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Splits (shared expenses / groups)
+CREATE TABLE IF NOT EXISTS split_groups (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(150) NOT NULL,
+  notes VARCHAR(255),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS split_members (
+  id SERIAL PRIMARY KEY,
+  group_id INTEGER NOT NULL REFERENCES split_groups(id) ON DELETE CASCADE,
+  name VARCHAR(150) NOT NULL,
+  is_you BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS split_expenses (
+  id SERIAL PRIMARY KEY,
+  group_id INTEGER NOT NULL REFERENCES split_groups(id) ON DELETE CASCADE,
+  description VARCHAR(255) NOT NULL,
+  amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+  paid_by_member_id INTEGER NOT NULL REFERENCES split_members(id),
+  expense_date DATE NOT NULL,
+  notes VARCHAR(255),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS split_shares (
+  id SERIAL PRIMARY KEY,
+  expense_id INTEGER NOT NULL REFERENCES split_expenses(id) ON DELETE CASCADE,
+  member_id INTEGER NOT NULL REFERENCES split_members(id) ON DELETE CASCADE,
+  share_amount NUMERIC(12, 2) NOT NULL CHECK (share_amount >= 0),
+  UNIQUE(expense_id, member_id)
+);
+
+CREATE TABLE IF NOT EXISTS split_settlements (
+  id SERIAL PRIMARY KEY,
+  group_id INTEGER NOT NULL REFERENCES split_groups(id) ON DELETE CASCADE,
+  from_member_id INTEGER NOT NULL REFERENCES split_members(id),
+  to_member_id INTEGER NOT NULL REFERENCES split_members(id),
+  amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+  settled_date DATE NOT NULL,
+  notes VARCHAR(255),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Amount edit history for split expenses
+CREATE TABLE IF NOT EXISTS split_expense_amount_history (
+  id SERIAL PRIMARY KEY,
+  expense_id INTEGER NOT NULL REFERENCES split_expenses(id) ON DELETE CASCADE,
+  old_amount NUMERIC(12, 2) NOT NULL,
+  new_amount NUMERIC(12, 2) NOT NULL,
+  changed_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  note VARCHAR(255),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);

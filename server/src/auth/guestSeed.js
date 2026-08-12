@@ -1,8 +1,8 @@
 /**
  * Guest demo data: shared guest account gets rich sample rows in every
- * module, including Events of every type. On logout we wipe session changes
- * and re-seed so the baseline always returns; guest-added rows disappear
- * and edits reset.
+ * module (expenses, loans, cards, income, assets, money lent, events, splits).
+ * On logout we wipe session changes and re-seed so the baseline always returns;
+ * guest-added rows disappear and edits reset.
  */
 import { query } from '../db.js';
 import { buildEventTemplate } from '../routes/events.js';
@@ -599,6 +599,118 @@ export async function findOrCreateSharedGuestUser() {
 }
 
 /**
+ * Equal-split helper for demo expenses (same cent rounding as /api/splits).
+ */
+async function insertEqualSplitExpense(
+  groupId,
+  description,
+  amount,
+  paidByMemberId,
+  expenseDate,
+  memberIds,
+  notes = null
+) {
+  const amt = Number(amount);
+  const { rows: expRows } = await query(
+    `INSERT INTO split_expenses
+       (group_id, description, amount, paid_by_member_id, expense_date, notes)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+    [groupId, description, amt, paidByMemberId, expenseDate, notes]
+  );
+  const expenseId = expRows[0].id;
+  const n = memberIds.length;
+  const cents = Math.round(amt * 100);
+  const base = Math.floor(cents / n);
+  let rem = cents - base * n;
+  for (const mid of memberIds) {
+    const c = base + (rem > 0 ? 1 : 0);
+    if (rem > 0) rem -= 1;
+    await query(
+      `INSERT INTO split_shares (expense_id, member_id, share_amount) VALUES ($1,$2,$3)`,
+      [expenseId, mid, c / 100]
+    );
+  }
+  return expenseId;
+}
+
+/**
+ * Splits demo: 2 groups, shared expenses, balances, settlements.
+ */
+async function seedDemoSplits(userId) {
+  // ── Group 1: Goa Trip ────────────────────────────────────────────────────
+  const { rows: g1Rows } = await query(
+    `INSERT INTO split_groups (user_id, name, notes)
+     VALUES ($1, 'Goa Trip', 'Weekend getaway — demo splits') RETURNING id`,
+    [userId]
+  );
+  const g1 = g1Rows[0].id;
+
+  const goaNames = [
+    { name: 'You', is_you: true },
+    { name: 'Deepak', is_you: false },
+    { name: 'Rahul', is_you: false },
+    { name: 'Priya', is_you: false },
+  ];
+  const goaIds = {};
+  for (const m of goaNames) {
+    const { rows } = await query(
+      `INSERT INTO split_members (group_id, name, is_you) VALUES ($1,$2,$3) RETURNING id, name`,
+      [g1, m.name, m.is_you]
+    );
+    goaIds[rows[0].name] = rows[0].id;
+  }
+  const goaAll = Object.values(goaIds);
+
+  await insertEqualSplitExpense(g1, 'Beach dinner', 4800, goaIds.You, daysAgo(12), goaAll, 'Fish thali + drinks');
+  await insertEqualSplitExpense(g1, 'Airport cabs', 1600, goaIds.Deepak, daysAgo(14), goaAll);
+  await insertEqualSplitExpense(g1, 'Hotel (2 nights)', 12000, goaIds.Rahul, daysAgo(13), goaAll, 'Baga beach stay');
+  await insertEqualSplitExpense(g1, 'Scooter rental', 900, goaIds.Priya, daysAgo(11), [goaIds.You, goaIds.Priya]);
+  await insertEqualSplitExpense(g1, 'Snacks & water', 640, goaIds.You, daysAgo(10), goaAll);
+
+  await query(
+    `INSERT INTO split_settlements
+       (group_id, from_member_id, to_member_id, amount, settled_date, notes)
+     VALUES ($1,$2,$3,$4,$5,$6)`,
+    [g1, goaIds.Deepak, goaIds.You, 800, daysAgo(5), 'UPI partial settle']
+  );
+
+  // ── Group 2: Flatmates ───────────────────────────────────────────────────
+  const { rows: g2Rows } = await query(
+    `INSERT INTO split_groups (user_id, name, notes)
+     VALUES ($1, 'Flatmates', 'Monthly house share — demo') RETURNING id`,
+    [userId]
+  );
+  const g2 = g2Rows[0].id;
+
+  const flatNames = [
+    { name: 'You', is_you: true },
+    { name: 'Ankit', is_you: false },
+    { name: 'Meera', is_you: false },
+  ];
+  const flatIds = {};
+  for (const m of flatNames) {
+    const { rows } = await query(
+      `INSERT INTO split_members (group_id, name, is_you) VALUES ($1,$2,$3) RETURNING id, name`,
+      [g2, m.name, m.is_you]
+    );
+    flatIds[rows[0].name] = rows[0].id;
+  }
+  const flatAll = Object.values(flatIds);
+
+  await insertEqualSplitExpense(g2, 'Groceries', 2700, flatIds.You, daysAgo(8), flatAll, 'BigBasket weekly');
+  await insertEqualSplitExpense(g2, 'Electricity bill', 2100, flatIds.Ankit, daysAgo(6), flatAll);
+  await insertEqualSplitExpense(g2, 'Internet (Airtel)', 999, flatIds.Meera, daysAgo(4), flatAll);
+  await insertEqualSplitExpense(g2, 'Cleaning service', 1500, flatIds.You, daysAgo(2), flatAll);
+
+  await query(
+    `INSERT INTO split_settlements
+       (group_id, from_member_id, to_member_id, amount, settled_date, notes)
+     VALUES ($1,$2,$3,$4,$5,$6)`,
+    [g2, flatIds.You, flatIds.Meera, 333, daysAgo(1), 'UPI for internet share']
+  );
+}
+
+/**
  * Remove all guest-owned rows (including events) then re-apply baseline seed.
  * Seed baseline is restored; session-only adds and edits are discarded.
  */
@@ -612,6 +724,8 @@ export async function resetGuestDemoData(userId) {
   await query('DELETE FROM assets WHERE user_id = $1', [userId]);
   await query('DELETE FROM money_given WHERE user_id = $1', [userId]);
   await query('DELETE FROM custom_categories WHERE user_id = $1', [userId]);
+  // Splits: members/expenses/shares/settlements cascade from groups
+  await query('DELETE FROM split_groups WHERE user_id = $1', [userId]);
   // Events cascade items/guests; re-seed includes every event type.
   await query('DELETE FROM events WHERE user_id = $1', [userId]);
   await seedGuestDemoData(userId);
@@ -796,6 +910,9 @@ export async function seedGuestDemoData(userId) {
 
   // Events — every type (wedding styles + birthday, anniversary, housewarming, corporate, other)
   await seedDemoEvents(userId);
+
+  // Splits — groups, equal-split expenses, settlements
+  await seedDemoSplits(userId);
 }
 
 /**

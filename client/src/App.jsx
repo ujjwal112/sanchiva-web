@@ -11,6 +11,7 @@ import LoansCredit from './pages/LoansCredit';
 import Monetary from './pages/Monetary';
 import Events from './pages/Events';
 import EventDetail from './pages/EventDetail';
+import Splits from './pages/Splits';
 import About from './pages/About';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -42,6 +43,8 @@ export default function App() {
                 <Route path="daily-expense" element={<DailyExpense />} />
                 <Route path="loans-credit" element={<LoansCredit />} />
                 <Route path="monetary" element={<Monetary />} />
+                <Route path="splits" element={<Splits />} />
+                <Route path="splits/:groupId" element={<Splits />} />
                 <Route path="events" element={<Events />} />
                 <Route path="events/:eventId" element={<EventDetail />} />
                 <Route path="about" element={<About />} />
