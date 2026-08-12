@@ -637,6 +637,17 @@ async function insertEqualSplitExpense(
  * Splits demo: 2 groups, shared expenses, balances, settlements.
  */
 async function seedDemoSplits(userId) {
+  // Use the account's real name for the self member (not "You")
+  const { rows: userRows } = await query(
+    'SELECT name, email FROM users WHERE id = $1',
+    [userId]
+  );
+  const u = userRows[0] || {};
+  let selfName = String(u.name || '').trim();
+  if (!selfName || selfName.toLowerCase() === 'you') {
+    selfName = String(u.email || 'Guest').split('@')[0] || 'Guest';
+  }
+
   // ── Group 1: Goa Trip ────────────────────────────────────────────────────
   const { rows: g1Rows } = await query(
     `INSERT INTO split_groups (user_id, name, notes)
@@ -646,32 +657,32 @@ async function seedDemoSplits(userId) {
   const g1 = g1Rows[0].id;
 
   const goaNames = [
-    { name: 'You', is_you: true },
-    { name: 'Deepak', is_you: false },
-    { name: 'Rahul', is_you: false },
-    { name: 'Priya', is_you: false },
+    { name: selfName, is_you: true, key: 'self' },
+    { name: 'Deepak', is_you: false, key: 'Deepak' },
+    { name: 'Rahul', is_you: false, key: 'Rahul' },
+    { name: 'Priya', is_you: false, key: 'Priya' },
   ];
   const goaIds = {};
   for (const m of goaNames) {
     const { rows } = await query(
-      `INSERT INTO split_members (group_id, name, is_you) VALUES ($1,$2,$3) RETURNING id, name`,
+      `INSERT INTO split_members (group_id, name, is_you) VALUES ($1,$2,$3) RETURNING id`,
       [g1, m.name, m.is_you]
     );
-    goaIds[rows[0].name] = rows[0].id;
+    goaIds[m.key] = rows[0].id;
   }
   const goaAll = Object.values(goaIds);
 
-  await insertEqualSplitExpense(g1, 'Beach dinner', 4800, goaIds.You, daysAgo(12), goaAll, 'Fish thali + drinks');
+  await insertEqualSplitExpense(g1, 'Beach dinner', 4800, goaIds.self, daysAgo(12), goaAll, 'Fish thali + drinks');
   await insertEqualSplitExpense(g1, 'Airport cabs', 1600, goaIds.Deepak, daysAgo(14), goaAll);
   await insertEqualSplitExpense(g1, 'Hotel (2 nights)', 12000, goaIds.Rahul, daysAgo(13), goaAll, 'Baga beach stay');
-  await insertEqualSplitExpense(g1, 'Scooter rental', 900, goaIds.Priya, daysAgo(11), [goaIds.You, goaIds.Priya]);
-  await insertEqualSplitExpense(g1, 'Snacks & water', 640, goaIds.You, daysAgo(10), goaAll);
+  await insertEqualSplitExpense(g1, 'Scooter rental', 900, goaIds.Priya, daysAgo(11), [goaIds.self, goaIds.Priya]);
+  await insertEqualSplitExpense(g1, 'Snacks & water', 640, goaIds.self, daysAgo(10), goaAll);
 
   await query(
     `INSERT INTO split_settlements
        (group_id, from_member_id, to_member_id, amount, settled_date, notes)
      VALUES ($1,$2,$3,$4,$5,$6)`,
-    [g1, goaIds.Deepak, goaIds.You, 800, daysAgo(5), 'UPI partial settle']
+    [g1, goaIds.Deepak, goaIds.self, 800, daysAgo(5), 'UPI partial settle']
   );
 
   // ── Group 2: Flatmates ───────────────────────────────────────────────────
@@ -683,30 +694,30 @@ async function seedDemoSplits(userId) {
   const g2 = g2Rows[0].id;
 
   const flatNames = [
-    { name: 'You', is_you: true },
-    { name: 'Ankit', is_you: false },
-    { name: 'Meera', is_you: false },
+    { name: selfName, is_you: true, key: 'self' },
+    { name: 'Ankit', is_you: false, key: 'Ankit' },
+    { name: 'Meera', is_you: false, key: 'Meera' },
   ];
   const flatIds = {};
   for (const m of flatNames) {
     const { rows } = await query(
-      `INSERT INTO split_members (group_id, name, is_you) VALUES ($1,$2,$3) RETURNING id, name`,
+      `INSERT INTO split_members (group_id, name, is_you) VALUES ($1,$2,$3) RETURNING id`,
       [g2, m.name, m.is_you]
     );
-    flatIds[rows[0].name] = rows[0].id;
+    flatIds[m.key] = rows[0].id;
   }
   const flatAll = Object.values(flatIds);
 
-  await insertEqualSplitExpense(g2, 'Groceries', 2700, flatIds.You, daysAgo(8), flatAll, 'BigBasket weekly');
+  await insertEqualSplitExpense(g2, 'Groceries', 2700, flatIds.self, daysAgo(8), flatAll, 'BigBasket weekly');
   await insertEqualSplitExpense(g2, 'Electricity bill', 2100, flatIds.Ankit, daysAgo(6), flatAll);
   await insertEqualSplitExpense(g2, 'Internet (Airtel)', 999, flatIds.Meera, daysAgo(4), flatAll);
-  await insertEqualSplitExpense(g2, 'Cleaning service', 1500, flatIds.You, daysAgo(2), flatAll);
+  await insertEqualSplitExpense(g2, 'Cleaning service', 1500, flatIds.self, daysAgo(2), flatAll);
 
   await query(
     `INSERT INTO split_settlements
        (group_id, from_member_id, to_member_id, amount, settled_date, notes)
      VALUES ($1,$2,$3,$4,$5,$6)`,
-    [g2, flatIds.You, flatIds.Meera, 333, daysAgo(1), 'UPI for internet share']
+    [g2, flatIds.self, flatIds.Meera, 333, daysAgo(1), 'UPI for internet share']
   );
 }
 

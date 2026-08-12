@@ -5,6 +5,8 @@ One **Always Free** VM runs everything with Docker:
 - **Postgres** (always on — no Neon sleep)  
 - **Express API** + **React UI** (same origin on port 80)
 
+**Not deployed on Oracle:** the Flutter app under `sanchiva_mobile/`. It is source-only in git. The Docker image only builds `client/` + `server/` (see root `Dockerfile` and `.dockerignore`).
+
 ---
 
 ## A. Create the free VM (console)

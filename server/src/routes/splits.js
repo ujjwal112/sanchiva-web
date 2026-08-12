@@ -13,6 +13,47 @@ async function assertGroupOwner(groupId, uid) {
   return rows[0] || null;
 }
 
+/** Logged-in user's display name for the is_you member (never plain "You"). */
+async function ownerDisplayName(uid) {
+  const { rows } = await query('SELECT name, email FROM users WHERE id = $1', [uid]);
+  const u = rows[0];
+  if (!u) return 'Me';
+  const n = String(u.name || '').trim();
+  if (n && n.toLowerCase() !== 'you') return n;
+  const emailLocal = String(u.email || '')
+    .split('@')[0]
+    .trim();
+  if (emailLocal) return emailLocal;
+  return 'Me';
+}
+
+/** Keep is_you member row in sync with account name; return that name. */
+async function ensureSelfMemberName(groupId, uid) {
+  const selfName = await ownerDisplayName(uid);
+  await query(
+    `UPDATE split_members
+     SET name = $1
+     WHERE group_id = $2 AND is_you = TRUE
+       AND (name IS NULL OR BTRIM(name) = '' OR LOWER(BTRIM(name)) = 'you')`,
+    [selfName, groupId]
+  );
+  // Always refresh to current account name so profile renames show up
+  await query(
+    `UPDATE split_members SET name = $1 WHERE group_id = $2 AND is_you = TRUE`,
+    [selfName, groupId]
+  );
+  return selfName;
+}
+
+/** Prefer selfName when a member row is flagged is_you. */
+function withSelfName(obj, selfName, nameKey = 'name', isYouKey = 'is_you') {
+  if (!obj) return obj;
+  if (obj[isYouKey] === true || obj[isYouKey] === 'true' || obj[isYouKey] === 1) {
+    return { ...obj, [nameKey]: selfName };
+  }
+  return obj;
+}
+
 /** Net balance per member: + means others owe them, - means they owe */
 async function computeBalances(groupId) {
   const { rows: members } = await query(
@@ -155,13 +196,14 @@ router.post('/groups', async (req, res) => {
       [uid, String(name).trim(), notes || null]
     );
     const group = rows[0];
+    const selfName = await ownerDisplayName(uid);
 
     await query(
-      `INSERT INTO split_members (group_id, name, is_you) VALUES ($1, 'You', TRUE)`,
-      [group.id]
+      `INSERT INTO split_members (group_id, name, is_you) VALUES ($1, $2, TRUE)`,
+      [group.id, selfName]
     );
     for (const mn of memberNames) {
-      if (mn.toLowerCase() === 'you') continue;
+      if (mn.toLowerCase() === 'you' || mn.toLowerCase() === selfName.toLowerCase()) continue;
       await query(
         `INSERT INTO split_members (group_id, name, is_you) VALUES ($1, $2, FALSE)`,
         [group.id, mn]
@@ -172,7 +214,11 @@ router.post('/groups', async (req, res) => {
       'SELECT * FROM split_members WHERE group_id = $1 ORDER BY is_you DESC, id ASC',
       [group.id]
     );
-    res.status(201).json({ ...group, members: fullMembers, your_balance: 0 });
+    res.status(201).json({
+      ...group,
+      members: fullMembers.map((m) => withSelfName(m, selfName)),
+      your_balance: 0,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -185,12 +231,20 @@ router.get('/groups/:id', async (req, res) => {
     const group = await assertGroupOwner(req.params.id, uid);
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
-    const { rows: members } = await query(
+    const selfName = await ensureSelfMemberName(group.id, uid);
+
+    const { rows: membersRaw } = await query(
       'SELECT * FROM split_members WHERE group_id = $1 ORDER BY is_you DESC, id ASC',
       [group.id]
     );
-    const balances = await computeBalances(group.id);
-    const transfers = simplifyDebts(balances);
+    const members = membersRaw.map((m) => withSelfName(m, selfName));
+    const balances = (await computeBalances(group.id)).map((b) =>
+      withSelfName(b, selfName)
+    );
+    const transfers = simplifyDebts(balances).map((t) => {
+      // Names already come from balances after withSelfName
+      return t;
+    });
 
     const { rows: expenses } = await query(
       `SELECT e.*,
@@ -263,10 +317,20 @@ router.get('/groups/:id', async (req, res) => {
               changed_by_name: last.changed_by_name,
             }
           : null,
-        shares: (sharesByExpense[e.id] || []).map((s) => ({
-          ...s,
-          share_amount: Number(s.share_amount),
-        })),
+        paid_by_name:
+          e.paid_by_is_you === true || e.paid_by_is_you === 'true' || e.paid_by_is_you === 1
+            ? selfName
+            : e.paid_by_name,
+        shares: (sharesByExpense[e.id] || []).map((s) => {
+          const row = {
+            ...s,
+            share_amount: Number(s.share_amount),
+          };
+          if (s.is_you === true || s.is_you === 'true' || s.is_you === 1) {
+            row.member_name = selfName;
+          }
+          return row;
+        }),
       };
     });
 
@@ -292,7 +356,16 @@ router.get('/groups/:id', async (req, res) => {
       transfers,
       expenses: expensesOut,
       recent_amount_edits: recentAmountEdits,
-      settlements: settlements.map((s) => ({ ...s, amount: Number(s.amount) })),
+      settlements: settlements.map((s) => {
+        const row = { ...s, amount: Number(s.amount) };
+        if (row.from_is_you === true || row.from_is_you === 'true' || row.from_is_you === 1) {
+          row.from_name = selfName;
+        }
+        if (row.to_is_you === true || row.to_is_you === 'true' || row.to_is_you === 1) {
+          row.to_name = selfName;
+        }
+        return row;
+      }),
       total_spent: totalSpent,
       your_balance: you ? you.balance : 0,
     });

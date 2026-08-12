@@ -1,0 +1,23 @@
+# Mobile app is never part of the Oracle web stack
+sanchiva_mobile/
+
+# Dependencies & local env
+node_modules/
+client/node_modules/
+server/node_modules/
+.env
+.env.*
+!.env.example
+
+# Build artifacts / dumps / temp
+client/dist/
+dist/
+build/
+*.log
+*.dump
+*-tmp.json
+.git/
+docs/
+scripts/
+push-to-github.ps1
+README.md

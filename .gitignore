@@ -33,3 +33,11 @@ Thumbs.db
 .cache/
 coverage/
 *.tmp
+*-tmp.json
+*.dump
+
+# Flutter mobile build / local artifacts (source is under sanchiva_mobile/)
+sanchiva_mobile/build/
+sanchiva_mobile/.dart_tool/
+sanchiva_mobile/.flutter-plugins-dependencies
+sanchiva_mobile/.flutter-plugins
