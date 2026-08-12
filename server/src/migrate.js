@@ -158,62 +158,6 @@ export async function runMigrations() {
     console.log('  + daily_expenses.paid_via_detail');
   }
 
-  // Splits tables (shared expenses)
-  await query(`
-    CREATE TABLE IF NOT EXISTS split_groups (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      name VARCHAR(150) NOT NULL,
-      notes VARCHAR(255),
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      updated_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-  await query(`
-    CREATE TABLE IF NOT EXISTS split_members (
-      id SERIAL PRIMARY KEY,
-      group_id INTEGER NOT NULL REFERENCES split_groups(id) ON DELETE CASCADE,
-      name VARCHAR(150) NOT NULL,
-      is_you BOOLEAN NOT NULL DEFAULT FALSE,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-  await query(`
-    CREATE TABLE IF NOT EXISTS split_expenses (
-      id SERIAL PRIMARY KEY,
-      group_id INTEGER NOT NULL REFERENCES split_groups(id) ON DELETE CASCADE,
-      description VARCHAR(255) NOT NULL,
-      amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
-      paid_by_member_id INTEGER NOT NULL REFERENCES split_members(id),
-      expense_date DATE NOT NULL,
-      notes VARCHAR(255),
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      updated_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-  await query(`
-    CREATE TABLE IF NOT EXISTS split_shares (
-      id SERIAL PRIMARY KEY,
-      expense_id INTEGER NOT NULL REFERENCES split_expenses(id) ON DELETE CASCADE,
-      member_id INTEGER NOT NULL REFERENCES split_members(id) ON DELETE CASCADE,
-      share_amount NUMERIC(12, 2) NOT NULL CHECK (share_amount >= 0),
-      UNIQUE(expense_id, member_id)
-    )
-  `);
-  await query(`
-    CREATE TABLE IF NOT EXISTS split_settlements (
-      id SERIAL PRIMARY KEY,
-      group_id INTEGER NOT NULL REFERENCES split_groups(id) ON DELETE CASCADE,
-      from_member_id INTEGER NOT NULL REFERENCES split_members(id),
-      to_member_id INTEGER NOT NULL REFERENCES split_members(id),
-      amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
-      settled_date DATE NOT NULL,
-      notes VARCHAR(255),
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-  console.log('  · split_* tables ready');
-
   // Indexes that require user_id, only after column exists
   const indexes = [
     `CREATE INDEX IF NOT EXISTS idx_refresh_user ON refresh_tokens(user_id)`,
@@ -224,11 +168,6 @@ export async function runMigrations() {
     `CREATE INDEX IF NOT EXISTS idx_events_user ON events(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_event_items_event ON event_items(event_id)`,
     `CREATE INDEX IF NOT EXISTS idx_event_guests_event ON event_guests(event_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_split_groups_user ON split_groups(user_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_split_members_group ON split_members(group_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_split_expenses_group ON split_expenses(group_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_split_shares_expense ON split_shares(expense_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_split_settlements_group ON split_settlements(group_id)`,
   ];
 
   for (const sql of indexes) {

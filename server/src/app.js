@@ -17,7 +17,6 @@ import eventsRouter from './routes/events.js';
 import dashboardRouter from './routes/dashboard.js';
 import fxRouter from './routes/fx.js';
 import metalsRouter from './routes/metals.js';
-import splitsRouter from './routes/splits.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
@@ -152,7 +151,6 @@ app.use('/api/events', eventsRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/fx', fxRouter);
 app.use('/api/metals', metalsRouter);
-app.use('/api/splits', splitsRouter);
 
 // Static SPA only for long-running Node hosts (Render / local). Vercel serves client/dist itself.
 const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
