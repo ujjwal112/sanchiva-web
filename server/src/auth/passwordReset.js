@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { query } from '../db.js';
 import { hashPassword } from './tokens.js';
+import { sendMail } from './sendMail.js';
 
 const OTP_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_ATTEMPTS = 5;
@@ -53,33 +54,11 @@ async function sendResetEmail({ email, otp, name }) {
     `Your Sanchiva password reset code is: ${otp}\n\n` +
     `This code expires in 15 minutes. If you did not request this, you can ignore this email.\n`;
 
-  const resendKey = process.env.RESEND_API_KEY;
-  const from = process.env.PASSWORD_RESET_FROM || process.env.RESEND_FROM || 'Sanchiva <onboarding@resend.dev>';
-
-  if (resendKey) {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${resendKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from,
-        to: [email],
-        subject,
-        text,
-      }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Email send failed: ${res.status} ${body}`);
-    }
-    return { delivered: true };
+  const result = await sendMail({ to: email, subject, text });
+  if (!result.delivered) {
+    console.log(`[password-reset] OTP for ${email}: ${otp}`);
   }
-
-  // No email provider configured — log for local/dev use.
-  console.log(`[password-reset] OTP for ${email}: ${otp}`);
-  return { delivered: false };
+  return result;
 }
 
 /**

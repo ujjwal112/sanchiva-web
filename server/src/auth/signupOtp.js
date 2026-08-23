@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { query } from '../db.js';
 import { lookupEmailForSignup } from './tokens.js';
+import { sendMail } from './sendMail.js';
 
 const OTP_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_ATTEMPTS = 5;
@@ -44,36 +45,11 @@ async function sendSignupEmail({ email, otp }) {
     `Your Sanchiva account verification code is: ${otp}\n\n` +
     `This code expires in 15 minutes. If you did not try to create an account, you can ignore this email.\n`;
 
-  const resendKey = process.env.RESEND_API_KEY;
-  const from =
-    process.env.SIGNUP_OTP_FROM ||
-    process.env.PASSWORD_RESET_FROM ||
-    process.env.RESEND_FROM ||
-    'Sanchiva <onboarding@resend.dev>';
-
-  if (resendKey) {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${resendKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from,
-        to: [email],
-        subject,
-        text,
-      }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Email send failed: ${res.status} ${body}`);
-    }
-    return { delivered: true };
+  const result = await sendMail({ to: email, subject, text });
+  if (!result.delivered) {
+    console.log(`[signup-otp] OTP for ${email}: ${otp}`);
   }
-
-  console.log(`[signup-otp] OTP for ${email}: ${otp}`);
-  return { delivered: false };
+  return result;
 }
 
 /**

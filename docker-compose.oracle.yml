@@ -51,7 +51,13 @@ services:
       API_URL: ${API_URL:-http://localhost}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      # Email OTP (signup + password reset) via Resend
+      # Email OTP (signup + password reset)
+      # Prefer Gmail SMTP (any recipient, no domain). Else Resend.
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      GMAIL_USER: ${GMAIL_USER:-}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM: ${RESEND_FROM:-Sanchiva <onboarding@resend.dev>}
       PASSWORD_RESET_FROM: ${PASSWORD_RESET_FROM:-}
