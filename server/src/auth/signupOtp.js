@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { query } from '../db.js';
 import { lookupEmailForSignup } from './tokens.js';
 import { sendMail } from './sendMail.js';
+import { buildOtpEmail, resolveLogoPath } from './otpEmail.js';
 
 const OTP_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_ATTEMPTS = 5;
@@ -39,13 +40,15 @@ export async function ensureSignupOtpTable() {
 }
 
 async function sendSignupEmail({ email, otp }) {
-  const subject = 'Your Sanchiva verification code';
-  const text =
-    `Hi there,\n\n` +
-    `Your Sanchiva account verification code is: ${otp}\n\n` +
-    `This code expires in 15 minutes. If you did not try to create an account, you can ignore this email.\n`;
+  const appUrl = (process.env.APP_URL || 'https://sanchivaorg.duckdns.org').replace(/\/$/, '');
+  const hasLogoFile = !!resolveLogoPath();
+  const { subject, html, text } = buildOtpEmail({
+    otp,
+    purpose: 'signup',
+    logoSrc: hasLogoFile ? 'cid:sanchiva-logo' : `${appUrl}/sanchiva-logo.png`,
+  });
 
-  const result = await sendMail({ to: email, subject, text });
+  const result = await sendMail({ to: email, subject, text, html, embedLogo: hasLogoFile });
   if (!result.delivered) {
     console.log(`[signup-otp] OTP for ${email}: ${otp}`);
   }
