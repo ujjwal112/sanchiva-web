@@ -51,6 +51,11 @@ services:
       API_URL: ${API_URL:-http://localhost}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      # Email OTP (signup + password reset) via Resend
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM: ${RESEND_FROM:-Sanchiva <onboarding@resend.dev>}
+      PASSWORD_RESET_FROM: ${PASSWORD_RESET_FROM:-}
+      SIGNUP_OTP_FROM: ${SIGNUP_OTP_FROM:-}
     # Localhost only so Caddy (or host) owns public 80/443
     ports:
       - "127.0.0.1:5000:5000"
