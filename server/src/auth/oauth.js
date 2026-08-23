@@ -18,7 +18,27 @@ import {
   lookupEmailForSignup,
   publicUser,
 } from './tokens.js';
+import {
+  requestPasswordReset,
+  verifyPasswordResetOtp,
+  resetPasswordWithOtp,
+  ensurePasswordResetTable,
+} from './passwordReset.js';
+import {
+  requestSignupOtp,
+  verifySignupOtp,
+  consumeSignupOtp,
+  ensureSignupOtpTable,
+} from './signupOtp.js';
 import { requireAuth } from './middleware.js';
+
+// Ensure OTP tables exist (idempotent).
+ensurePasswordResetTable().catch((e) => {
+  console.warn('[password-reset] table ensure failed:', e.message);
+});
+ensureSignupOtpTable().catch((e) => {
+  console.warn('[signup-otp] table ensure failed:', e.message);
+});
 
 /** Accept web + optional Android/iOS OAuth client IDs as ID-token audience. */
 function googleAudiences() {
@@ -174,12 +194,18 @@ router.get('/providers', (_req, res) => {
   });
 });
 
+/** Access token lifetime in seconds (matches JWT_ACCESS_TTL default 30d). Informative for clients. */
+function accessExpiresInSeconds() {
+  return Number(process.env.JWT_ACCESS_SECONDS || 30 * 24 * 60 * 60);
+}
+
 function tokenResponse(user, accessToken, refreshToken) {
+  // Informative only — client uses refresh rotation; long-lived until logout.
   return {
     access_token: accessToken,
     refresh_token: refreshToken,
     token_type: 'Bearer',
-    expires_in: 900,
+    expires_in: accessExpiresInSeconds(),
     user: publicUser(user),
   };
 }
@@ -199,14 +225,44 @@ router.post('/check-email', async (req, res) => {
   }
 });
 
-/** Email/password signup */
+/** Signup — send email verification OTP (before account details) */
+router.post('/request-signup-otp', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    const result = await requestSignupOtp(email);
+    res.json(result);
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({ error: err.message || 'Could not send verification code' });
+  }
+});
+
+/** Signup — verify email OTP (does not consume; register consumes) */
+router.post('/verify-signup-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body || {};
+    const result = await verifySignupOtp(email, otp);
+    res.json(result);
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({ error: err.message || 'Invalid code' });
+  }
+});
+
+/** Email/password signup — requires a valid signup OTP */
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, confirm_password: confirmPassword } = req.body || {};
+    const { name, email, password, confirm_password: confirmPassword, otp } = req.body || {};
     if (confirmPassword != null && String(password) !== String(confirmPassword)) {
       return res.status(400).json({ error: 'Password and confirm password do not match' });
     }
+    if (!otp) {
+      return res.status(400).json({ error: 'Email verification code is required' });
+    }
+    // Validate OTP before creating the user; consume only after create succeeds
+    await verifySignupOtp(email, otp);
     const user = await createLocalUser({ name, email, password });
+    await consumeSignupOtp(email, otp);
     const accessToken = signAccessToken(user);
     const refreshToken = await issueRefreshToken(user.id);
     res.status(201).json(tokenResponse(user, accessToken, refreshToken));
@@ -227,6 +283,47 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     const status = err.status || 500;
     res.status(status).json({ error: err.message || 'Login failed' });
+  }
+});
+
+/** Forgot password — send 6-digit OTP to local email accounts */
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    const result = await requestPasswordReset(email);
+    res.json(result);
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({ error: err.message || 'Could not start password reset' });
+  }
+});
+
+/** Verify forgot-password OTP */
+router.post('/verify-reset-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body || {};
+    const result = await verifyPasswordResetOtp(email, otp);
+    res.json(result);
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({ error: err.message || 'Invalid code' });
+  }
+});
+
+/** Set a new password after OTP verification */
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, otp, password, confirm_password: confirmPassword } = req.body || {};
+    const result = await resetPasswordWithOtp({
+      email,
+      otp,
+      password,
+      confirmPassword,
+    });
+    res.json(result);
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({ error: err.message || 'Could not reset password' });
   }
 });
 
@@ -420,8 +517,8 @@ router.post('/refresh', async (req, res) => {
       access_token: accessToken,
       refresh_token: rotated.refreshToken,
       token_type: 'Bearer',
-      expires_in: 900,
-      user,
+      expires_in: accessExpiresInSeconds(),
+      user: publicUser(user),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

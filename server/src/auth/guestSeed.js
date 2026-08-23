@@ -26,6 +26,22 @@ function daysFromNow(n) {
   return daysAgo(-n);
 }
 
+/**
+ * ISO date within the current calendar week (Mon–Sun).
+ * Prefers tomorrow when still in this week; otherwise today.
+ */
+function thisWeekDemoDate() {
+  const now = new Date();
+  now.setHours(12, 0, 0, 0);
+  const weekday = now.getDay() === 0 ? 7 : now.getDay(); // Mon=1 … Sun=7
+  const weekEnd = new Date(now);
+  weekEnd.setDate(now.getDate() + (7 - weekday));
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  const pick = tomorrow <= weekEnd ? tomorrow : now;
+  return `${pick.getFullYear()}-${pad2(pick.getMonth() + 1)}-${pad2(pick.getDate())}`;
+}
+
 function ceremonyMeta(name, date) {
   const n = String(name).toLowerCase();
   let theme = 'default';
@@ -161,7 +177,30 @@ async function seedDemoEvents(userId) {
   ];
 
   // Every app event type — plus multiple wedding styles
+  const thisWeek = thisWeekDemoDate();
   const defs = [
+    {
+      name: 'Weekend Family Celebration',
+      event_type: 'birthday',
+      sub_type: 'Family party',
+      event_date: thisWeek,
+      location: 'Home courtyard',
+      budget: 45000,
+      notes: 'Demo event this week so guest notifications show an upcoming event',
+      answers: {
+        days: 1,
+        guest_estimate: 40,
+        event_date: thisWeek,
+        location: 'Home courtyard',
+        budget: 45000,
+      },
+      ceremonies: [{ name: 'Party', date: thisWeek }],
+      guests: [
+        { name: 'Riya Kapoor', side: 'Family', ceremony: 'Party', rsvp: 'yes', count: 3 },
+        { name: 'Arjun Desai', side: 'Friends', ceremony: 'Party', rsvp: 'yes', count: 2 },
+      ],
+      status: 'planning',
+    },
     {
       name: 'Aarav & Diya Wedding',
       event_type: 'wedding',

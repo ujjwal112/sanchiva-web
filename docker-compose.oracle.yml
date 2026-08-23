@@ -42,6 +42,10 @@ services:
       PGSSL: "false"
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET}
+      # Long-lived sessions until user logs out (Google / guest / email)
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-30d}
+      JWT_REFRESH_DAYS: ${JWT_REFRESH_DAYS:-3650}
+      JWT_ACCESS_SECONDS: ${JWT_ACCESS_SECONDS:-2592000}
       CLIENT_ORIGIN: ${CLIENT_ORIGIN:-*}
       APP_URL: ${APP_URL:-http://localhost}
       API_URL: ${API_URL:-http://localhost}

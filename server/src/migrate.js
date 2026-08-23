@@ -98,6 +98,48 @@ export async function runMigrations() {
     await query(`ALTER TABLE users ADD COLUMN password_hash TEXT`);
     console.log('  + users.password_hash');
   }
+
+  // Password reset OTPs for local accounts
+  await query(`
+    CREATE TABLE IF NOT EXISTS password_reset_otps (
+      id SERIAL PRIMARY KEY,
+      email VARCHAR(255) NOT NULL,
+      code_hash VARCHAR(128) NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      consumed BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  try {
+    await query(`
+      CREATE INDEX IF NOT EXISTS password_reset_otps_email_idx
+      ON password_reset_otps (LOWER(email), created_at DESC)
+    `);
+  } catch (e) {
+    console.warn('  ! password_reset_otps index:', e.message);
+  }
+
+  // Signup email verification OTPs
+  await query(`
+    CREATE TABLE IF NOT EXISTS signup_otps (
+      id SERIAL PRIMARY KEY,
+      email VARCHAR(255) NOT NULL,
+      code_hash VARCHAR(128) NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      consumed BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  try {
+    await query(`
+      CREATE INDEX IF NOT EXISTS signup_otps_email_idx
+      ON signup_otps (LOWER(email), created_at DESC)
+    `);
+  } catch (e) {
+    console.warn('  ! signup_otps index:', e.message);
+  }
   try {
     await query(`
       CREATE UNIQUE INDEX IF NOT EXISTS users_local_email_lower
