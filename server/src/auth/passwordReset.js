@@ -49,15 +49,13 @@ async function findLocalUserByEmail(emailNorm) {
 }
 
 async function sendResetEmail({ email, otp, name }) {
-  const appUrl = (process.env.APP_URL || 'https://sanchivaorg.duckdns.org').replace(/\/$/, '');
   const { subject, html, text } = buildOtpEmail({
     otp,
     purpose: 'reset',
     name,
-    logoSrc: `${appUrl}/sanchiva-logo.png`,
   });
 
-  const result = await sendMail({ to: email, subject, text, html, embedLogo: false });
+  const result = await sendMail({ to: email, subject, text, html });
   if (!result.delivered) {
     console.log(`[password-reset] OTP for ${email}: ${otp}`);
   }

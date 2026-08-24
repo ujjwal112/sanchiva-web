@@ -1,36 +1,21 @@
 import nodemailer from 'nodemailer';
-import { resolveLogoPath } from './otpEmail.js';
 
 /**
- * Send transactional email for OTP flows.
- * Prefer Gmail SMTP when configured (can send to any address, no domain needed).
- * Fall back to Resend API (free tier only sends to the Resend account email
- * unless a custom domain is verified).
+ * Send transactional OTP email.
+ * Prefer Gmail SMTP when configured.
+ * Fall back to Resend API when SMTP is not set.
  *
- * @param {{ to: string, subject: string, text: string, html?: string, fromOverride?: string, embedLogo?: boolean }} opts
+ * Deliverability notes (no custom domain):
+ * - Avoid remote images / duckdns links (spam trigger)
+ * - Keep content short and personal
+ * - Mark as transactional / auto-generated
+ * Inbox placement still cannot be guaranteed without SPF/DKIM on your own domain.
  */
-export async function sendMail({ to, subject, text, html, fromOverride, embedLogo = true }) {
+export async function sendMail({ to, subject, text, html, fromOverride }) {
   const smtpUser = (process.env.SMTP_USER || process.env.GMAIL_USER || '').trim();
   const smtpPass = (process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || '').trim();
   const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
   const smtpPort = Number(process.env.SMTP_PORT || 465);
-
-  const appUrl = (process.env.APP_URL || 'https://sanchivaorg.duckdns.org').replace(/\/$/, '');
-  const forceEmbed = process.env.EMAIL_EMBED_LOGO === '1';
-  const logoPath = embedLogo && forceEmbed ? resolveLogoPath() : null;
-  const attachments = [];
-  // Prefer hosted logo URL for smaller / more deliverable mail.
-  // Set EMAIL_EMBED_LOGO=1 to attach CID instead.
-  let htmlToSend = html;
-  if (htmlToSend && !logoPath) {
-    htmlToSend = htmlToSend.replace(/cid:sanchiva-logo/g, `${appUrl}/sanchiva-logo.png`);
-  } else if (htmlToSend && logoPath) {
-    attachments.push({
-      filename: 'sanchiva-logo.png',
-      path: logoPath,
-      cid: 'sanchiva-logo',
-    });
-  }
 
   if (smtpUser && smtpPass) {
     const from =
@@ -53,10 +38,16 @@ export async function sendMail({ to, subject, text, html, fromOverride, embedLog
     const info = await transporter.sendMail({
       from,
       to,
+      replyTo: smtpUser,
       subject,
+      // Text first — multipart alternative with text preferred by many filters.
       text,
-      html: htmlToSend || undefined,
-      attachments: attachments.length ? attachments : undefined,
+      html: html || undefined,
+      headers: {
+        'Auto-Submitted': 'auto-generated',
+        'X-Auto-Response-Suppress': 'All',
+        'X-Mailer': 'Sanchiva',
+      },
     });
     console.log(
       `[mail] smtp ok to=${to} subject="${subject}" id=${info.messageId || 'n/a'} response=${info.response || 'n/a'}`
@@ -73,18 +64,13 @@ export async function sendMail({ to, subject, text, html, fromOverride, embedLog
       process.env.RESEND_FROM ||
       'Sanchiva <onboarding@resend.dev>';
 
-    // Resend JSON API: use hosted logo URL instead of CID attachments
-    const htmlForResend = htmlToSend
-      ? htmlToSend.replace(/cid:sanchiva-logo/g, `${appUrl}/sanchiva-logo.png`)
-      : undefined;
-
     const body = {
       from,
       to: [to],
       subject,
       text,
     };
-    if (htmlForResend) body.html = htmlForResend;
+    if (html) body.html = html;
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',

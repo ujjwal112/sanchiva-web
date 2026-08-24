@@ -40,14 +40,12 @@ export async function ensureSignupOtpTable() {
 }
 
 async function sendSignupEmail({ email, otp }) {
-  const appUrl = (process.env.APP_URL || 'https://sanchivaorg.duckdns.org').replace(/\/$/, '');
   const { subject, html, text } = buildOtpEmail({
     otp,
     purpose: 'signup',
-    logoSrc: `${appUrl}/sanchiva-logo.png`,
   });
 
-  const result = await sendMail({ to: email, subject, text, html, embedLogo: false });
+  const result = await sendMail({ to: email, subject, text, html });
   if (!result.delivered) {
     console.log(`[signup-otp] OTP for ${email}: ${otp}`);
   }
