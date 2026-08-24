@@ -366,7 +366,11 @@ router.get(
   (req, res, next) => {
     passport.authenticate('google', { session: false }, (err, user) => {
       if (err || !user) {
-        return callbackRedirect(res, { error: 'google' });
+        const msg =
+          err?.message && String(err.message).length < 180
+            ? err.message
+            : 'This Google account cannot be used. Try email login or another account.';
+        return callbackRedirect(res, { error: msg });
       }
       req.user = user;
       return next();
@@ -460,7 +464,8 @@ router.post('/google/mobile', async (req, res) => {
     res.json(tokenResponse(user, appAccess, appRefresh));
   } catch (err) {
     console.error('[auth/google/mobile]', err);
-    res.status(500).json({ error: err.message || 'Google mobile login failed' });
+    const status = err.status || 500;
+    res.status(status).json({ error: err.message || 'Google mobile login failed' });
   }
 });
 

@@ -10,8 +10,10 @@ import {
 
 const BCRYPT_ROUNDS = 12;
 
-const ACCESS_TTL = process.env.JWT_ACCESS_TTL || '15m';
-const REFRESH_TTL_DAYS = Number(process.env.JWT_REFRESH_DAYS || 30);
+// Long-lived sessions: stay signed in until the user logs out (mobile + web).
+// Override with JWT_ACCESS_TTL / JWT_REFRESH_DAYS in env if needed.
+const ACCESS_TTL = process.env.JWT_ACCESS_TTL || '30d';
+const REFRESH_TTL_DAYS = Number(process.env.JWT_REFRESH_DAYS || 3650);
 
 function secrets() {
   const access = process.env.JWT_ACCESS_SECRET || 'sanchiva-dev-access-secret-change-me';
@@ -74,7 +76,70 @@ export async function revokeAllUserTokens(userId) {
   await query(`UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1`, [userId]);
 }
 
+/**
+ * One email may only use one auth method (local XOR google/microsoft/facebook).
+ * Blocks Google login when a password account already exists for that email, and
+ * blocks creating a new OAuth user when any other provider owns the email.
+ */
+async function assertEmailExclusiveToProvider(emailNorm, intendedProvider) {
+  if (!emailNorm) return;
+  const { rows } = await query(
+    `SELECT provider FROM users
+     WHERE LOWER(email) = $1
+       AND provider <> 'guest'
+       AND provider <> $2
+     ORDER BY CASE provider
+       WHEN 'local' THEN 0
+       WHEN 'google' THEN 1
+       WHEN 'microsoft' THEN 2
+       WHEN 'facebook' THEN 3
+       ELSE 9
+     END
+     LIMIT 1`,
+    [emailNorm, intendedProvider]
+  );
+  const other = rows[0]?.provider;
+  if (!other) return;
+
+  if (intendedProvider === 'local') {
+    if (other === 'google') {
+      const err = new Error(
+        'This email is already registered with Google. Please use Continue with Google to sign in.'
+      );
+      err.status = 409;
+      throw err;
+    }
+    const err = new Error(
+      `This email is already registered with ${other}. Please use that sign-in method.`
+    );
+    err.status = 409;
+    throw err;
+  }
+
+  // OAuth attempting to use an email that already has another method (usually local)
+  if (other === 'local') {
+    const err = new Error(
+      'This email already has a Sanchiva password account. Please log in with email and password.'
+    );
+    err.status = 409;
+    throw err;
+  }
+  const err = new Error(
+    `This email is already registered with ${other}. Please use that sign-in method.`
+  );
+  err.status = 409;
+  throw err;
+}
+
 export async function findOrCreateOAuthUser({ provider, providerId, email, name, picture }) {
+  const emailNorm = String(email || '')
+    .trim()
+    .toLowerCase();
+
+  // Always enforce one-email-one-method, even for returning OAuth users
+  // (covers cases where a password account was created for the same email later).
+  await assertEmailExclusiveToProvider(emailNorm, provider);
+
   const { rows: existing } = await query(
     `SELECT * FROM users WHERE provider = $1 AND provider_id = $2`,
     [provider, providerId]
@@ -87,10 +152,11 @@ export async function findOrCreateOAuthUser({ provider, providerId, email, name,
     );
     return rows[0];
   }
+
   const { rows } = await query(
     `INSERT INTO users (email, name, picture, provider, provider_id)
      VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [email || `${providerId}@${provider}.oauth`, name || 'User', picture || null, provider, providerId]
+    [emailNorm || `${providerId}@${provider}.oauth`, name || 'User', picture || null, provider, providerId]
   );
   return rows[0];
 }
@@ -202,18 +268,8 @@ export async function createLocalUser({ name, email, password }) {
     throw err;
   }
 
-  // Soft check: same email via Google, guide them to Google login
-  const { rows: oauthHit } = await query(
-    `SELECT id, provider FROM users WHERE LOWER(email) = $1 AND provider = 'google' LIMIT 1`,
-    [emailNorm]
-  );
-  if (oauthHit[0]) {
-    const err = new Error(
-      'This email is already registered with Google. Please use Continue with Google to sign in.'
-    );
-    err.status = 409;
-    throw err;
-  }
+  // Same email already used with Google / other OAuth — do not create a password account
+  await assertEmailExclusiveToProvider(emailNorm, 'local');
 
   const password_hash = await hashPassword(password);
   const { rows } = await query(
