@@ -44,11 +44,12 @@ function logoBlock(logoSrc) {
 export function buildOtpEmail({ otp, purpose = 'signup', name, logoSrc }) {
   const isReset = purpose === 'reset';
   const title = isReset ? 'Reset your password' : 'Verify your email';
-  const greeting = name ? `Hi ${escapeHtml(name)},` : 'Hi there,';
-  const intro = isReset
+  const greetingPlain = name ? `Hi ${String(name)},` : 'Hi there,';
+  const introPlain = isReset
     ? 'Use this code to set a new password for your Sanchiva account.'
     : 'Use this code to finish creating your Sanchiva account.';
-  const subject = isReset ? 'Your Sanchiva password reset code' : 'Your Sanchiva verification code';
+  // Keep signup + reset subjects similar so Gmail treats them the same.
+  const subject = isReset ? 'Your Sanchiva password reset code' : 'Your Sanchiva signup code';
 
   const code = String(otp || '').trim();
   const logo = logoBlock(logoSrc || null);
@@ -74,8 +75,8 @@ export function buildOtpEmail({ otp, purpose = 'signup', name, logoSrc }) {
           <tr>
             <td style="padding:32px 28px 12px;text-align:center;">
               <div style="color:#1F1635;font-size:20px;font-weight:700;margin-bottom:10px;">${escapeHtml(title)}</div>
-              <div style="color:#6B6280;font-size:15px;line-height:1.5;margin-bottom:8px;">${escapeHtml(greeting)}</div>
-              <div style="color:#6B6280;font-size:15px;line-height:1.5;">${escapeHtml(intro)}</div>
+              <div style="color:#6B6280;font-size:15px;line-height:1.5;margin-bottom:8px;">${escapeHtml(greetingPlain)}</div>
+              <div style="color:#6B6280;font-size:15px;line-height:1.5;">${escapeHtml(introPlain)}</div>
             </td>
           </tr>
           <tr>
@@ -101,15 +102,15 @@ export function buildOtpEmail({ otp, purpose = 'signup', name, logoSrc }) {
 </html>`;
 
   const text = [
-    'Sanchiva',
+    `Your Sanchiva code is: ${code}`,
     '',
-    greeting,
-    intro,
-    '',
-    `Your code: ${code}`,
+    greetingPlain,
+    introPlain,
     '',
     'This code expires in 15 minutes.',
     'If you did not request this, you can ignore this email.',
+    '',
+    'Sanchiva',
   ].join('\n');
 
   return { subject, html, text };

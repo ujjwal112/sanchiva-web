@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { query } from '../db.js';
 import { hashPassword } from './tokens.js';
 import { sendMail } from './sendMail.js';
-import { buildOtpEmail, resolveLogoPath } from './otpEmail.js';
+import { buildOtpEmail } from './otpEmail.js';
 
 const OTP_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_ATTEMPTS = 5;
@@ -50,15 +50,14 @@ async function findLocalUserByEmail(emailNorm) {
 
 async function sendResetEmail({ email, otp, name }) {
   const appUrl = (process.env.APP_URL || 'https://sanchivaorg.duckdns.org').replace(/\/$/, '');
-  const hasLogoFile = !!resolveLogoPath();
   const { subject, html, text } = buildOtpEmail({
     otp,
     purpose: 'reset',
     name,
-    logoSrc: hasLogoFile ? 'cid:sanchiva-logo' : `${appUrl}/sanchiva-logo.png`,
+    logoSrc: `${appUrl}/sanchiva-logo.png`,
   });
 
-  const result = await sendMail({ to: email, subject, text, html, embedLogo: hasLogoFile });
+  const result = await sendMail({ to: email, subject, text, html, embedLogo: false });
   if (!result.delivered) {
     console.log(`[password-reset] OTP for ${email}: ${otp}`);
   }

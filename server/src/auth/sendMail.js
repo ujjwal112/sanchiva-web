@@ -15,9 +15,16 @@ export async function sendMail({ to, subject, text, html, fromOverride, embedLog
   const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
   const smtpPort = Number(process.env.SMTP_PORT || 465);
 
-  const logoPath = embedLogo ? resolveLogoPath() : null;
+  const appUrl = (process.env.APP_URL || 'https://sanchivaorg.duckdns.org').replace(/\/$/, '');
+  const forceEmbed = process.env.EMAIL_EMBED_LOGO === '1';
+  const logoPath = embedLogo && forceEmbed ? resolveLogoPath() : null;
   const attachments = [];
-  if (html && logoPath) {
+  // Prefer hosted logo URL for smaller / more deliverable mail.
+  // Set EMAIL_EMBED_LOGO=1 to attach CID instead.
+  let htmlToSend = html;
+  if (htmlToSend && !logoPath) {
+    htmlToSend = htmlToSend.replace(/cid:sanchiva-logo/g, `${appUrl}/sanchiva-logo.png`);
+  } else if (htmlToSend && logoPath) {
     attachments.push({
       filename: 'sanchiva-logo.png',
       path: logoPath,
@@ -43,15 +50,18 @@ export async function sendMail({ to, subject, text, html, fromOverride, embedLog
       },
     });
 
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from,
       to,
       subject,
       text,
-      html: html || undefined,
+      html: htmlToSend || undefined,
       attachments: attachments.length ? attachments : undefined,
     });
-    return { delivered: true, provider: 'smtp' };
+    console.log(
+      `[mail] smtp ok to=${to} subject="${subject}" id=${info.messageId || 'n/a'} response=${info.response || 'n/a'}`
+    );
+    return { delivered: true, provider: 'smtp', messageId: info.messageId };
   }
 
   const resendKey = process.env.RESEND_API_KEY;
@@ -63,10 +73,9 @@ export async function sendMail({ to, subject, text, html, fromOverride, embedLog
       process.env.RESEND_FROM ||
       'Sanchiva <onboarding@resend.dev>';
 
-    const appUrl = (process.env.APP_URL || 'https://sanchivaorg.duckdns.org').replace(/\/$/, '');
     // Resend JSON API: use hosted logo URL instead of CID attachments
-    const htmlForResend = html
-      ? html.replace(/cid:sanchiva-logo/g, `${appUrl}/sanchiva-logo.png`)
+    const htmlForResend = htmlToSend
+      ? htmlToSend.replace(/cid:sanchiva-logo/g, `${appUrl}/sanchiva-logo.png`)
       : undefined;
 
     const body = {
