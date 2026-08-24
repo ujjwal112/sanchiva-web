@@ -66,8 +66,9 @@ async function sendResetEmail({ email, otp, name }) {
 }
 
 /**
- * Start reset: always returns a generic success message (no email enumeration).
- * If a local account exists, creates an OTP. May include debug_otp when email is not configured.
+ * Start reset for a local email/password account.
+ * Invalid emails and unknown addresses return an error and never create an OTP.
+ * May include debug_otp when email is not configured / non-prod.
  */
 export async function requestPasswordReset(email) {
   await ensurePasswordResetTable();
@@ -78,13 +79,8 @@ export async function requestPasswordReset(email) {
     throw err;
   }
 
-  const generic = {
-    message: 'If an account exists for that email, a reset code has been sent.',
-  };
-
   const user = await findLocalUserByEmail(emailNorm);
   if (!user) {
-    // Check Google-only to give a clearer message (optional, still safe)
     const { rows: google } = await query(
       `SELECT id FROM users WHERE LOWER(email) = $1 AND provider = 'google' LIMIT 1`,
       [emailNorm]
@@ -94,7 +90,9 @@ export async function requestPasswordReset(email) {
       err.status = 400;
       throw err;
     }
-    return generic;
+    const err = new Error('No account found for this email. Check the address or create an account.');
+    err.status = 404;
+    throw err;
   }
 
   const otp = generateOtp();
@@ -123,7 +121,11 @@ export async function requestPasswordReset(email) {
     // Still allow debug path when mail fails in non-production
   }
 
-  const out = { ...generic, delivered };
+  const out = {
+    message: 'Reset code sent. Check your email.',
+    email: emailNorm,
+    delivered,
+  };
   const allowDebug =
     process.env.PASSWORD_RESET_RETURN_OTP === '1' ||
     process.env.NODE_ENV !== 'production' ||
