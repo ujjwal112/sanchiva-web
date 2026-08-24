@@ -192,6 +192,107 @@ export async function verifyPassword(password, passwordHash) {
   return bcrypt.compare(String(password), passwordHash);
 }
 
+/** Update display name for a local (email/password) account only. */
+export async function updateLocalUserName(userId, name) {
+  const uid = Number(userId);
+  const displayName = String(name || '').trim();
+  if (!uid || Number.isNaN(uid)) {
+    const err = new Error('Not signed in');
+    err.status = 401;
+    throw err;
+  }
+  if (!displayName) {
+    const err = new Error('Enter your name');
+    err.status = 400;
+    throw err;
+  }
+  if (displayName.length > 80) {
+    const err = new Error('Name is too long');
+    err.status = 400;
+    throw err;
+  }
+
+  const { rows: found } = await query(
+    `SELECT id, provider FROM users WHERE id = $1 LIMIT 1`,
+    [uid]
+  );
+  const user = found[0];
+  if (!user) {
+    const err = new Error('User not found');
+    err.status = 404;
+    throw err;
+  }
+  if (user.provider !== 'local') {
+    const err = new Error('Only email and password accounts can change their name here.');
+    err.status = 403;
+    throw err;
+  }
+
+  const { rows } = await query(
+    `UPDATE users SET name = $1, updated_at = NOW() WHERE id = $2
+     RETURNING id, email, name, picture, provider, created_at`,
+    [displayName, uid]
+  );
+  return rows[0];
+}
+
+/** Change password for a local account (requires current password). */
+export async function changeLocalPassword(userId, { currentPassword, password, confirmPassword }) {
+  const uid = Number(userId);
+  if (!uid || Number.isNaN(uid)) {
+    const err = new Error('Not signed in');
+    err.status = 401;
+    throw err;
+  }
+  if (!currentPassword || !password) {
+    const err = new Error('Current password and new password are required');
+    err.status = 400;
+    throw err;
+  }
+  if (confirmPassword != null && String(password) !== String(confirmPassword)) {
+    const err = new Error('Password and confirm password do not match');
+    err.status = 400;
+    throw err;
+  }
+  if (String(password).length < 8) {
+    const err = new Error('Password must be at least 8 characters');
+    err.status = 400;
+    throw err;
+  }
+  if (String(currentPassword) === String(password)) {
+    const err = new Error('New password must be different from your current password');
+    err.status = 400;
+    throw err;
+  }
+
+  const { rows } = await query(`SELECT * FROM users WHERE id = $1 LIMIT 1`, [uid]);
+  const user = rows[0];
+  if (!user) {
+    const err = new Error('User not found');
+    err.status = 404;
+    throw err;
+  }
+  if (user.provider !== 'local') {
+    const err = new Error('Only email and password accounts can change their password here.');
+    err.status = 403;
+    throw err;
+  }
+
+  const ok = await verifyPassword(currentPassword, user.password_hash);
+  if (!ok) {
+    const err = new Error('Current password is incorrect');
+    err.status = 401;
+    throw err;
+  }
+
+  const password_hash = await hashPassword(password);
+  await query(`UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`, [
+    password_hash,
+    uid,
+  ]);
+  return { message: 'Password updated' };
+}
+
 /**
  * Signup email probe: whether this email is already registered (non-guest)
  * and how (local password vs Google, etc.).

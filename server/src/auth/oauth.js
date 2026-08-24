@@ -17,6 +17,8 @@ import {
   authenticateLocalUser,
   lookupEmailForSignup,
   publicUser,
+  updateLocalUserName,
+  changeLocalPassword,
 } from './tokens.js';
 import {
   requestPasswordReset,
@@ -559,6 +561,38 @@ router.get('/me', requireAuth, async (req, res) => {
     res.json(user);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+/** Update profile name — local email/password accounts only */
+router.patch('/me', requireAuth, async (req, res) => {
+  try {
+    const { name } = req.body || {};
+    const user = await updateLocalUserName(req.user.id, name);
+    res.json(publicUser(user));
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({ error: err.message || 'Could not update profile' });
+  }
+});
+
+/** Change password — local email/password accounts only */
+router.post('/change-password', requireAuth, async (req, res) => {
+  try {
+    const {
+      current_password: currentPassword,
+      password,
+      confirm_password: confirmPassword,
+    } = req.body || {};
+    const result = await changeLocalPassword(req.user.id, {
+      currentPassword,
+      password,
+      confirmPassword,
+    });
+    res.json(result);
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({ error: err.message || 'Could not change password' });
   }
 });
 
