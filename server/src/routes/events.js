@@ -273,9 +273,27 @@ router.get('/meta/wizard-questions/:eventType', (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const { rows } = await query('SELECT * FROM events WHERE user_id = $1 ORDER BY created_at DESC', [
-      userId(req),
-    ]);
+    // Upcoming first (soonest on top), then undated, then past (most recent past first).
+    const { rows } = await query(
+      `SELECT * FROM events
+       WHERE user_id = $1
+       ORDER BY
+         CASE
+           WHEN event_date IS NULL THEN 1
+           WHEN event_date::date < CURRENT_DATE THEN 2
+           ELSE 0
+         END,
+         CASE
+           WHEN event_date IS NOT NULL AND event_date::date >= CURRENT_DATE
+           THEN event_date
+         END ASC NULLS LAST,
+         CASE
+           WHEN event_date IS NOT NULL AND event_date::date < CURRENT_DATE
+           THEN event_date
+         END DESC NULLS LAST,
+         created_at DESC`,
+      [userId(req)]
+    );
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
