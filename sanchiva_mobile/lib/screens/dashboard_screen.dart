@@ -44,6 +44,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   DashboardData? _data;
   List<EventSummary> _events = const [];
   double _cardEmiMonth = 0;
+  /// Active loan EMIs whose deduction day has already arrived this month
+  /// (day-wise append: day 1 ₹10k + day 3 ₹30k → ₹40k till today).
+  double _loanEmiTillToday = 0;
   bool _loading = true;
   String? _error;
   int _lastRefresh = -1;
@@ -75,6 +78,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final results = await Future.wait([
         DashboardService.instance.fetch(),
         LoanService.instance.listEmis(),
+        LoanService.instance.listLoans().then<List<Loan>>(
+          (v) => v,
+          onError: (_) => <Loan>[],
+        ),
         EventService.instance.list().then<List<EventSummary>>(
           (v) => v,
           onError: (_) => <EventSummary>[],
@@ -82,17 +89,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ]);
       final dash = results[0] as DashboardData;
       final emis = results[1] as List<CreditEmi>;
-      final events = results[2] as List<EventSummary>;
+      final loans = results[2] as List<Loan>;
+      final events = results[3] as List<EventSummary>;
       final now = DateTime.now();
       var cardEmi = 0.0;
       for (final e in emis) {
         if (e.isActiveIn(now.month, now.year)) cardEmi += e.amount;
+      }
+      // Day-wise loan EMI: append each loan once its deduction day ≤ today.
+      // Example: day 1 ₹10k + day 3 ₹30k → till today = ₹40k (day 2 unchanged).
+      var loanTillToday = 0.0;
+      for (final loan in loans) {
+        if (!loan.isActiveIn(now.month, now.year)) continue;
+        final dedDay = loan.emiDeductionDate;
+        if (dedDay > 0 && dedDay <= now.day) {
+          loanTillToday += loan.emiAmount;
+        }
       }
       if (!mounted) return;
       setState(() {
         _data = dash;
         _events = events;
         _cardEmiMonth = cardEmi;
+        _loanEmiTillToday = loanTillToday;
         _loading = false;
         _error = null;
       });
@@ -174,9 +193,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final totalEmi = (k?.monthlyEmi ?? 0) + _cardEmiMonth;
     final income = k?.monthIncome ?? 0;
     final spent = k?.monthExpenseTotal ?? 0;
-    final loanDeductedTillDate = k?.loanEmiDeductedTillDate ?? 0;
-    // Net = income − spent − loan EMIs deducted till today − card EMI this month
-    final balance = income - spent - loanDeductedTillDate - _cardEmiMonth;
+    final loanTillToday = _loanEmiTillToday;
+    final cardEmi = _cardEmiMonth;
+    // Net = income − spent − card EMI (month) − loan EMI (deduction days ≤ today)
+    final balance = income - spent - cardEmi - loanTillToday;
     final cats = d?.categories ?? const <NamedAmount>[];
     final catTotal = cats.fold<double>(0, (s, e) => s + e.amount);
     final trend = d?.expenseTrend ?? const <TrendPoint>[];
@@ -300,27 +320,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     color: Colors.black.withValues(alpha: 0.14),
                     borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
                   ),
-                  padding: const EdgeInsets.fromLTRB(6, 12, 6, 12),
-                  child: Row(
+                  padding: const EdgeInsets.fromLTRB(6, 10, 6, 10),
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: _heroCashStrip(
-                          label: 'Income',
-                          value: formatMoney(income),
-                          icon: Icons.south_west_rounded,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _heroCashStrip(
+                              label: 'Income',
+                              value: formatMoney(income),
+                              icon: Icons.south_west_rounded,
+                            ),
+                          ),
+                          Container(
+                            width: 1,
+                            height: 36,
+                            color: Colors.white.withValues(alpha: 0.22),
+                          ),
+                          Expanded(
+                            child: _heroCashStrip(
+                              label: 'Spent',
+                              value: formatMoney(spent),
+                              icon: Icons.north_east_rounded,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Colors.white.withValues(alpha: 0.16),
                         ),
                       ),
-                      Container(
-                        width: 1,
-                        height: 36,
-                        color: Colors.white.withValues(alpha: 0.22),
-                      ),
-                      Expanded(
-                        child: _heroCashStrip(
-                          label: 'Spent',
-                          value: formatMoney(spent),
-                          icon: Icons.north_east_rounded,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _heroCashStrip(
+                              label: 'Card EMI',
+                              value: formatMoney(cardEmi),
+                              icon: Icons.credit_card_rounded,
+                            ),
+                          ),
+                          Container(
+                            width: 1,
+                            height: 36,
+                            color: Colors.white.withValues(alpha: 0.22),
+                          ),
+                          Expanded(
+                            child: _heroCashStrip(
+                              label: 'Loan till today',
+                              value: formatMoney(loanTillToday),
+                              icon: Icons.account_balance_rounded,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

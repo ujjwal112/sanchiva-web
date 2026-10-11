@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db.js';
+import { clientLocalDate, istTodayYmd } from '../localDate.js';
 import { requireAuth, userId } from '../auth/middleware.js';
 
 const router = Router();
@@ -102,15 +103,14 @@ function parseMeta(raw) {
  * - ongoing — on/after the event day (and not all todos closed)
  * - planning — before the event day (or undated, with open/no todos)
  */
-function deriveEventStatus(eventDate, itemsDone = 0, itemsTotal = 0) {
+function deriveEventStatus(eventDate, itemsDone = 0, itemsTotal = 0, todayYmd = null) {
   const total = Number(itemsTotal) || 0;
   const done = Number(itemsDone) || 0;
   if (total > 0 && done >= total) return 'completed';
   if (eventDate) {
     const day = String(eventDate).slice(0, 10);
     if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
-      const now = new Date();
-      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const today = todayYmd || istTodayYmd();
       if (day <= today) return 'ongoing';
     }
   }
@@ -130,19 +130,24 @@ async function syncEventStatus(eventId) {
     [eventId]
   );
   if (!rows[0]) return null;
-  const status = deriveEventStatus(rows[0].event_date, rows[0].items_done, rows[0].items_total);
+  const status = deriveEventStatus(
+    rows[0].event_date,
+    rows[0].items_done,
+    rows[0].items_total,
+    istTodayYmd()
+  );
   await query(`UPDATE events SET status = $1, updated_at = NOW() WHERE id = $2`, [status, eventId]);
   return { status, items_done: rows[0].items_done, items_total: rows[0].items_total };
 }
 
-function withDerivedStatus(row) {
+function withDerivedStatus(row, todayYmd = null) {
   const itemsTotal = Number(row.items_total ?? row.itemsTotal ?? 0) || 0;
   const itemsDone = Number(row.items_done ?? row.itemsDone ?? 0) || 0;
   return {
     ...row,
     items_total: itemsTotal,
     items_done: itemsDone,
-    status: deriveEventStatus(row.event_date, itemsDone, itemsTotal),
+    status: deriveEventStatus(row.event_date, itemsDone, itemsTotal, todayYmd),
   };
 }
 
@@ -325,6 +330,8 @@ router.get('/', async (req, res) => {
   try {
     // Upcoming first (soonest on top), then undated, then past (most recent past first).
     // Include todo counts so clients can show Planning / Ongoing / Completed.
+    // Order vs the phone's local calendar day (not UTC CURRENT_DATE).
+    const todayYmd = clientLocalDate(req).ymd;
     const { rows } = await query(
       `SELECT e.*,
               COALESCE(c.items_total, 0)::int AS items_total,
@@ -341,21 +348,21 @@ router.get('/', async (req, res) => {
        ORDER BY
          CASE
            WHEN e.event_date IS NULL THEN 1
-           WHEN e.event_date::date < CURRENT_DATE THEN 2
+           WHEN e.event_date::date < $2::date THEN 2
            ELSE 0
          END,
          CASE
-           WHEN e.event_date IS NOT NULL AND e.event_date::date >= CURRENT_DATE
+           WHEN e.event_date IS NOT NULL AND e.event_date::date >= $2::date
            THEN e.event_date
          END ASC NULLS LAST,
          CASE
-           WHEN e.event_date IS NOT NULL AND e.event_date::date < CURRENT_DATE
+           WHEN e.event_date IS NOT NULL AND e.event_date::date < $2::date
            THEN e.event_date
          END DESC NULLS LAST,
          e.created_at DESC`,
-      [userId(req)]
+      [userId(req), todayYmd]
     );
-    res.json(rows.map(withDerivedStatus));
+    res.json(rows.map((r) => withDerivedStatus(r, todayYmd)));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -439,7 +446,12 @@ router.get('/:id', async (req, res) => {
 
     const itemsDone = items.filter((i) => i.is_done).length;
     const itemsTotal = items.length;
-    const status = deriveEventStatus(rows[0].event_date, itemsDone, itemsTotal);
+    const status = deriveEventStatus(
+      rows[0].event_date,
+      itemsDone,
+      itemsTotal,
+      clientLocalDate(req).ymd
+    );
     // Keep stored status in sync for older clients / dashboards.
     if (rows[0].status !== status) {
       await query(`UPDATE events SET status = $1, updated_at = NOW() WHERE id = $2`, [

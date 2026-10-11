@@ -1,19 +1,40 @@
-/** Get Sunday (week start) for a given date */
+import { parseYmd, ymdFromParts } from './localDate.js';
+
+/**
+ * Sunday (week start) for a calendar DATE / YYYY-MM-DD.
+ * Uses UTC-noon stepping so server TZ never flips the civil day.
+ */
 export function getWeekStart(dateInput) {
-  const d = new Date(dateInput);
-  const day = d.getDay(); // 0 = Sunday
-  const start = new Date(d);
-  start.setDate(d.getDate() - day);
-  start.setHours(0, 0, 0, 0);
-  return start;
+  const parsed = parseYmd(dateInput);
+  let y;
+  let m;
+  let d;
+  if (parsed) {
+    y = parsed.year;
+    m = parsed.month;
+    d = parsed.day;
+  } else {
+    const x = new Date(dateInput);
+    y = x.getUTCFullYear();
+    m = x.getUTCMonth() + 1;
+    d = x.getUTCDate();
+  }
+  const dt = new Date(Date.UTC(y, m - 1, d, 12));
+  const dow = dt.getUTCDay(); // 0 = Sunday
+  dt.setUTCDate(dt.getUTCDate() - dow);
+  // Return a Date at UTC noon so formatDate can read UTC parts safely.
+  return dt;
 }
 
 export function formatDate(d) {
+  const parsed = parseYmd(d);
+  if (parsed) return parsed.ymd;
+  if (d instanceof Date && !Number.isNaN(d.getTime())) {
+    // Prefer UTC parts for Dates produced by getWeekStart (UTC noon).
+    return ymdFromParts(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+  }
   const x = new Date(d);
-  const y = x.getFullYear();
-  const m = String(x.getMonth() + 1).padStart(2, '0');
-  const day = String(x.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return ymdFromParts(x.getUTCFullYear(), x.getUTCMonth() + 1, x.getUTCDate());
 }
 
 export function monthsBetween(startMonth, startYear, endMonth, endYear) {

@@ -21,11 +21,17 @@ class Expense {
 
   factory Expense.fromJson(Map<String, dynamic> j) {
     final rawDate = j['expense_date']?.toString() ?? '';
+    // Parse as phone-local calendar date (never UTC midnight).
     DateTime d;
     try {
-      d = DateTime.parse(rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate);
+      final s = rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate;
+      final y = int.parse(s.substring(0, 4));
+      final m = int.parse(s.substring(5, 7));
+      final day = int.parse(s.substring(8, 10));
+      d = DateTime(y, m, day);
     } catch (_) {
-      d = DateTime.now();
+      final n = DateTime.now();
+      d = DateTime(n.year, n.month, n.day);
     }
     return Expense(
       id: int.tryParse(j['id']?.toString() ?? '') ?? 0,

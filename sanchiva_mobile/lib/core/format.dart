@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart';
 
 import 'display_currency.dart';
+import 'local_date.dart';
 
 /// Formats money with the **system display currency** (Profile preference).
 ///
@@ -24,7 +25,15 @@ String formatMoney(dynamic value, {String? currency}) {
 
 String formatDate(dynamic value) {
   if (value == null) return '-';
-  final d = value is DateTime ? value : DateTime.tryParse(value.toString());
-  if (d == null) return value.toString();
-  return DateFormat('dd MMM yyyy').format(d);
+  if (value is DateTime) {
+    return DateFormat('dd MMM yyyy').format(localCalendarDate(value));
+  }
+  final raw = value.toString().trim();
+  // Prefer calendar YYYY-MM-DD so UTC parsing never flips the day in IST.
+  if (raw.length >= 10 && RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(raw)) {
+    return DateFormat('dd MMM yyyy').format(parseLocalYmd(raw));
+  }
+  final d = DateTime.tryParse(raw);
+  if (d == null) return raw;
+  return DateFormat('dd MMM yyyy').format(localCalendarDate(d.toLocal()));
 }

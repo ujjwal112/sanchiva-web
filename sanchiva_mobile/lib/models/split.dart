@@ -190,9 +190,18 @@ class SplitExpense {
 
   factory SplitExpense.fromJson(Map<String, dynamic> j) {
     final raw = j['expense_date']?.toString() ?? '';
-    final date = DateTime.tryParse(raw.length >= 10 ? raw.substring(0, 10) : raw) ??
-        DateTime.tryParse(raw) ??
-        DateTime.now();
+    DateTime date;
+    try {
+      final s = raw.length >= 10 ? raw.substring(0, 10) : raw;
+      date = DateTime(
+        int.parse(s.substring(0, 4)),
+        int.parse(s.substring(5, 7)),
+        int.parse(s.substring(8, 10)),
+      );
+    } catch (_) {
+      final n = DateTime.now();
+      date = DateTime(n.year, n.month, n.day);
+    }
     final shares = <SplitShare>[];
     final sharesRaw = j['shares'];
     if (sharesRaw is List) {

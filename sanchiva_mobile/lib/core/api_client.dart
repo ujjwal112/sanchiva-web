@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_config.dart';
+import 'local_date.dart';
 
 class ApiException implements Exception {
   ApiException(this.message, {this.statusCode});
@@ -12,6 +13,8 @@ class ApiException implements Exception {
   @override
   String toString() => message;
 }
+
+enum _RefreshResult { success, invalid, networkError, noToken }
 
 class ApiClient {
   ApiClient._();
@@ -50,13 +53,26 @@ class ApiClient {
   }
 
   bool get hasToken => (_access != null && _access!.isNotEmpty);
+  bool get hasRefreshToken => (_refresh != null && _refresh!.isNotEmpty);
   String? get accessToken => _access;
+  String? get refreshToken => _refresh;
+
+  /// Offline / dev-only tokens — never call /auth/refresh (server would 401 and wipe session).
+  bool get isLocalOnlySession {
+    final a = _access ?? '';
+    final r = _refresh ?? '';
+    if (a == 'sanchiva.guest.local' || a == 'local-user-access') return true;
+    if (r == 'guest-local-refresh' || r == 'local-user-refresh') return true;
+    return false;
+  }
 
   Future<Map<String, dynamic>> get(String path) => _request('GET', path);
   Future<Map<String, dynamic>> post(String path, [Map<String, dynamic>? body]) =>
       _request('POST', path, body: body);
   Future<Map<String, dynamic>> put(String path, Map<String, dynamic> body) =>
       _request('PUT', path, body: body);
+  Future<Map<String, dynamic>> patch(String path, Map<String, dynamic> body) =>
+      _request('PATCH', path, body: body);
   Future<Map<String, dynamic>> delete(String path) => _request('DELETE', path);
 
   Future<List<dynamic>> getList(String path) async {
@@ -88,6 +104,8 @@ class ApiClient {
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      // Phone local calendar day — server uses this for “today” / day-wise KPIs.
+      'X-Client-Local-Date': localDateYmd(),
     };
     if (_access != null && _access!.isNotEmpty) {
       headers['Authorization'] = 'Bearer $_access';
@@ -105,6 +123,9 @@ class ApiClient {
           break;
         case 'PUT':
           future = http.put(uri, headers: headers, body: jsonEncode(body ?? {}));
+          break;
+        case 'PATCH':
+          future = http.patch(uri, headers: headers, body: jsonEncode(body ?? {}));
           break;
         case 'DELETE':
           future = http.delete(uri, headers: headers);
@@ -125,11 +146,27 @@ class ApiClient {
       data = {'error': res.body};
     }
 
-    if (res.statusCode == 401 && retry && _refresh != null && !path.startsWith('/auth/')) {
-      final ok = await _refreshAccess();
-      if (ok) return _requestRaw(method, path, body: body, retry: false);
-      await clearTokens();
-      throw ApiException('Session expired', statusCode: 401);
+    // Access expired → try refresh. Never wipe tokens on network blips or local-only sessions.
+    if (res.statusCode == 401 &&
+        retry &&
+        !isLocalOnlySession &&
+        _refresh != null &&
+        _refresh!.isNotEmpty &&
+        !path.startsWith('/auth/')) {
+      final result = await _refreshAccess();
+      if (result == _RefreshResult.success) {
+        return _requestRaw(method, path, body: body, retry: false);
+      }
+      if (result == _RefreshResult.invalid) {
+        // Server rejected refresh — only then end the session storage.
+        await clearTokens();
+        throw ApiException('Session expired', statusCode: 401);
+      }
+      // Network error while refreshing: keep tokens, surface offline error.
+      throw ApiException(
+        'Cannot refresh session (offline). Try again when online.',
+        statusCode: res.statusCode,
+      );
     }
 
     if (res.statusCode >= 400) {
@@ -139,23 +176,50 @@ class ApiClient {
     return data;
   }
 
-  Future<bool> _refreshAccess() async {
-    if (_refresh == null) return false;
+  Future<_RefreshResult> _refreshAccess() async {
+    if (isLocalOnlySession) return _RefreshResult.success;
+    if (_refresh == null || _refresh!.isEmpty) return _RefreshResult.noToken;
     try {
       final uri = Uri.parse(ApiConfig.api('/auth/refresh'));
       final res = await http
           .post(
             uri,
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
             body: jsonEncode({'refresh_token': _refresh}),
           )
           .timeout(requestTimeout);
-      if (res.statusCode >= 400) return false;
+      // Only definitive auth failures end the session.
+      if (res.statusCode == 401 || res.statusCode == 403) {
+        return _RefreshResult.invalid;
+      }
+      // 5xx / 429 / other errors: keep tokens (temporary server / network issues).
+      if (res.statusCode >= 400) return _RefreshResult.networkError;
       final data = jsonDecode(res.body) as Map<String, dynamic>;
-      await setTokens(data['access_token'] as String, data['refresh_token'] as String);
-      return true;
+      final access = data['access_token']?.toString();
+      final refresh = data['refresh_token']?.toString();
+      if (access == null || access.isEmpty) return _RefreshResult.invalid;
+      await setTokens(access, refresh ?? _refresh!);
+      return _RefreshResult.success;
     } catch (_) {
+      return _RefreshResult.networkError;
+    }
+  }
+
+  /// Proactively refresh if we have a refresh token (e.g. app resume).
+  /// Returns true if the session is still usable. Never clears tokens on offline.
+  Future<bool> tryRefreshSession() async {
+    if (isLocalOnlySession) return hasToken;
+    if (!hasRefreshToken) return hasToken;
+    final result = await _refreshAccess();
+    if (result == _RefreshResult.success) return true;
+    if (result == _RefreshResult.invalid) {
+      await clearTokens();
       return false;
     }
+    // Offline / server blip: keep existing tokens
+    return hasToken;
   }
 }

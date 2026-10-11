@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db.js';
+import { clientLocalDate } from '../localDate.js';
 import { loanProgress } from '../utils.js';
 import { requireAuth, userId } from '../auth/middleware.js';
 
@@ -20,9 +21,10 @@ router.get('/', async (req, res) => {
 router.get('/summary', async (req, res) => {
   try {
     const { rows } = await query('SELECT * FROM loans WHERE user_id = $1 ORDER BY id', [userId(req)]);
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
+    const local = clientLocalDate(req);
+    const month = local.month;
+    const year = local.year;
+    const now = new Date(year, month - 1, local.day, 12, 0, 0);
     let totalLoanAmount = 0;
     let deductedThisMonth = 0;
     let remainingToDeduct = 0;
@@ -94,8 +96,9 @@ router.post('/', async (req, res) => {
     if (!bank_name || !emi_deduction_bank || !emi_deduction_date || !emi_close_month || !emi_close_year || emi_amount == null) {
       return res.status(400).json({ error: 'Missing required loan fields' });
     }
-    const sm = start_month || new Date().getMonth() + 1;
-    const sy = start_year || new Date().getFullYear();
+    const local = clientLocalDate(req);
+    const sm = start_month || local.month;
+    const sy = start_year || local.year;
     const roiVal = Number(roi);
     if (Number.isNaN(roiVal) || roiVal < 0) {
       return res.status(400).json({ error: 'ROI must be a non-negative number' });

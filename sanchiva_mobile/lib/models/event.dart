@@ -425,7 +425,12 @@ String? _dateStr(dynamic v) {
   if (s.isEmpty || s == 'null') return null;
   if (RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(s)) return s.substring(0, 10);
   try {
-    return DateTime.parse(s).toIso8601String().substring(0, 10);
+    // Use local calendar parts — never UTC ISO slice (can flip the day).
+    final d = DateTime.parse(s).toLocal();
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return '$y-$m-$day';
   } catch (_) {
     return s;
   }

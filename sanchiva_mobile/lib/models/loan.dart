@@ -230,9 +230,15 @@ class CreditSpend {
     final raw = j['spend_date']?.toString() ?? '';
     DateTime d;
     try {
-      d = DateTime.parse(raw.length >= 10 ? raw.substring(0, 10) : raw);
+      final s = raw.length >= 10 ? raw.substring(0, 10) : raw;
+      d = DateTime(
+        int.parse(s.substring(0, 4)),
+        int.parse(s.substring(5, 7)),
+        int.parse(s.substring(8, 10)),
+      );
     } catch (_) {
-      d = DateTime.now();
+      final n = DateTime.now();
+      d = DateTime(n.year, n.month, n.day);
     }
     return CreditSpend(
       id: int.tryParse('${j['id']}') ?? 0,
@@ -350,11 +356,9 @@ class CreditEmi {
     return (paidMonths() / t).clamp(0.0, 1.0);
   }
 
-  /// Fully paid / past end month.
-  bool get isCompleted {
-    final n = DateTime.now();
-    return n.year * 12 + n.month > _endKey;
-  }
+  /// Fully paid when no months remain (includes the final EMI month).
+  /// Kept in sync with [remainingMonths] so the Data tag matches tenure left.
+  bool get isCompleted => !isUpcoming && remainingMonths() == 0;
 
   /// Has not started yet.
   bool get isUpcoming {

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db.js';
+import { clientLocalDate } from '../localDate.js';
 import { requireAuth, userId } from '../auth/middleware.js';
 
 const router = Router();
@@ -38,9 +39,9 @@ router.get('/income', async (req, res) => {
 router.get('/income/summary', async (req, res) => {
   try {
     const uid = userId(req);
-    const now = new Date();
-    const month = Number(req.query.month) || now.getMonth() + 1;
-    const year = Number(req.query.year) || now.getFullYear();
+    const local = clientLocalDate(req);
+    const month = Number(req.query.month) || local.month;
+    const year = Number(req.query.year) || local.year;
     const { rows: incomes } = await query(
       'SELECT * FROM income_sources WHERE user_id = $1 AND month = $2 AND year = $3',
       [uid, month, year]

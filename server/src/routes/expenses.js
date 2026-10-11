@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db.js';
+import { clientLocalDate, parseYmd } from '../localDate.js';
 import { formatDate, getWeekStart } from '../utils.js';
 import { requireAuth, userId } from '../auth/middleware.js';
 
@@ -44,7 +45,8 @@ router.get('/', async (req, res) => {
 router.get('/summary/weeks', async (req, res) => {
   try {
     const uid = userId(req);
-    const year = Number(req.query.year) || new Date().getFullYear();
+    const local = clientLocalDate(req);
+    const year = Number(req.query.year) || local.year;
     const month = req.query.month ? Number(req.query.month) : null;
     let sql = 'SELECT * FROM daily_expenses WHERE user_id = $1 AND EXTRACT(YEAR FROM expense_date) = $2';
     const params = [uid, year];
@@ -85,7 +87,8 @@ router.get('/summary/weeks', async (req, res) => {
 router.get('/summary/months', async (req, res) => {
   try {
     const uid = userId(req);
-    const year = Number(req.query.year) || new Date().getFullYear();
+    const local = clientLocalDate(req);
+    const year = Number(req.query.year) || local.year;
     const { rows } = await query(
       `SELECT * FROM daily_expenses
        WHERE user_id = $1 AND EXTRACT(YEAR FROM expense_date) = $2
@@ -94,8 +97,8 @@ router.get('/summary/months', async (req, res) => {
     );
     const monthsMap = new Map();
     for (const row of rows) {
-      const d = new Date(row.expense_date);
-      const m = d.getMonth() + 1;
+      const parts = parseYmd(row.expense_date);
+      const m = parts?.month ?? 1;
       if (!monthsMap.has(m)) {
         monthsMap.set(m, { month: m, year, total: 0, byCategory: {}, expenses: [] });
       }

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db.js';
+import { clientLocalDate, addDaysYmd } from '../localDate.js';
 import { loanProgress } from '../utils.js';
 import { requireAuth, userId } from '../auth/middleware.js';
 
@@ -9,9 +10,11 @@ router.use(requireAuth);
 router.get('/', async (req, res) => {
   try {
     const uid = userId(req);
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
+    // Prefer phone local calendar day (X-Client-Local-Date); else Asia/Kolkata.
+    const local = clientLocalDate(req);
+    const { ymd: todayYmd, year, month, day } = local;
+    const asOf = new Date(year, month - 1, day, 12, 0, 0);
+    const trendFromYmd = addDaysYmd(todayYmd, -180);
 
     const { rows: monthExpenses } = await query(
       `SELECT category, SUM(amount)::float AS amount
@@ -22,14 +25,22 @@ router.get('/', async (req, res) => {
     );
     const monthExpenseTotal = monthExpenses.reduce((s, r) => s + Number(r.amount), 0);
 
+    const { rows: todayRows } = await query(
+      `SELECT COALESCE(SUM(amount),0)::float AS total
+       FROM daily_expenses
+       WHERE user_id = $1 AND expense_date = $2::date`,
+      [uid, todayYmd]
+    );
+    const todayExpenseTotal = Number(todayRows[0]?.total || 0);
+
     const { rows: trend } = await query(
       `SELECT EXTRACT(YEAR FROM expense_date)::int AS year,
               EXTRACT(MONTH FROM expense_date)::int AS month,
               SUM(amount)::float AS total
        FROM daily_expenses
-       WHERE user_id = $1 AND expense_date >= (CURRENT_DATE - INTERVAL '6 months')
+       WHERE user_id = $1 AND expense_date >= $2::date
        GROUP BY 1, 2 ORDER BY 1, 2`,
-      [uid]
+      [uid, trendFromYmd]
     );
 
     const { rows: incomes } = await query(
@@ -45,18 +56,33 @@ router.get('/', async (req, res) => {
     let activeLoans = 0;
     let closedLoans = 0;
     let monthlyEmi = 0;
+    let todayLoanEmi = 0;
+    let loanEmiDeductedTillDate = 0;
+    const curKey = year * 12 + month;
     const byBank = {};
     const byCloseYear = {};
 
     for (const loan of loans) {
-      const p = loanProgress(loan, now);
+      const p = loanProgress(loan, asOf);
       loanTotal += p.totalAmount;
       if (loan.status === 'closed') closedLoans += 1;
       else {
         activeLoans += 1;
-        monthlyEmi += Number(loan.emi_amount);
-        const closeKey = loan.emi_close_year * 12 + loan.emi_close_month;
-        if (year * 12 + month <= closeKey) loanDeductedMonth += Number(loan.emi_amount);
+        const emi = Number(loan.emi_amount) || 0;
+        const startKey =
+          (Number(loan.start_year) || year) * 12 + (Number(loan.start_month) || month);
+        const closeKey =
+          (Number(loan.emi_close_year) || year) * 12 + (Number(loan.emi_close_month) || 12);
+        const dedDay = Number(loan.emi_deduction_date) || 0;
+        if (curKey >= startKey && curKey <= closeKey) {
+          monthlyEmi += emi;
+          // Deduction day already passed or is today → counted as deducted till date.
+          if (dedDay > 0 && dedDay <= day) {
+            loanDeductedMonth += emi;
+            loanEmiDeductedTillDate += emi;
+          }
+          if (dedDay === day) todayLoanEmi += emi;
+        }
         loanRemaining += p.remaining;
       }
       const bank = loan.emi_deduction_bank;
@@ -94,9 +120,12 @@ router.get('/', async (req, res) => {
       year,
       kpis: {
         monthExpenseTotal,
+        todayExpenseTotal,
         monthIncome,
         monthBalance: monthIncome - monthExpenseTotal,
         monthlyEmi,
+        todayLoanEmi,
+        loanEmiDeductedTillDate,
         activeLoans,
         closedLoans,
         assetsTotal,
