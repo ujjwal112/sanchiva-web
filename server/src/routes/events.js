@@ -96,6 +96,56 @@ function parseMeta(raw) {
   }
 }
 
+/**
+ * Lifecycle tag for an event:
+ * - completed — has todos and every todo is closed
+ * - ongoing — on/after the event day (and not all todos closed)
+ * - planning — before the event day (or undated, with open/no todos)
+ */
+function deriveEventStatus(eventDate, itemsDone = 0, itemsTotal = 0) {
+  const total = Number(itemsTotal) || 0;
+  const done = Number(itemsDone) || 0;
+  if (total > 0 && done >= total) return 'completed';
+  if (eventDate) {
+    const day = String(eventDate).slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      if (day <= today) return 'ongoing';
+    }
+  }
+  return 'planning';
+}
+
+/** Recompute + persist status from event_date + todo completion. */
+async function syncEventStatus(eventId) {
+  const { rows } = await query(
+    `SELECT e.event_date,
+            COUNT(i.id)::int AS items_total,
+            COUNT(i.id) FILTER (WHERE i.is_done)::int AS items_done
+     FROM events e
+     LEFT JOIN event_items i ON i.event_id = e.id
+     WHERE e.id = $1
+     GROUP BY e.id, e.event_date`,
+    [eventId]
+  );
+  if (!rows[0]) return null;
+  const status = deriveEventStatus(rows[0].event_date, rows[0].items_done, rows[0].items_total);
+  await query(`UPDATE events SET status = $1, updated_at = NOW() WHERE id = $2`, [status, eventId]);
+  return { status, items_done: rows[0].items_done, items_total: rows[0].items_total };
+}
+
+function withDerivedStatus(row) {
+  const itemsTotal = Number(row.items_total ?? row.itemsTotal ?? 0) || 0;
+  const itemsDone = Number(row.items_done ?? row.itemsDone ?? 0) || 0;
+  return {
+    ...row,
+    items_total: itemsTotal,
+    items_done: itemsDone,
+    status: deriveEventStatus(row.event_date, itemsDone, itemsTotal),
+  };
+}
+
 async function assertEventOwner(eventId, uid) {
   const { rows } = await query('SELECT id FROM events WHERE id = $1 AND user_id = $2', [eventId, uid]);
   return rows[0];
@@ -274,27 +324,38 @@ router.get('/meta/wizard-questions/:eventType', (req, res) => {
 router.get('/', async (req, res) => {
   try {
     // Upcoming first (soonest on top), then undated, then past (most recent past first).
+    // Include todo counts so clients can show Planning / Ongoing / Completed.
     const { rows } = await query(
-      `SELECT * FROM events
-       WHERE user_id = $1
+      `SELECT e.*,
+              COALESCE(c.items_total, 0)::int AS items_total,
+              COALESCE(c.items_done, 0)::int AS items_done
+       FROM events e
+       LEFT JOIN (
+         SELECT event_id,
+                COUNT(*)::int AS items_total,
+                COUNT(*) FILTER (WHERE is_done)::int AS items_done
+         FROM event_items
+         GROUP BY event_id
+       ) c ON c.event_id = e.id
+       WHERE e.user_id = $1
        ORDER BY
          CASE
-           WHEN event_date IS NULL THEN 1
-           WHEN event_date::date < CURRENT_DATE THEN 2
+           WHEN e.event_date IS NULL THEN 1
+           WHEN e.event_date::date < CURRENT_DATE THEN 2
            ELSE 0
          END,
          CASE
-           WHEN event_date IS NOT NULL AND event_date::date >= CURRENT_DATE
-           THEN event_date
+           WHEN e.event_date IS NOT NULL AND e.event_date::date >= CURRENT_DATE
+           THEN e.event_date
          END ASC NULLS LAST,
          CASE
-           WHEN event_date IS NOT NULL AND event_date::date < CURRENT_DATE
-           THEN event_date
+           WHEN e.event_date IS NOT NULL AND e.event_date::date < CURRENT_DATE
+           THEN e.event_date
          END DESC NULLS LAST,
-         created_at DESC`,
+         e.created_at DESC`,
       [userId(req)]
     );
-    res.json(rows);
+    res.json(rows.map(withDerivedStatus));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -376,8 +437,22 @@ router.get('/:id', async (req, res) => {
       ])
     );
 
+    const itemsDone = items.filter((i) => i.is_done).length;
+    const itemsTotal = items.length;
+    const status = deriveEventStatus(rows[0].event_date, itemsDone, itemsTotal);
+    // Keep stored status in sync for older clients / dashboards.
+    if (rows[0].status !== status) {
+      await query(`UPDATE events SET status = $1, updated_at = NOW() WHERE id = $2`, [
+        status,
+        req.params.id,
+      ]);
+    }
+
     res.json({
       ...rows[0],
+      status,
+      items_done: itemsDone,
+      items_total: itemsTotal,
       metadata: meta,
       items,
       guests,
@@ -389,8 +464,8 @@ router.get('/:id', async (req, res) => {
         planned,
         paid,
         remaining,
-        itemsDone: items.filter((i) => i.is_done).length,
-        itemsTotal: items.length,
+        itemsDone,
+        itemsTotal,
         guestCount: guests.reduce((s, g) => s + (g.count || 1), 0),
       },
     });
@@ -455,7 +530,14 @@ router.post('/wizard', async (req, res) => {
       }
     }
 
-    res.status(201).json({ ...event, items });
+    const synced = await syncEventStatus(event.id);
+    res.status(201).json({
+      ...event,
+      status: synced?.status || deriveEventStatus(event.event_date, 0, items.length),
+      items_done: synced?.items_done ?? 0,
+      items_total: synced?.items_total ?? items.length,
+      items,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -478,7 +560,8 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const fields = ['name', 'event_type', 'sub_type', 'event_date', 'end_date', 'location', 'budget', 'notes', 'status'];
+    // Status is derived from event_date + todos — do not accept manual overrides.
+    const fields = ['name', 'event_type', 'sub_type', 'event_date', 'end_date', 'location', 'budget', 'notes'];
     const sets = [];
     const params = [];
     for (const f of fields) {
@@ -499,7 +582,13 @@ router.put('/:id', async (req, res) => {
       params
     );
     if (!rows[0]) return res.status(404).json({ error: 'Not found' });
-    res.json(rows[0]);
+    const synced = await syncEventStatus(req.params.id);
+    res.json(withDerivedStatus({
+      ...rows[0],
+      items_done: synced?.items_done ?? 0,
+      items_total: synced?.items_total ?? 0,
+      status: synced?.status || rows[0].status,
+    }));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -657,6 +746,71 @@ router.put('/:id/ceremonies', async (req, res) => {
   }
 });
 
+/** Remove a ceremony after event creation (overview cards); clears ceremony on guests */
+router.delete('/:id/ceremonies', async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const uid = userId(req);
+    const name = String((req.query && req.query.name) || (req.body && req.body.name) || '').trim();
+
+    if (!name) return res.status(400).json({ error: 'Ceremony name is required' });
+    if (!isRealCeremony(name)) {
+      return res.status(400).json({ error: 'Invalid ceremony name' });
+    }
+
+    const { rows } = await query('SELECT * FROM events WHERE id = $1 AND user_id = $2', [eventId, uid]);
+    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+
+    const meta = parseMeta(rows[0].metadata);
+    let details = Array.isArray(meta.ceremony_details)
+      ? meta.ceremony_details.filter((d) => d && isRealCeremony(d.name)).map((d) => ({ ...d }))
+      : [];
+
+    if (!details.length && Array.isArray(meta.ceremonies)) {
+      details = meta.ceremonies.filter(isRealCeremony).map((n) => ({
+        name: String(n),
+        date: null,
+        quote: ceremonyQuote(n),
+        theme: ceremonyThemeKey(n),
+      }));
+    }
+
+    const before = details.length;
+    details = details.filter((d) => String(d.name).toLowerCase() !== name.toLowerCase());
+    if (details.length === before) {
+      return res.status(404).json({ error: 'Ceremony not found' });
+    }
+
+    meta.ceremony_details = details;
+    meta.ceremonies = details.map((d) => d.name);
+    Object.keys(meta).forEach((k) => {
+      if (/^ceremony_date_\d+$/.test(k)) delete meta[k];
+    });
+    details.forEach((d, i) => {
+      meta[`ceremony_date_${i}`] = d.date || '';
+    });
+
+    await query(
+      `UPDATE events SET metadata = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`,
+      [JSON.stringify(meta), eventId, uid]
+    );
+
+    await query(
+      `UPDATE event_guests SET ceremony = NULL, updated_at = NOW()
+       WHERE event_id = $1 AND LOWER(ceremony) = LOWER($2)`,
+      [eventId, name]
+    );
+
+    res.json({
+      success: true,
+      ceremony_details: details,
+      ceremonies: meta.ceremonies,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.delete('/:id', async (req, res) => {
   try {
     const { rowCount } = await query('DELETE FROM events WHERE id = $1 AND user_id = $2', [
@@ -685,6 +839,7 @@ router.post('/:id/items', async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
       [req.params.id, title, category || null, planned_amount, token_paid, remaining, due_date || null, vendor_name || null, notes || null]
     );
+    await syncEventStatus(req.params.id);
     res.status(201).json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -694,7 +849,7 @@ router.post('/:id/items', async (req, res) => {
 router.put('/items/:itemId', async (req, res) => {
   try {
     const own = await query(
-      `SELECT ei.id FROM event_items ei JOIN events e ON e.id = ei.event_id
+      `SELECT ei.id, ei.event_id FROM event_items ei JOIN events e ON e.id = ei.event_id
        WHERE ei.id = $1 AND e.user_id = $2`,
       [req.params.itemId, userId(req)]
     );
@@ -723,6 +878,7 @@ router.put('/items/:itemId', async (req, res) => {
       params
     );
     if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+    await syncEventStatus(own.rows[0].event_id);
     res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -731,12 +887,20 @@ router.put('/items/:itemId', async (req, res) => {
 
 router.delete('/items/:itemId', async (req, res) => {
   try {
+    const own = await query(
+      `SELECT ei.id, ei.event_id FROM event_items ei JOIN events e ON e.id = ei.event_id
+       WHERE ei.id = $1 AND e.user_id = $2`,
+      [req.params.itemId, userId(req)]
+    );
+    if (!own.rows[0]) return res.status(404).json({ error: 'Not found' });
+    const eventId = own.rows[0].event_id;
     const { rowCount } = await query(
       `DELETE FROM event_items ei USING events e
        WHERE ei.id = $1 AND ei.event_id = e.id AND e.user_id = $2`,
       [req.params.itemId, userId(req)]
     );
     if (!rowCount) return res.status(404).json({ error: 'Not found' });
+    await syncEventStatus(eventId);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

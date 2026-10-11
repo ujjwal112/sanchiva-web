@@ -5,15 +5,18 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../core/auth_state.dart';
+import '../core/ceremony_themes.dart';
 import '../core/finance_refresh.dart';
 import '../core/format.dart';
-import '../core/shell_nav.dart';
 import '../core/theme.dart';
 import '../models/dashboard.dart';
+import '../models/event.dart';
 import '../models/expense.dart' show kMonthNames;
 import '../models/loan.dart';
 import '../services/dashboard_service.dart';
+import '../services/event_service.dart';
 import '../services/loan_service.dart';
+import 'events_screen.dart';
 
 /// Home — live snapshot of spends, income, EMIs, assets & money lent.
 class DashboardScreen extends StatefulWidget {
@@ -24,6 +27,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  // Classic Home hero purple (medium strength, pre-restyle look).
   static const _brand = Color(0xFF5038F0);
   static const _brandDeep = Color(0xFF7A40F8);
   static const _palette = <Color>[
@@ -38,6 +42,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ];
 
   DashboardData? _data;
+  List<EventSummary> _events = const [];
   double _cardEmiMonth = 0;
   bool _loading = true;
   String? _error;
@@ -70,9 +75,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final results = await Future.wait([
         DashboardService.instance.fetch(),
         LoanService.instance.listEmis(),
+        EventService.instance.list().then<List<EventSummary>>(
+          (v) => v,
+          onError: (_) => <EventSummary>[],
+        ),
       ]);
       final dash = results[0] as DashboardData;
       final emis = results[1] as List<CreditEmi>;
+      final events = results[2] as List<EventSummary>;
       final now = DateTime.now();
       var cardEmi = 0.0;
       for (final e in emis) {
@@ -81,6 +91,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (!mounted) return;
       setState(() {
         _data = dash;
+        _events = events;
         _cardEmiMonth = cardEmi;
         _loading = false;
         _error = null;
@@ -116,28 +127,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Icons.payments_rounded;
   }
 
-  // KPI cards → Data tab of the matching section
-  void _openDailySpend() => context.read<ShellNav>().open(tab: 0, subTab: 2);
+  void _openEvents() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const EventsScreen()),
+    );
+  }
 
-  void _openCardEmi() =>
-      context.read<ShellNav>().open(tab: 1, loansArea: 'emis', subTab: 2);
+  DateTime? _parseEventDay(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    final d = DateTime.tryParse(raw.trim());
+    if (d == null) return null;
+    return DateTime(d.year, d.month, d.day);
+  }
 
-  void _openAssets() =>
-      context.read<ShellNav>().open(tab: 3, monetaryArea: 'assets', subTab: 2);
-
-  void _openMoneyLent() =>
-      context.read<ShellNav>().open(tab: 3, monetaryArea: 'lent', subTab: 2);
-
-  // Quick actions → Entry / first section of that area
-  void _qaAddSpend() => context.read<ShellNav>().open(tab: 0, subTab: 0);
-
-  void _qaLoans() =>
-      context.read<ShellNav>().open(tab: 1, loansArea: 'loans', subTab: 0);
-
-  void _qaMonetary() =>
-      context.read<ShellNav>().open(tab: 3, monetaryArea: 'currency', subTab: 0);
-
-  void _qaSplits() => context.read<ShellNav>().open(tab: 4, subTab: 0);
+  EventSummary? _nextUpcomingEvent() {
+    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final upcoming = <EventSummary>[];
+    for (final e in _events) {
+      final day = _parseEventDay(e.eventDate);
+      if (day != null && !day.isBefore(today)) upcoming.add(e);
+    }
+    upcoming.sort((a, b) {
+      final da = _parseEventDay(a.eventDate)!;
+      final db = _parseEventDay(b.eventDate)!;
+      return da.compareTo(db);
+    });
+    return upcoming.isEmpty ? null : upcoming.first;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -156,10 +172,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final k = d?.kpis;
     final totalEmi = (k?.monthlyEmi ?? 0) + _cardEmiMonth;
-    final spend = (k?.monthExpenseTotal ?? 0) + (k?.ccSpendMonth ?? 0) + totalEmi;
     final income = k?.monthIncome ?? 0;
-    // Cash-flow style balance: income − daily − EMI (card spend optional; include daily+EMI primary)
-    final balance = income - (k?.monthExpenseTotal ?? 0) - totalEmi;
+    final spent = k?.monthExpenseTotal ?? 0;
+    final loanDeductedTillDate = k?.loanEmiDeductedTillDate ?? 0;
+    // Net = income − spent − loan EMIs deducted till today − card EMI this month
+    final balance = income - spent - loanDeductedTillDate - _cardEmiMonth;
     final cats = d?.categories ?? const <NamedAmount>[];
     final catTotal = cats.fold<double>(0, (s, e) => s + e.amount);
     final trend = d?.expenseTrend ?? const <TrendPoint>[];
@@ -205,12 +222,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
           const SizedBox(height: 14),
 
-          // Hero — this month cash flow
+          // Hero — net balance focus + clean Income / Spent strip
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(20),
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -218,204 +234,119 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _brand.withValues(alpha: isDark ? 0.4 : 0.28),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
+                  color: _brand.withValues(alpha: isDark ? 0.35 : 0.24),
+                  blurRadius: 14,
+                  offset: const Offset(0, 7),
                 ),
               ],
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      '$monthName ${now.year}',
-                      style: GoogleFonts.inter(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const Spacer(),
-                    if (_loading)
-                      const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white70,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          monthName,
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 22,
+                            height: 1.1,
+                          ),
                         ),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Net balance',
-                  style: GoogleFonts.inter(
-                    color: Colors.white.withValues(alpha: 0.75),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                      if (_loading)
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+                        )
+                      else
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'Net balance',
+                              style: GoogleFonts.inter(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              formatMoney(balance),
+                              textAlign: TextAlign.right,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                height: 1.1,
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  formatMoney(balance),
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontSize: 30,
-                    fontWeight: FontWeight.w800,
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.14),
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
                   ),
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _heroStat(
-                        'Income',
-                        formatMoney(income),
-                        Icons.trending_up_rounded,
+                  padding: const EdgeInsets.fromLTRB(6, 12, 6, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _heroCashStrip(
+                          label: 'Income',
+                          value: formatMoney(income),
+                          icon: Icons.south_west_rounded,
+                        ),
                       ),
-                    ),
-                    Container(width: 1, height: 36, color: Colors.white24),
-                    Expanded(
-                      child: _heroStat(
-                        'Spent',
-                        formatMoney(k?.monthExpenseTotal ?? 0),
-                        Icons.trending_down_rounded,
+                      Container(
+                        width: 1,
+                        height: 36,
+                        color: Colors.white.withValues(alpha: 0.22),
                       ),
-                    ),
-                    Container(width: 1, height: 36, color: Colors.white24),
-                    Expanded(
-                      child: _heroStat(
-                        'EMI',
-                        formatMoney(totalEmi),
-                        Icons.account_balance_rounded,
+                      Expanded(
+                        child: _heroCashStrip(
+                          label: 'Spent',
+                          value: formatMoney(spent),
+                          icon: Icons.north_east_rounded,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
-          // Quick actions — above KPI cards; open Entry / first section
-          Text(
-            'Quick actions',
-            style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 16, color: ink),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _QuickAction(
-                  icon: Icons.receipt_long_rounded,
-                  label: 'Add spend',
-                  color: const Color(0xFFF472B6),
-                  onTap: _qaAddSpend,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _QuickAction(
-                  icon: Icons.account_balance_rounded,
-                  label: 'Loans',
-                  color: _brand,
-                  onTap: _qaLoans,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _QuickAction(
-                  icon: Icons.currency_exchange_rounded,
-                  label: 'Monetary',
-                  color: const Color(0xFF34D399),
-                  onTap: _qaMonetary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _QuickAction(
-                  icon: Icons.call_split_rounded,
-                  label: 'Splits',
-                  color: const Color(0xFF0EA5E9),
-                  onTap: _qaSplits,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
+          // Events — kept (replaces old Quick actions)
+          _eventsHomeCard(ink: ink, muted: muted, isDark: isDark, kpiCount: k?.eventsCount ?? 0),
+          const SizedBox(height: 12),
 
-          // KPI tiles → Data of matching section
-          Row(
-            children: [
-              Expanded(
-                child: _KpiCard(
-                  label: 'Daily spend',
-                  value: formatMoney(k?.monthExpenseTotal ?? 0),
-                  color: const Color(0xFFF472B6),
-                  icon: Icons.receipt_long_rounded,
-                  onTap: _openDailySpend,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _KpiCard(
-                  label: 'Card EMI',
-                  value: formatMoney(_cardEmiMonth),
-                  color: const Color(0xFF60A5FA),
-                  icon: Icons.payments_rounded,
-                  onTap: _openCardEmi,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _KpiCard(
-                  label: 'Assets',
-                  value: formatMoney(k?.assetsTotal ?? 0),
-                  color: const Color(0xFF34D399),
-                  icon: Icons.savings_rounded,
-                  onTap: _openAssets,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _KpiCard(
-                  label: 'Money lent',
-                  value: formatMoney(k?.moneyGivenTotal ?? 0),
-                  color: AppColors.orange,
-                  icon: Icons.handshake_rounded,
-                  onTap: _openMoneyLent,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-
-          // Loans & EMI — display only (not tappable)
+          // At a glance — compact like Events
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(color: AppColors.borderOf(context)),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: isDark
-                    ? [
-                        _brand.withValues(alpha: 0.22),
-                        AppColors.cardOf(context),
-                      ]
-                    : [
-                        const Color(0xFFEEEDFE),
-                        Colors.white,
-                      ],
+                    ? [_brand.withValues(alpha: 0.22), AppColors.cardOf(context)]
+                    : [const Color(0xFFEEEDFE), Colors.white],
               ),
               boxShadow: AppColors.cardShadow(context),
             ),
@@ -425,57 +356,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Row(
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
                         color: _brand.withValues(alpha: isDark ? 0.35 : 0.14),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
-                        Icons.account_balance_rounded,
-                        color: _brand,
-                        size: 22,
-                      ),
+                      child: const Icon(Icons.grid_view_rounded, color: _brand, size: 18),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Loans & EMI',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
-                              color: ink,
-                            ),
+                            'At a glance',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 14.5, color: ink),
                           ),
                           Text(
-                            'Total EMI this month',
-                            style: GoogleFonts.inter(fontSize: 12, color: muted),
+                            'Your money snapshot',
+                            style: GoogleFonts.inter(fontSize: 11.5, color: muted, fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
                     ),
-                    Text(
-                      formatMoney(totalEmi),
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                        color: _brand,
-                      ),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     Expanded(
-                      child: _loanTile(
-                        icon: Icons.tag_rounded,
-                        label: 'Active loans',
-                        value: '${k?.activeLoans ?? 0}',
-                        color: _brand,
+                      child: _eventsMiniTile(
+                        icon: Icons.today_rounded,
+                        label: 'Today spend',
+                        value: formatMoney(k?.todayExpenseTotal ?? 0),
+                        color: const Color(0xFFF472B6),
                         ink: ink,
                         muted: muted,
                         isDark: isDark,
@@ -483,11 +398,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _loanTile(
-                        icon: Icons.account_balance_rounded,
-                        label: 'Loan EMI',
-                        value: formatMoney(k?.monthlyEmi ?? 0),
-                        color: AppColors.orange,
+                      child: _eventsMiniTile(
+                        icon: Icons.calendar_month_rounded,
+                        label: 'Month spend',
+                        value: formatMoney(k?.monthExpenseTotal ?? 0),
+                        color: const Color(0xFF60A5FA),
                         ink: ink,
                         muted: muted,
                         isDark: isDark,
@@ -499,11 +414,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: _loanTile(
-                        icon: Icons.payments_rounded,
-                        label: 'Card EMI',
-                        value: formatMoney(_cardEmiMonth),
-                        color: const Color(0xFF60A5FA),
+                      child: _eventsMiniTile(
+                        icon: Icons.savings_rounded,
+                        label: 'Assets',
+                        value: formatMoney(k?.assetsTotal ?? 0),
+                        color: const Color(0xFF34D399),
                         ink: ink,
                         muted: muted,
                         isDark: isDark,
@@ -511,11 +426,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _loanTile(
-                        icon: Icons.hourglass_bottom_rounded,
-                        label: 'Remaining',
-                        value: formatMoney(d?.loanMonth.remainingToDeduct ?? 0),
-                        color: const Color(0xFFF472B6),
+                      child: _eventsMiniTile(
+                        icon: Icons.handshake_rounded,
+                        label: 'Money lent',
+                        value: formatMoney(k?.moneyGivenTotal ?? 0),
+                        color: AppColors.orange,
                         ink: ink,
                         muted: muted,
                         isDark: isDark,
@@ -528,14 +443,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Top spending — display only
+          // Loans & EMI — compact like Events
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
             decoration: BoxDecoration(
-              color: AppColors.cardOf(context),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(color: AppColors.borderOf(context)),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [_brand.withValues(alpha: 0.22), AppColors.cardOf(context)]
+                    : [const Color(0xFFEEEDFE), Colors.white],
+              ),
               boxShadow: AppColors.cardShadow(context),
             ),
             child: Column(
@@ -544,88 +465,163 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Row(
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF472B6).withValues(alpha: isDark ? 0.22 : 0.12),
-                        borderRadius: BorderRadius.circular(12),
+                        color: _brand.withValues(alpha: isDark ? 0.35 : 0.14),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
-                        Icons.pie_chart_rounded,
-                        color: Color(0xFFDB2777),
-                        size: 22,
+                      child: const Icon(Icons.account_balance_rounded, color: _brand, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Loans & EMI',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 14.5, color: ink),
+                          ),
+                          Text(
+                            'Total EMI this month',
+                            style: GoogleFonts.inter(fontSize: 11.5, color: muted, fontWeight: FontWeight.w600),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    Text(
+                      formatMoney(totalEmi),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 15, color: _brand),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _eventsMiniTile(
+                        icon: Icons.tag_rounded,
+                        label: 'Active loans',
+                        value: '${k?.activeLoans ?? 0}',
+                        color: _brand,
+                        ink: ink,
+                        muted: muted,
+                        isDark: isDark,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _eventsMiniTile(
+                        icon: Icons.today_rounded,
+                        label: 'Today EMI',
+                        value: formatMoney(k?.todayLoanEmi ?? 0),
+                        color: AppColors.orange,
+                        ink: ink,
+                        muted: muted,
+                        isDark: isDark,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _eventsMiniTile(
+                        icon: Icons.account_balance_rounded,
+                        label: 'Loan EMI',
+                        value: formatMoney(k?.monthlyEmi ?? 0),
+                        color: const Color(0xFFF472B6),
+                        ink: ink,
+                        muted: muted,
+                        isDark: isDark,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _eventsMiniTile(
+                        icon: Icons.payments_rounded,
+                        label: 'Card EMI',
+                        value: formatMoney(_cardEmiMonth),
+                        color: const Color(0xFF60A5FA),
+                        ink: ink,
+                        muted: muted,
+                        isDark: isDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Top spending — Loans & EMI shell, white chips with color outline
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.borderOf(context)),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [_brand.withValues(alpha: 0.22), AppColors.cardOf(context)]
+                    : [const Color(0xFFEEEDFE), Colors.white],
+              ),
+              boxShadow: AppColors.cardShadow(context),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF472B6).withValues(alpha: isDark ? 0.28 : 0.14),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.pie_chart_rounded, color: Color(0xFFDB2777), size: 18),
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'Top spending',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
-                              color: ink,
-                            ),
+                            style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 14.5, color: ink),
                           ),
                           Text(
                             'Daily expense · $monthName',
-                            style: GoogleFonts.inter(fontSize: 12, color: muted),
+                            style: GoogleFonts.inter(fontSize: 11.5, color: muted, fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
                     ),
                     if (cats.isNotEmpty)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            'Total',
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              color: muted,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            formatMoney(catTotal),
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14,
-                              color: ink,
-                            ),
-                          ),
-                        ],
+                      Text(
+                        formatMoney(catTotal),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 13, color: ink),
                       ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 if (cats.isEmpty)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 28),
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
                     decoration: BoxDecoration(
-                      color: AppColors.softPurpleOf(context),
-                      borderRadius: BorderRadius.circular(14),
+                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.receipt_long_rounded,
-                          size: 28,
-                          color: muted.withValues(alpha: 0.7),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'No spends this month yet',
-                          style: GoogleFonts.inter(
-                            color: muted,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      'No spends this month yet',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(color: muted, fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                   )
                 else
@@ -634,17 +630,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     final color = _palette[i % _palette.length];
                     final pct = catTotal > 0 ? c.amount / catTotal : 0.0;
                     return Container(
-                      margin: EdgeInsets.only(bottom: i == cats.length - 1 ? 0 : 8),
-                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                      margin: EdgeInsets.only(bottom: i == cats.length - 1 ? 0 : 6),
+                      padding: const EdgeInsets.fromLTRB(9, 8, 9, 8),
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.04)
-                            : AppColors.softPurpleOf(context).withValues(alpha: 0.55),
-                        borderRadius: BorderRadius.circular(14),
+                        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.06)
-                              : color.withValues(alpha: 0.1),
+                          color: isDark ? Colors.white.withValues(alpha: 0.06) : color.withValues(alpha: 0.18),
                         ),
                       ),
                       child: Column(
@@ -652,52 +644,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Row(
                             children: [
                               Container(
-                                width: 36,
-                                height: 36,
+                                width: 26,
+                                height: 26,
                                 decoration: BoxDecoration(
-                                  color: color.withValues(alpha: isDark ? 0.24 : 0.14),
-                                  borderRadius: BorderRadius.circular(11),
+                                  color: color.withValues(alpha: isDark ? 0.22 : 0.12),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Icon(_categoryIcon(c.name), size: 18, color: color),
+                                child: Icon(_categoryIcon(c.name), size: 14, color: color),
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   c.name,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13.5,
-                                    color: ink,
-                                  ),
+                                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 12.5, color: ink),
                                 ),
                               ),
                               Text(
                                 '${(pct * 100).round()}%',
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  color: muted,
-                                ),
+                                style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 11, color: muted),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 6),
                               Text(
                                 formatMoney(c.amount),
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 13.5,
-                                  color: ink,
-                                ),
+                                style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 12.5, color: ink),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(99),
                             child: LinearProgressIndicator(
                               value: pct.clamp(0.0, 1.0),
-                              minHeight: 7,
+                              minHeight: 4,
                               backgroundColor: color.withValues(alpha: isDark ? 0.15 : 0.12),
                               color: color,
                             ),
@@ -711,14 +691,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Spend trend
+          // Spend trend — Loans & EMI shell, white chart panel
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
             decoration: BoxDecoration(
-              color: AppColors.cardOf(context),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(color: AppColors.borderOf(context)),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [_brand.withValues(alpha: 0.22), AppColors.cardOf(context)]
+                    : [const Color(0xFFEEEDFE), Colors.white],
+              ),
               boxShadow: AppColors.cardShadow(context),
             ),
             child: Column(
@@ -727,136 +713,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Row(
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF22D3EE).withValues(alpha: isDark ? 0.22 : 0.12),
-                        borderRadius: BorderRadius.circular(12),
+                        color: const Color(0xFF22D3EE).withValues(alpha: isDark ? 0.28 : 0.14),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
-                        Icons.show_chart_rounded,
-                        color: Color(0xFF0891B2),
-                        size: 22,
-                      ),
+                      child: const Icon(Icons.show_chart_rounded, color: Color(0xFF0891B2), size: 18),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'Spend trend',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
-                              color: ink,
-                            ),
+                            style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 14.5, color: ink),
                           ),
                           Text(
                             'Daily expenses · last 6 months',
-                            style: GoogleFonts.inter(fontSize: 12, color: muted),
+                            style: GoogleFonts.inter(fontSize: 11.5, color: muted, fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
                     ),
                     if (trend.isNotEmpty)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            'Period total',
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              color: muted,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            formatMoney(trend.fold<double>(0, (s, e) => s + e.total)),
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14,
-                              color: ink,
-                            ),
-                          ),
-                        ],
+                      Text(
+                        formatMoney(trend.fold<double>(0, (s, e) => s + e.total)),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 13, color: ink),
                       ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 if (trend.isEmpty)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 28),
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
                     decoration: BoxDecoration(
-                      color: AppColors.softPurpleOf(context),
-                      borderRadius: BorderRadius.circular(14),
+                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : const Color(0xFF22D3EE).withValues(alpha: 0.16),
+                      ),
                     ),
-                    child: Column(
-                      children: [
-                        Icon(Icons.bar_chart_rounded, size: 28, color: muted.withValues(alpha: 0.7)),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Not enough data yet',
-                          style: GoogleFonts.inter(color: muted, fontSize: 13, fontWeight: FontWeight.w600),
-                        ),
-                      ],
+                    child: Text(
+                      'Not enough data yet',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(color: muted, fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                   )
                 else
-                  SizedBox(
-                    height: 180,
-                    child: _trendBars(trend, muted, isDark),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : const Color(0xFF22D3EE).withValues(alpha: 0.16),
+                      ),
+                    ),
+                    child: SizedBox(height: 132, child: _trendBars(trend, muted, isDark)),
                   ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _loanTile({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-    required Color ink,
-    required Color muted,
-    required bool isDark,
-  }) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.06) : color.withValues(alpha: 0.12),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: isDark ? 0.22 : 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 15, color: color),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: GoogleFonts.inter(fontSize: 11, color: muted, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.inter(fontSize: 13.5, fontWeight: FontWeight.w800, color: ink),
           ),
         ],
       ),
@@ -868,25 +792,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Column(
         children: [
-          Icon(icon, size: 16, color: Colors.white70),
-          const SizedBox(height: 4),
+          Icon(icon, size: 15, color: Colors.white70),
+          const SizedBox(height: 3),
           Text(
             label,
-            style: GoogleFonts.inter(
-              color: Colors.white70,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
+            style: GoogleFonts.inter(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 1),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Flat Income / Spent strip cell (no nested box).
+  Widget _heroCashStrip({
+    required String label,
+    required String value,
+    required IconData icon,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.8)),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               color: Colors.white,
-              fontSize: 12,
+              fontSize: 16,
               fontWeight: FontWeight.w800,
+              height: 1.1,
             ),
           ),
         ],
@@ -894,17 +855,248 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _sectionCard({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        color: AppColors.cardOf(context),
+  Widget _eventsHomeCard({
+    required Color ink,
+    required Color muted,
+    required bool isDark,
+    required int kpiCount,
+  }) {
+    final count = _events.isNotEmpty ? _events.length : kpiCount;
+    final planning =
+        _events.where((e) => e.lifecycleStatus == 'planning').length;
+    final next = _nextUpcomingEvent();
+    final nextType = next == null ? null : eventTypeStyle(next.eventType);
+    final nextDate = next == null ? '' : formatDate(next.eventDate);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _openEvents,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.borderOf(context)),
-        boxShadow: AppColors.cardShadow(context),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.borderOf(context)),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDark
+                  ? [const Color(0xFFE879F9).withValues(alpha: 0.2), AppColors.cardOf(context)]
+                  : [const Color(0xFFFDF2FF), Colors.white],
+            ),
+            boxShadow: AppColors.cardShadow(context),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE879F9).withValues(alpha: isDark ? 0.28 : 0.14),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.celebration_rounded, color: Color(0xFFD946EF), size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Events',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 14.5, color: ink),
+                        ),
+                        Text(
+                          count == 0
+                              ? 'Plan weddings, parties and celebrations'
+                              : (count == 1 ? '1 event in your workspace' : '$count events in your workspace'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(fontSize: 11.5, color: muted, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: muted, size: 20),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (count == 0)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'No events yet. Tap to create your first one.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(color: muted, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                )
+              else ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: _eventsMiniTile(
+                        icon: Icons.event_available_rounded,
+                        label: 'Total',
+                        value: '$count',
+                        color: const Color(0xFFE879F9),
+                        ink: ink,
+                        muted: muted,
+                        isDark: isDark,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _eventsMiniTile(
+                        icon: Icons.edit_calendar_rounded,
+                        label: 'Planning',
+                        value: '$planning',
+                        color: const Color(0xFFA78BFA),
+                        ink: ink,
+                        muted: muted,
+                        isDark: isDark,
+                      ),
+                    ),
+                  ],
+                ),
+                if (next != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : const Color(0xFFE879F9).withValues(alpha: 0.14),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: (nextType?.$2 ?? const Color(0xFFE879F9))
+                                .withValues(alpha: isDark ? 0.22 : 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            nextType?.$1 ?? Icons.event_rounded,
+                            size: 15,
+                            color: nextType?.$2 ?? const Color(0xFFE879F9),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Next up',
+                                style: GoogleFonts.inter(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: muted,
+                                ),
+                              ),
+                              Text(
+                                next.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: ink,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (nextDate.isNotEmpty)
+                          Text(
+                            nextDate,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: nextType?.$2 ?? const Color(0xFFE879F9),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ],
+          ),
+        ),
       ),
-      child: child,
+    );
+  }
+
+  Widget _eventsMiniTile({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+    required Color ink,
+    required Color muted,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(9, 8, 9, 8),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : color.withValues(alpha: 0.14),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: isDark ? 0.22 : 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 14, color: color),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(fontSize: 10, color: muted, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w800, color: ink),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -994,134 +1186,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           );
         }),
-      ),
-    );
-  }
-}
-
-class _KpiCard extends StatelessWidget {
-  const _KpiCard({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.icon,
-    this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final Color color;
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final ink = AppColors.inkOf(context);
-    final muted = AppColors.mutedOf(context);
-    final isDark = AppColors.isDark(context);
-    return Material(
-      color: AppColors.cardOf(context),
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.borderOf(context)),
-            boxShadow: AppColors.cardShadow(context),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: isDark ? 0.22 : 0.14),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 17, color: color),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                label,
-                style: GoogleFonts.inter(fontSize: 12, color: muted, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800, color: ink),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickAction extends StatelessWidget {
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final ink = AppColors.inkOf(context);
-    final isDark = AppColors.isDark(context);
-    return Material(
-      color: AppColors.cardOf(context),
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.borderOf(context)),
-            boxShadow: AppColors.cardShadow(context),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: isDark ? 0.22 : 0.14),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Icon(icon, color: color, size: 18),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: ink,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

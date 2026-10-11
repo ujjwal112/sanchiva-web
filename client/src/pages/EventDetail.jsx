@@ -521,7 +521,13 @@ export default function EventDetail() {
                 <p className="event-section-label">Overview</p>
                 <h3>Budget & progress</h3>
               </div>
-              <span className="badge warning">{detail.status}</span>
+              <span
+                className={`badge ${
+                  (detail.status || '').toLowerCase() === 'completed' ? 'success' : 'warning'
+                }`}
+              >
+                {(detail.status || 'planning').replace(/^\w/, (c) => c.toUpperCase())}
+              </span>
             </div>
             <div className="event-kpi-row">
               <div className="event-kpi">
