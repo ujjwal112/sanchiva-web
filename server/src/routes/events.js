@@ -156,6 +156,110 @@ async function assertEventOwner(eventId, uid) {
   return rows[0];
 }
 
+const EVENT_PAID_VIA = new Set(['UPI', 'Cash', 'Card', 'Bank transfer', 'Wallet']);
+
+function normalizeEventPaidVia(raw) {
+  const v = String(raw || 'UPI').trim();
+  if (EVENT_PAID_VIA.has(v)) return v;
+  const lower = v.toLowerCase();
+  if (lower === 'upi') return 'UPI';
+  if (lower === 'cash') return 'Cash';
+  if (lower === 'card') return 'Card';
+  if (lower.includes('bank')) return 'Bank transfer';
+  if (lower.includes('wallet')) return 'Wallet';
+  return 'UPI';
+}
+
+/** token_paid / remaining always follow the sum of payment rows. */
+async function resyncItemPaidFromPayments(itemId) {
+  const { rows: sumRows } = await query(
+    `SELECT COALESCE(SUM(amount), 0)::float AS paid
+     FROM event_item_payments WHERE item_id = $1`,
+    [itemId]
+  );
+  const paid = Number(sumRows[0]?.paid) || 0;
+  const { rows } = await query(
+    `UPDATE event_items SET
+       token_paid = $1,
+       remaining_amount = GREATEST(planned_amount - $1, 0),
+       updated_at = NOW()
+     WHERE id = $2
+     RETURNING *`,
+    [paid, itemId]
+  );
+  return rows[0] || null;
+}
+
+/**
+ * Older todos only had token_paid. Seed one legacy payment so history matches paid total.
+ */
+async function backfillItemPaymentsIfNeeded(item) {
+  if (!item?.id) return;
+  const paid = Number(item.token_paid) || 0;
+  if (paid <= 0) return;
+  const { rows } = await query(
+    `SELECT COUNT(*)::int AS c FROM event_item_payments WHERE item_id = $1`,
+    [item.id]
+  );
+  if ((rows[0]?.c || 0) > 0) return;
+  const dateRaw = item.created_at || item.updated_at;
+  const ymd =
+    dateRaw && String(dateRaw).length >= 10
+      ? String(dateRaw).slice(0, 10)
+      : istTodayYmd();
+  await query(
+    `INSERT INTO event_item_payments
+       (item_id, amount, payment_date, paid_via, paid_via_detail, notes)
+     VALUES ($1, $2, $3::date, 'Other', 'Previously recorded', 'Migrated from paid total')`,
+    [item.id, paid, ymd]
+  );
+}
+
+async function assertItemOwner(itemId, uid) {
+  const { rows } = await query(
+    `SELECT ei.id, ei.event_id, ei.planned_amount, ei.token_paid, ei.created_at, ei.updated_at
+     FROM event_items ei
+     JOIN events e ON e.id = ei.event_id
+     WHERE ei.id = $1 AND e.user_id = $2`,
+    [itemId, uid]
+  );
+  return rows[0] || null;
+}
+
+async function listPaymentsForItem(itemId) {
+  const { rows } = await query(
+    `SELECT * FROM event_item_payments
+     WHERE item_id = $1
+     ORDER BY payment_date DESC, id DESC`,
+    [itemId]
+  );
+  return rows;
+}
+
+async function attachPaymentsToItems(items) {
+  if (!items.length) return items;
+  for (const item of items) {
+    await backfillItemPaymentsIfNeeded(item);
+  }
+  const ids = items.map((i) => i.id);
+  const { rows } = await query(
+    `SELECT * FROM event_item_payments
+     WHERE item_id = ANY($1::int[])
+     ORDER BY payment_date DESC, id DESC`,
+    [ids]
+  );
+  const byItem = new Map();
+  for (const p of rows) {
+    const key = p.item_id;
+    if (!byItem.has(key)) byItem.set(key, []);
+    byItem.get(key).push(p);
+  }
+  return items.map((item) => ({
+    ...item,
+    payments: byItem.get(item.id) || [],
+  }));
+}
+
 /** Template builders for common event types */
 export function buildEventTemplate(eventType, answers = {}) {
   const items = [];
@@ -375,10 +479,11 @@ router.get('/:id', async (req, res) => {
       userId(req),
     ]);
     if (!rows[0]) return res.status(404).json({ error: 'Not found' });
-    const { rows: items } = await query(
+    const { rows: rawItems } = await query(
       'SELECT * FROM event_items WHERE event_id = $1 ORDER BY sort_order, id',
       [req.params.id]
     );
+    const items = await attachPaymentsToItems(rawItems);
     const { rows: guests } = await query(
       'SELECT * FROM event_guests WHERE event_id = $1 ORDER BY ceremony, id',
       [req.params.id]
@@ -860,13 +965,17 @@ router.post('/:id/items', async (req, res) => {
 
 router.put('/items/:itemId', async (req, res) => {
   try {
-    const own = await query(
-      `SELECT ei.id, ei.event_id FROM event_items ei JOIN events e ON e.id = ei.event_id
-       WHERE ei.id = $1 AND e.user_id = $2`,
-      [req.params.itemId, userId(req)]
+    const own = await assertItemOwner(req.params.itemId, userId(req));
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    const { rows: payCountRows } = await query(
+      `SELECT COUNT(*)::int AS c FROM event_item_payments WHERE item_id = $1`,
+      [req.params.itemId]
     );
-    if (!own.rows[0]) return res.status(404).json({ error: 'Not found' });
-    const fields = ['title', 'category', 'planned_amount', 'token_paid', 'due_date', 'is_done', 'vendor_name', 'notes', 'sort_order'];
+    const hasPayments = (payCountRows[0]?.c || 0) > 0;
+    // Paid total is owned by the payments list once any payment exists.
+    const fields = hasPayments
+      ? ['title', 'category', 'planned_amount', 'due_date', 'is_done', 'vendor_name', 'notes', 'sort_order']
+      : ['title', 'category', 'planned_amount', 'token_paid', 'due_date', 'is_done', 'vendor_name', 'notes', 'sort_order'];
     const sets = [];
     const params = [];
     for (const f of fields) {
@@ -875,23 +984,38 @@ router.put('/items/:itemId', async (req, res) => {
         sets.push(`${f} = $${params.length}`);
       }
     }
-    if (req.body.planned_amount !== undefined || req.body.token_paid !== undefined) {
-      const { rows: cur } = await query('SELECT planned_amount, token_paid FROM event_items WHERE id = $1', [req.params.itemId]);
+    if (!hasPayments && (req.body.planned_amount !== undefined || req.body.token_paid !== undefined)) {
+      const { rows: cur } = await query(
+        'SELECT planned_amount, token_paid FROM event_items WHERE id = $1',
+        [req.params.itemId]
+      );
       if (!cur[0]) return res.status(404).json({ error: 'Not found' });
-      const planned = req.body.planned_amount !== undefined ? Number(req.body.planned_amount) : Number(cur[0].planned_amount);
-      const paid = req.body.token_paid !== undefined ? Number(req.body.token_paid) : Number(cur[0].token_paid);
+      const planned =
+        req.body.planned_amount !== undefined
+          ? Number(req.body.planned_amount)
+          : Number(cur[0].planned_amount);
+      const paid =
+        req.body.token_paid !== undefined ? Number(req.body.token_paid) : Number(cur[0].token_paid);
       params.push(Math.max(planned - paid, 0));
       sets.push(`remaining_amount = $${params.length}`);
     }
-    if (!sets.length) return res.status(400).json({ error: 'No fields' });
-    params.push(req.params.itemId);
-    const { rows } = await query(
-      `UPDATE event_items SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${params.length} RETURNING *`,
-      params
-    );
-    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
-    await syncEventStatus(own.rows[0].event_id);
-    res.json(rows[0]);
+    if (!sets.length && !hasPayments) return res.status(400).json({ error: 'No fields' });
+    let itemRow = null;
+    if (sets.length) {
+      params.push(req.params.itemId);
+      const { rows } = await query(
+        `UPDATE event_items SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${params.length} RETURNING *`,
+        params
+      );
+      if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+      itemRow = rows[0];
+    }
+    if (hasPayments) {
+      itemRow = await resyncItemPaidFromPayments(req.params.itemId);
+    }
+    await syncEventStatus(own.event_id);
+    const payments = await listPaymentsForItem(req.params.itemId);
+    res.json({ ...(itemRow || own), payments });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -899,13 +1023,9 @@ router.put('/items/:itemId', async (req, res) => {
 
 router.delete('/items/:itemId', async (req, res) => {
   try {
-    const own = await query(
-      `SELECT ei.id, ei.event_id FROM event_items ei JOIN events e ON e.id = ei.event_id
-       WHERE ei.id = $1 AND e.user_id = $2`,
-      [req.params.itemId, userId(req)]
-    );
-    if (!own.rows[0]) return res.status(404).json({ error: 'Not found' });
-    const eventId = own.rows[0].event_id;
+    const own = await assertItemOwner(req.params.itemId, userId(req));
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    const eventId = own.event_id;
     const { rowCount } = await query(
       `DELETE FROM event_items ei USING events e
        WHERE ei.id = $1 AND ei.event_id = e.id AND e.user_id = $2`,
@@ -914,6 +1034,83 @@ router.delete('/items/:itemId', async (req, res) => {
     if (!rowCount) return res.status(404).json({ error: 'Not found' });
     await syncEventStatus(eventId);
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Todo partial payments
+router.get('/items/:itemId/payments', async (req, res) => {
+  try {
+    const own = await assertItemOwner(req.params.itemId, userId(req));
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    await backfillItemPaymentsIfNeeded(own);
+    await resyncItemPaidFromPayments(req.params.itemId);
+    res.json(await listPaymentsForItem(req.params.itemId));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/items/:itemId/payments', async (req, res) => {
+  try {
+    const own = await assertItemOwner(req.params.itemId, userId(req));
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    await backfillItemPaymentsIfNeeded(own);
+
+    const amount = Number(req.body.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ error: 'amount must be greater than 0' });
+    }
+    const local = clientLocalDate(req);
+    const paymentDate = String(req.body.payment_date || local.ymd).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(paymentDate)) {
+      return res.status(400).json({ error: 'payment_date required (YYYY-MM-DD)' });
+    }
+    const paidVia = normalizeEventPaidVia(req.body.paid_via);
+    const detail =
+      paidVia === 'Cash' ? null : String(req.body.paid_via_detail || '').trim() || null;
+    const notes = String(req.body.notes || '').trim() || null;
+
+    const { rows } = await query(
+      `INSERT INTO event_item_payments
+         (item_id, amount, payment_date, paid_via, paid_via_detail, notes)
+       VALUES ($1, $2, $3::date, $4, $5, $6)
+       RETURNING *`,
+      [req.params.itemId, amount, paymentDate, paidVia, detail, notes]
+    );
+    const item = await resyncItemPaidFromPayments(req.params.itemId);
+    await syncEventStatus(own.event_id);
+    res.status(201).json({
+      payment: rows[0],
+      item,
+      payments: await listPaymentsForItem(req.params.itemId),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/payments/:paymentId', async (req, res) => {
+  try {
+    const { rows: ownRows } = await query(
+      `SELECT p.id, p.item_id, ei.event_id
+       FROM event_item_payments p
+       JOIN event_items ei ON ei.id = p.item_id
+       JOIN events e ON e.id = ei.event_id
+       WHERE p.id = $1 AND e.user_id = $2`,
+      [req.params.paymentId, userId(req)]
+    );
+    if (!ownRows[0]) return res.status(404).json({ error: 'Not found' });
+    const { item_id: itemId, event_id: eventId } = ownRows[0];
+    await query(`DELETE FROM event_item_payments WHERE id = $1`, [req.params.paymentId]);
+    const item = await resyncItemPaidFromPayments(itemId);
+    await syncEventStatus(eventId);
+    res.json({
+      success: true,
+      item,
+      payments: await listPaymentsForItem(itemId),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -109,6 +109,70 @@ class EventService {
     await _api.delete('/events/items/$itemId');
   }
 
+  Future<List<EventItemPayment>> listItemPayments(String itemId) async {
+    final raw = await _api.getList('/events/items/$itemId/payments');
+    return raw
+        .whereType<Map>()
+        .map((e) => EventItemPayment.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  /// Returns updated item + payments after adding a partial payment.
+  Future<({EventItem item, List<EventItemPayment> payments})> addItemPayment(
+    String itemId, {
+    required double amount,
+    required String paymentDate,
+    required String paidVia,
+    String paidViaDetail = '',
+    String notes = '',
+  }) async {
+    final data = await _api.post('/events/items/$itemId/payments', {
+      'amount': amount,
+      'payment_date': paymentDate,
+      'paid_via': paidVia,
+      if (paidViaDetail.trim().isNotEmpty) 'paid_via_detail': paidViaDetail.trim(),
+      if (notes.trim().isNotEmpty) 'notes': notes.trim(),
+    });
+    final itemRaw = data['item'];
+    final item = itemRaw is Map
+        ? EventItem.fromJson(Map<String, dynamic>.from(itemRaw))
+        : EventItem(id: itemId, eventId: '', title: '');
+    final payments = <EventItemPayment>[];
+    final rawPay = data['payments'];
+    if (rawPay is List) {
+      for (final e in rawPay) {
+        if (e is Map) {
+          payments.add(EventItemPayment.fromJson(Map<String, dynamic>.from(e)));
+        }
+      }
+    }
+    return (item: item.copyWith(payments: payments), payments: payments);
+  }
+
+  Future<({EventItem? item, List<EventItemPayment> payments})> deleteItemPayment(
+    String paymentId,
+  ) async {
+    final data = await _api.delete('/events/payments/$paymentId');
+    EventItem? item;
+    final itemRaw = data['item'];
+    if (itemRaw is Map) {
+      item = EventItem.fromJson(Map<String, dynamic>.from(itemRaw));
+    }
+    final payments = <EventItemPayment>[];
+    final rawPay = data['payments'];
+    if (rawPay is List) {
+      for (final e in rawPay) {
+        if (e is Map) {
+          payments.add(EventItemPayment.fromJson(Map<String, dynamic>.from(e)));
+        }
+      }
+    }
+    return (
+      item: item?.copyWith(payments: payments),
+      payments: payments,
+    );
+  }
+
   Future<EventGuest> addGuest(
     String eventId, {
     required String name,

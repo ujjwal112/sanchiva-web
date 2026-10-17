@@ -267,6 +267,20 @@ export async function runMigrations() {
   `);
   console.log('  · split_* tables ready');
 
+  await query(`
+    CREATE TABLE IF NOT EXISTS event_item_payments (
+      id SERIAL PRIMARY KEY,
+      item_id INTEGER NOT NULL REFERENCES event_items(id) ON DELETE CASCADE,
+      amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+      payment_date DATE NOT NULL,
+      paid_via VARCHAR(40) NOT NULL DEFAULT 'UPI',
+      paid_via_detail VARCHAR(150),
+      notes VARCHAR(255),
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  console.log('  · event_item_payments ready');
+
   // Indexes that require user_id, only after column exists
   const indexes = [
     `CREATE INDEX IF NOT EXISTS idx_refresh_user ON refresh_tokens(user_id)`,
@@ -276,6 +290,7 @@ export async function runMigrations() {
     `CREATE INDEX IF NOT EXISTS idx_income_user ON income_sources(user_id, year, month)`,
     `CREATE INDEX IF NOT EXISTS idx_events_user ON events(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_event_items_event ON event_items(event_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_event_item_payments_item ON event_item_payments(item_id)`,
     `CREATE INDEX IF NOT EXISTS idx_event_guests_event ON event_guests(event_id)`,
     `CREATE INDEX IF NOT EXISTS idx_split_groups_user ON split_groups(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_split_members_group ON split_members(group_id)`,

@@ -157,6 +157,18 @@ CREATE TABLE IF NOT EXISTS event_items (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Partial payments against a todo (token / mid / final, etc.)
+CREATE TABLE IF NOT EXISTS event_item_payments (
+  id SERIAL PRIMARY KEY,
+  item_id INTEGER NOT NULL REFERENCES event_items(id) ON DELETE CASCADE,
+  amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+  payment_date DATE NOT NULL,
+  paid_via VARCHAR(40) NOT NULL DEFAULT 'UPI',
+  paid_via_detail VARCHAR(150),
+  notes VARCHAR(255),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS event_guests (
   id SERIAL PRIMARY KEY,
   event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,

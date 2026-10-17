@@ -121,6 +121,88 @@ class EventSummary {
   }
 }
 
+/// Partial payment against an event todo (token / mid / final).
+class EventItemPayment {
+  EventItemPayment({
+    required this.id,
+    required this.itemId,
+    required this.amount,
+    required this.paymentDate,
+    required this.paidVia,
+    this.paidViaDetail,
+    this.notes,
+  });
+
+  final String id;
+  final String itemId;
+  final double amount;
+  final String paymentDate;
+  final String paidVia;
+  final String? paidViaDetail;
+  final String? notes;
+
+  factory EventItemPayment.fromJson(Map<String, dynamic> j) {
+    return EventItemPayment(
+      id: j['id']?.toString() ?? '',
+      itemId: j['item_id']?.toString() ?? '',
+      amount: double.tryParse('${j['amount']}') ?? 0,
+      paymentDate: _dateStr(j['payment_date']) ?? '',
+      paidVia: j['paid_via']?.toString() ?? 'UPI',
+      paidViaDetail: j['paid_via_detail']?.toString(),
+      notes: j['notes']?.toString(),
+    );
+  }
+
+  String get modeLabel {
+    final detail = (paidViaDetail ?? '').trim();
+    if (detail.isEmpty) return paidVia;
+    return '$paidVia · $detail';
+  }
+}
+
+/// Payment modes for event todo partial payments.
+const kEventPaidViaOptions = <String>[
+  'UPI',
+  'Cash',
+  'Card',
+  'Bank transfer',
+  'Wallet',
+];
+
+String eventPaidViaDetailLabel(String via) {
+  switch (via) {
+    case 'UPI':
+      return 'App / UPI bank';
+    case 'Card':
+      return 'Card name';
+    case 'Bank transfer':
+      return 'Bank name';
+    case 'Wallet':
+      return 'Wallet name';
+    case 'Cash':
+      return 'Note';
+    default:
+      return 'Name';
+  }
+}
+
+String eventPaidViaDetailHint(String via) {
+  switch (via) {
+    case 'UPI':
+      return 'e.g. GPay, PhonePe, SBI';
+    case 'Card':
+      return 'e.g. HDFC Millennia';
+    case 'Bank transfer':
+      return 'e.g. ICICI, Axis';
+    case 'Wallet':
+      return 'e.g. Paytm, Amazon Pay';
+    case 'Cash':
+      return 'Optional note';
+    default:
+      return 'App or bank name';
+  }
+}
+
 class EventItem {
   EventItem({
     required this.id,
@@ -135,6 +217,7 @@ class EventItem {
     this.vendorName,
     this.notes,
     this.sortOrder = 0,
+    this.payments = const [],
   });
 
   final String id;
@@ -149,11 +232,21 @@ class EventItem {
   final String? vendorName;
   final String? notes;
   final int sortOrder;
+  final List<EventItemPayment> payments;
 
   factory EventItem.fromJson(Map<String, dynamic> j) {
     final planned = double.tryParse('${j['planned_amount']}') ?? 0;
     final paid = double.tryParse('${j['token_paid']}') ?? 0;
     final rem = double.tryParse('${j['remaining_amount']}');
+    final payments = <EventItemPayment>[];
+    final rawPay = j['payments'];
+    if (rawPay is List) {
+      for (final e in rawPay) {
+        if (e is Map) {
+          payments.add(EventItemPayment.fromJson(Map<String, dynamic>.from(e)));
+        }
+      }
+    }
     return EventItem(
       id: j['id']?.toString() ?? '',
       eventId: j['event_id']?.toString() ?? '',
@@ -167,6 +260,34 @@ class EventItem {
       vendorName: j['vendor_name']?.toString(),
       notes: j['notes']?.toString(),
       sortOrder: int.tryParse('${j['sort_order']}') ?? 0,
+      payments: payments,
+    );
+  }
+
+  EventItem copyWith({
+    double? plannedAmount,
+    double? tokenPaid,
+    double? remainingAmount,
+    List<EventItemPayment>? payments,
+    String? title,
+    String? category,
+    String? vendorName,
+    bool? isDone,
+  }) {
+    return EventItem(
+      id: id,
+      eventId: eventId,
+      title: title ?? this.title,
+      category: category ?? this.category,
+      plannedAmount: plannedAmount ?? this.plannedAmount,
+      tokenPaid: tokenPaid ?? this.tokenPaid,
+      remainingAmount: remainingAmount ?? this.remainingAmount,
+      dueDate: dueDate,
+      isDone: isDone ?? this.isDone,
+      vendorName: vendorName ?? this.vendorName,
+      notes: notes,
+      sortOrder: sortOrder,
+      payments: payments ?? this.payments,
     );
   }
 }
