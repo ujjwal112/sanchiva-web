@@ -209,8 +209,8 @@ async function backfillItemPaymentsIfNeeded(item) {
       : istTodayYmd();
   await query(
     `INSERT INTO event_item_payments
-       (item_id, amount, payment_date, paid_via, paid_via_detail, notes)
-     VALUES ($1, $2, $3::date, 'Other', 'Previously recorded', 'Migrated from paid total')`,
+       (item_id, amount, payment_date, paid_via, paid_via_detail, tag, notes)
+     VALUES ($1, $2, $3::date, 'Other', 'Previously recorded', 'Previous', 'Migrated from paid total')`,
     [item.id, paid, ymd]
   );
 }
@@ -1070,14 +1070,15 @@ router.post('/items/:itemId/payments', async (req, res) => {
     const paidVia = normalizeEventPaidVia(req.body.paid_via);
     const detail =
       paidVia === 'Cash' ? null : String(req.body.paid_via_detail || '').trim() || null;
+    const tag = String(req.body.tag || '').trim().slice(0, 100) || null;
     const notes = String(req.body.notes || '').trim() || null;
 
     const { rows } = await query(
       `INSERT INTO event_item_payments
-         (item_id, amount, payment_date, paid_via, paid_via_detail, notes)
-       VALUES ($1, $2, $3::date, $4, $5, $6)
+         (item_id, amount, payment_date, paid_via, paid_via_detail, tag, notes)
+       VALUES ($1, $2, $3::date, $4, $5, $6, $7)
        RETURNING *`,
-      [req.params.itemId, amount, paymentDate, paidVia, detail, notes]
+      [req.params.itemId, amount, paymentDate, paidVia, detail, tag, notes]
     );
     const item = await resyncItemPaidFromPayments(req.params.itemId);
     await syncEventStatus(own.event_id);
@@ -1094,7 +1095,7 @@ router.post('/items/:itemId/payments', async (req, res) => {
 router.put('/payments/:paymentId', async (req, res) => {
   try {
     const { rows: ownRows } = await query(
-      `SELECT p.id, p.item_id, ei.event_id, p.amount, p.payment_date, p.paid_via, p.paid_via_detail, p.notes
+      `SELECT p.id, p.item_id, ei.event_id, p.amount, p.payment_date, p.paid_via, p.paid_via_detail, p.tag, p.notes
        FROM event_item_payments p
        JOIN event_items ei ON ei.id = p.item_id
        JOIN events e ON e.id = ei.event_id
@@ -1125,6 +1126,10 @@ router.put('/payments/:paymentId', async (req, res) => {
         ? String(req.body.paid_via_detail || '').trim()
         : String(cur.paid_via_detail || '').trim();
     const detail = paidVia === 'Cash' ? null : detailRaw || null;
+    const tag =
+      req.body.tag !== undefined
+        ? String(req.body.tag || '').trim().slice(0, 100) || null
+        : cur.tag || null;
     const notes =
       req.body.notes !== undefined
         ? String(req.body.notes || '').trim() || null
@@ -1136,10 +1141,11 @@ router.put('/payments/:paymentId', async (req, res) => {
          payment_date = $2::date,
          paid_via = $3,
          paid_via_detail = $4,
-         notes = $5
-       WHERE id = $6
+         tag = $5,
+         notes = $6
+       WHERE id = $7
        RETURNING *`,
-      [amount, paymentDate, paidVia, detail, notes, req.params.paymentId]
+      [amount, paymentDate, paidVia, detail, tag, notes, req.params.paymentId]
     );
     const item = await resyncItemPaidFromPayments(itemId);
     await syncEventStatus(eventId);

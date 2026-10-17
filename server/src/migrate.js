@@ -275,10 +275,15 @@ export async function runMigrations() {
       payment_date DATE NOT NULL,
       paid_via VARCHAR(40) NOT NULL DEFAULT 'UPI',
       paid_via_detail VARCHAR(150),
+      tag VARCHAR(100),
       notes VARCHAR(255),
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  if (await tableExists('event_item_payments') && !(await columnExists('event_item_payments', 'tag'))) {
+    await query(`ALTER TABLE event_item_payments ADD COLUMN tag VARCHAR(100)`);
+    console.log('  + event_item_payments.tag');
+  }
   console.log('  · event_item_payments ready');
 
   // Indexes that require user_id, only after column exists

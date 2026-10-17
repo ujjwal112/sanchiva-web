@@ -165,6 +165,7 @@ CREATE TABLE IF NOT EXISTS event_item_payments (
   payment_date DATE NOT NULL,
   paid_via VARCHAR(40) NOT NULL DEFAULT 'UPI',
   paid_via_detail VARCHAR(150),
+  tag VARCHAR(100),
   notes VARCHAR(255),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

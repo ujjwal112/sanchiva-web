@@ -124,6 +124,7 @@ class EventService {
     required String paymentDate,
     required String paidVia,
     String paidViaDetail = '',
+    String tag = '',
     String notes = '',
   }) async {
     final data = await _api.post('/events/items/$itemId/payments', {
@@ -131,6 +132,7 @@ class EventService {
       'payment_date': paymentDate,
       'paid_via': paidVia,
       if (paidViaDetail.trim().isNotEmpty) 'paid_via_detail': paidViaDetail.trim(),
+      if (tag.trim().isNotEmpty) 'tag': tag.trim(),
       if (notes.trim().isNotEmpty) 'notes': notes.trim(),
     });
     final itemRaw = data['item'];
@@ -155,6 +157,7 @@ class EventService {
     required String paymentDate,
     required String paidVia,
     String paidViaDetail = '',
+    String tag = '',
     String notes = '',
   }) async {
     final data = await _api.put('/events/payments/$paymentId', {
@@ -162,6 +165,7 @@ class EventService {
       'payment_date': paymentDate,
       'paid_via': paidVia,
       'paid_via_detail': paidViaDetail.trim(),
+      'tag': tag.trim(),
       if (notes.trim().isNotEmpty) 'notes': notes.trim(),
     });
     final itemRaw = data['item'];

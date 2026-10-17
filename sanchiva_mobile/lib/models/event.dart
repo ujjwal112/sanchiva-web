@@ -130,6 +130,7 @@ class EventItemPayment {
     required this.paymentDate,
     required this.paidVia,
     this.paidViaDetail,
+    this.tag,
     this.notes,
   });
 
@@ -139,6 +140,7 @@ class EventItemPayment {
   final String paymentDate;
   final String paidVia;
   final String? paidViaDetail;
+  final String? tag;
   final String? notes;
 
   factory EventItemPayment.fromJson(Map<String, dynamic> j) {
@@ -149,6 +151,7 @@ class EventItemPayment {
       paymentDate: _dateStr(j['payment_date']) ?? '',
       paidVia: j['paid_via']?.toString() ?? 'UPI',
       paidViaDetail: j['paid_via_detail']?.toString(),
+      tag: j['tag']?.toString(),
       notes: j['notes']?.toString(),
     );
   }
@@ -158,6 +161,8 @@ class EventItemPayment {
     if (detail.isEmpty) return paidVia;
     return '$paidVia · $detail';
   }
+
+  String get tagLabel => (tag ?? '').trim();
 }
 
 /// Payment modes for event todo partial payments.

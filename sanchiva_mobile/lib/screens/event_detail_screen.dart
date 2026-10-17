@@ -54,6 +54,18 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   /// In-page todo editor (replaces bottom-sheet form).
   bool _todoEditorOpen = false;
   EventItem? _todoEditing;
+  GlobalKey<_TodoEditorSectionState> _todoEditorKey =
+      GlobalKey<_TodoEditorSectionState>();
+
+  /// System / AppBar / gesture back: payment-edit → todo list → event list.
+  void _handleEventBack() {
+    if (_todoEditorOpen) {
+      final consumed = _todoEditorKey.currentState?.handleSystemBack() ?? false;
+      if (!consumed) _closeTodoEditor();
+      return;
+    }
+    Navigator.pop(context);
+  }
 
   static const _chartPalette = <Color>[
     Color(0xFFF472B6),
@@ -138,7 +150,13 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     final d = _detail;
     final accent = _accent;
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
+    return PopScope(
+      canPop: !_todoEditorOpen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleEventBack();
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
@@ -153,7 +171,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
           scrolledUnderElevation: 0,
           leading: IconButton(
             icon: Icon(Icons.arrow_back_ios_new_rounded, color: ink, size: 20),
-            onPressed: () => Navigator.pop(context),
+            onPressed: _handleEventBack,
           ),
           title: Text(
             d?.name ?? 'Event',
@@ -168,85 +186,85 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                 ? Center(
                     child: Text(_error ?? 'Not found', style: GoogleFonts.inter(color: AppColors.danger)),
                   )
-                : Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: AppColors.cardOf(context),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: AppColors.borderOf(context)),
-                            boxShadow: AppColors.cardShadow(context),
-                          ),
-                          child: TabBar(
-                            controller: _tabs,
-                            dividerColor: Colors.transparent,
-                            dividerHeight: 0,
-                            indicatorSize: TabBarIndicatorSize.tab,
-                            indicator: BoxDecoration(
-                              color: accent.withValues(alpha: isDark ? 0.28 : 0.14),
-                              borderRadius: BorderRadius.circular(14),
+                : _todoEditorOpen
+                    ? Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          16,
+                          4,
+                          16,
+                          8 + MediaQuery.viewPaddingOf(context).bottom,
+                        ),
+                        child: _TodoEditorSection(
+                          key: _todoEditorKey,
+                          existing: _todoEditing,
+                          eventId: widget.eventId,
+                          accent: accent,
+                          svc: _svc,
+                          onBack: _closeTodoEditor,
+                          onSaved: _onTodoEditorSaved,
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppColors.cardOf(context),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: AppColors.borderOf(context)),
+                                boxShadow: AppColors.cardShadow(context),
+                              ),
+                              child: TabBar(
+                                controller: _tabs,
+                                dividerColor: Colors.transparent,
+                                dividerHeight: 0,
+                                indicatorSize: TabBarIndicatorSize.tab,
+                                indicator: BoxDecoration(
+                                  color: accent.withValues(alpha: isDark ? 0.28 : 0.14),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                indicatorColor: Colors.transparent,
+                                splashBorderRadius: BorderRadius.circular(14),
+                                labelColor: _deep,
+                                unselectedLabelColor: muted,
+                                labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 12),
+                                unselectedLabelStyle:
+                                    GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12),
+                                labelPadding: EdgeInsets.zero,
+                                tabs: const [
+                                  Tab(height: 40, text: 'Overview'),
+                                  Tab(height: 40, text: 'Charts'),
+                                  Tab(height: 40, text: 'Todos'),
+                                  Tab(height: 40, text: 'Guests'),
+                                ],
+                              ),
                             ),
-                            indicatorColor: Colors.transparent,
-                            splashBorderRadius: BorderRadius.circular(14),
-                            labelColor: _deep,
-                            unselectedLabelColor: muted,
-                            labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 12),
-                            unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12),
-                            labelPadding: EdgeInsets.zero,
-                            tabs: const [
-                              Tab(height: 40, text: 'Overview'),
-                              Tab(height: 40, text: 'Charts'),
-                              Tab(height: 40, text: 'Todos'),
-                              Tab(height: 40, text: 'Guests'),
-                            ],
                           ),
-                        ),
+                          if (_error != null)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                              child: Text(
+                                _error!,
+                                style: GoogleFonts.inter(color: AppColors.danger, fontSize: 12),
+                              ),
+                            ),
+                          Expanded(
+                            child: TabBarView(
+                              controller: _tabs,
+                              physics: const BouncingScrollPhysics(),
+                              children: [
+                                _scrollable(_overview(d, ink, muted, isDark, accent)),
+                                _scrollable(_charts(d, ink, muted, isDark, accent)),
+                                _scrollable(_todos(d, ink, muted, isDark, accent)),
+                                _scrollable(_guests(d, ink, muted, isDark, accent)),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      if (_error != null)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                          child: Text(_error!, style: GoogleFonts.inter(color: AppColors.danger, fontSize: 12)),
-                        ),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabs,
-                          physics: _todoEditorOpen
-                              ? const NeverScrollableScrollPhysics()
-                              : const BouncingScrollPhysics(),
-                          children: [
-                            _scrollable(_overview(d, ink, muted, isDark, accent)),
-                            _scrollable(_charts(d, ink, muted, isDark, accent)),
-                            // Editor fills the tab (not inside ListView) so Back stays tappable.
-                            _todoEditorOpen
-                                ? Padding(
-                                    padding: EdgeInsets.fromLTRB(
-                                      16,
-                                      4,
-                                      16,
-                                      8 + MediaQuery.viewPaddingOf(context).bottom,
-                                    ),
-                                    child: _TodoEditorSection(
-                                      key: ValueKey(
-                                        'todo-editor-${_todoEditing?.id ?? 'new'}',
-                                      ),
-                                      existing: _todoEditing,
-                                      eventId: widget.eventId,
-                                      accent: accent,
-                                      svc: _svc,
-                                      onBack: _closeTodoEditor,
-                                      onSaved: _onTodoEditorSaved,
-                                    ),
-                                  )
-                                : _scrollable(_todos(d, ink, muted, isDark, accent)),
-                            _scrollable(_guests(d, ink, muted, isDark, accent)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+      ),
       ),
     );
   }
@@ -3116,6 +3134,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
 
   void _openTodoEditor(EventItem? existing) {
     setState(() {
+      _todoEditorKey = GlobalKey<_TodoEditorSectionState>();
       _todoEditorOpen = true;
       _todoEditing = existing;
     });
@@ -4110,12 +4129,14 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
   late final TextEditingController _vendor;
   late final TextEditingController _payAmount;
   late final TextEditingController _payDetail;
+  late final TextEditingController _payTag;
+  late final PageController _pageCtrl;
 
   String? _titleError;
   String? _payError;
   bool _saving = false;
-  /// entry | payments
-  String _section = 'entry';
+  /// 0 = entry, 1 = payments
+  int _sectionIndex = 0;
   late DateTime _payDate;
   String _payVia = kEventPaidViaOptions.first;
   List<EventItemPayment> _payments = const [];
@@ -4124,6 +4145,37 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
   EventItemPayment? _editingPayment;
 
   bool get _isAdd => _item == null;
+  bool get _onEntry => _sectionIndex == 0;
+
+  /// Gesture / AppBar back while editor is open.
+  /// Returns true if this consumed the back (e.g. cancelled payment edit).
+  bool handleSystemBack() {
+    if (_editingPayment != null) {
+      setState(_clearPaymentFields);
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> _goToSection(int index, {bool clearEdit = false}) async {
+    if (_saving) return;
+    final next = index.clamp(0, 1);
+    if (clearEdit && _editingPayment != null) {
+      _clearPaymentFields();
+    }
+    if (_sectionIndex == next) {
+      setState(() {});
+      return;
+    }
+    setState(() => _sectionIndex = next);
+    if (_pageCtrl.hasClients) {
+      await _pageCtrl.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -4138,9 +4190,11 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
     _vendor = TextEditingController(text: e?.vendorName ?? '');
     _payAmount = TextEditingController();
     _payDetail = TextEditingController();
+    _payTag = TextEditingController();
     _payDate = localCalendarDate();
     _payments = List<EventItemPayment>.from(e?.payments ?? const []);
     _paidTotal = e?.tokenPaid ?? 0;
+    _pageCtrl = PageController(initialPage: 0);
   }
 
   static String _fmtAmt(double v) {
@@ -4156,12 +4210,15 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
     _vendor.dispose();
     _payAmount.dispose();
     _payDetail.dispose();
+    _payTag.dispose();
+    _pageCtrl.dispose();
     super.dispose();
   }
 
   void _clearPaymentFields() {
     _payAmount.clear();
     _payDetail.clear();
+    _payTag.clear();
     _payDate = localCalendarDate();
     _payVia = kEventPaidViaOptions.first;
     _editingPayment = null;
@@ -4170,14 +4227,15 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
 
   void _startEditPayment(EventItemPayment p) {
     setState(() {
-      _section = 'payments';
       _editingPayment = p;
       _payAmount.text = _fmtAmt(p.amount);
       _payDate = p.paymentDate.isNotEmpty ? parseLocalYmd(p.paymentDate) : localCalendarDate();
       _payVia = kEventPaidViaOptions.contains(p.paidVia) ? p.paidVia : 'UPI';
       _payDetail.text = (p.paidViaDetail ?? '').trim();
+      _payTag.text = p.tagLabel;
       _payError = null;
     });
+    _goToSection(1);
   }
 
   Future<void> _pickPayDate() async {
@@ -4249,10 +4307,8 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
     if (_saving) return;
     final title = _title.text.trim();
     if (title.isEmpty) {
-      setState(() {
-        _section = 'entry';
-        _titleError = 'Enter a title';
-      });
+      setState(() => _titleError = 'Enter a title');
+      await _goToSection(0);
       return;
     }
 
@@ -4261,10 +4317,8 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
     if (payRaw.isNotEmpty) {
       payAmt = double.tryParse(payRaw);
       if (payAmt == null || payAmt <= 0) {
-        setState(() {
-          _section = 'entry';
-          _payError = 'Enter a valid payment amount';
-        });
+        setState(() => _payError = 'Enter a valid payment amount');
+        await _goToSection(0);
         return;
       }
     }
@@ -4308,6 +4362,7 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
           paymentDate: localDateYmd(_payDate),
           paidVia: _payVia,
           paidViaDetail: _payVia == 'Cash' ? '' : _payDetail.text.trim(),
+          tag: _payTag.text.trim(),
         );
         saved = res.item;
         if (mounted) {
@@ -4320,14 +4375,22 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
           });
         }
       } else if (mounted) {
+        // Keep any payments already loaded for this item after a plain details save.
+        final keepPayments = saved.payments.isNotEmpty ? saved.payments : _payments;
         setState(() {
-          _item = saved.copyWith(payments: _payments, tokenPaid: _paidTotal);
+          _item = saved.copyWith(
+            payments: keepPayments,
+            tokenPaid: saved.tokenPaid > 0 ? saved.tokenPaid : _paidTotal,
+          );
+          _payments = keepPayments;
+          _paidTotal = _item!.tokenPaid;
           _saving = false;
         });
       }
 
       if (mounted) AppSnack.success(context, 'Saved');
       await widget.onSaved(_item ?? saved);
+      if (mounted) await _goToSection(1);
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -4359,6 +4422,7 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
         paymentDate: localDateYmd(_payDate),
         paidVia: _payVia,
         paidViaDetail: _payVia == 'Cash' ? '' : _payDetail.text.trim(),
+        tag: _payTag.text.trim(),
       );
       if (!mounted) return;
       setState(() {
@@ -4392,58 +4456,61 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Fixed header — outside scroll so Back always works
+        // Fixed header — entire row goes back to the todo list
         Material(
           color: card,
           elevation: 0,
           borderRadius: BorderRadius.circular(18),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(4, 6, 12, 6),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: accent.withValues(alpha: 0.2)),
-              boxShadow: AppColors.cardShadow(context),
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  tooltip: 'Back to todos',
-                  onPressed: _saving
-                      ? null
-                      : () {
-                          FocusManager.instance.primaryFocus?.unfocus();
-                          widget.onBack();
-                        },
-                  icon: Icon(Icons.arrow_back_rounded, color: accent),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _isAdd ? 'Add todo' : 'Edit todo',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: ink,
-                        ),
-                      ),
-                      Text(
-                        _isAdd
-                            ? 'Entry & payments'
-                            : (_item?.title ?? 'Update todo'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: muted,
-                        ),
-                      ),
-                    ],
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: _saving
+                ? null
+                : () {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    widget.onBack();
+                  },
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(4, 6, 12, 6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: accent.withValues(alpha: 0.2)),
+                boxShadow: AppColors.cardShadow(context),
+              ),
+              child: Row(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Icon(Icons.arrow_back_rounded, color: accent),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _isAdd ? 'Add todo' : 'Edit todo',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                            color: ink,
+                          ),
+                        ),
+                        Text(
+                          _isAdd
+                              ? 'Entry & payments'
+                              : (_item?.title ?? 'Update todo'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -4462,26 +4529,21 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
               Expanded(
                 child: _sectionTab(
                   label: 'Entry',
-                  selected: _section == 'entry',
+                  selected: _onEntry,
                   accent: accent,
                   ink: ink,
                   muted: muted,
-                  onTap: _saving
-                      ? null
-                      : () => setState(() {
-                            _section = 'entry';
-                            if (_editingPayment != null) _clearPaymentFields();
-                          }),
+                  onTap: _saving ? null : () => _goToSection(0, clearEdit: true),
                 ),
               ),
               Expanded(
                 child: _sectionTab(
                   label: 'Payments',
-                  selected: _section == 'payments',
+                  selected: !_onEntry,
                   accent: accent,
                   ink: ink,
                   muted: muted,
-                  onTap: _saving ? null : () => setState(() => _section = 'payments'),
+                  onTap: _saving ? null : () => _goToSection(1),
                 ),
               ),
             ],
@@ -4490,29 +4552,47 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
         const SizedBox(height: 10),
 
         Expanded(
-          child: ListView(
-            physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.only(
-              bottom: 8 + MediaQuery.viewInsetsOf(context).bottom,
-            ),
+          child: PageView(
+            controller: _pageCtrl,
+            physics: _saving
+                ? const NeverScrollableScrollPhysics()
+                : const BouncingScrollPhysics(),
+            onPageChanged: (i) {
+              setState(() {
+                _sectionIndex = i;
+                if (i == 0 && _editingPayment != null) {
+                  _clearPaymentFields();
+                }
+              });
+            },
             children: [
-              if (_section == 'entry')
-                ..._entryBody(
+              ListView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.only(
+                  bottom: 8 + MediaQuery.viewInsetsOf(context).bottom,
+                ),
+                children: _entryBody(
                   ink: ink,
                   muted: muted,
                   isDark: isDark,
                   accent: accent,
                   softFill: softFill,
                   balance: balance,
-                )
-              else
-                ..._paymentsBody(
+                ),
+              ),
+              ListView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.only(
+                  bottom: 8 + MediaQuery.viewInsetsOf(context).bottom,
+                ),
+                children: _paymentsBody(
                   ink: ink,
                   muted: muted,
                   isDark: isDark,
                   accent: accent,
                   softFill: softFill,
                 ),
+              ),
             ],
           ),
         ),
@@ -4650,12 +4730,7 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _titleRow('New payment (optional)', Icons.payments_rounded, ink, accent),
-            const SizedBox(height: 4),
-            Text(
-              'Fill amount to add a payment when you save.',
-              style: GoogleFonts.inter(fontSize: 11.5, color: muted),
-            ),
+            _titleRow('Payment info', Icons.payments_rounded, ink, accent),
             const SizedBox(height: 12),
             ..._paymentFields(
               ink: ink,
@@ -4857,6 +4932,17 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
           enabled: !_saving,
         ),
       ],
+      const SizedBox(height: 10),
+      _field(
+        label: 'Tag',
+        controller: _payTag,
+        hint: 'e.g. Token, Booking, Mid, Final',
+        ink: ink,
+        muted: muted,
+        accent: accent,
+        softFill: softFill,
+        enabled: !_saving,
+      ),
     ];
   }
 
@@ -4869,6 +4955,7 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
     bool isDark,
   ) {
     final selected = _editingPayment?.id == p.id;
+    final tag = p.tagLabel;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
@@ -4886,13 +4973,42 @@ class _TodoEditorSectionState extends State<_TodoEditorSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  formatMoney(p.amount),
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13.5,
-                    color: ink,
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        formatMoney(p.amount),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13.5,
+                          color: ink,
+                        ),
+                      ),
+                    ),
+                    if (tag.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: isDark ? 0.28 : 0.12),
+                          borderRadius: BorderRadius.circular(99),
+                          border: Border.all(color: accent.withValues(alpha: 0.28)),
+                        ),
+                        child: Text(
+                          tag,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: accent,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(
