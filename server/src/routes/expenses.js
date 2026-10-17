@@ -114,7 +114,7 @@ router.get('/summary/months', async (req, res) => {
   }
 });
 
-const PAID_VIA_OPTIONS = new Set(['UPI', 'Card', 'Cash', 'Bank transfer', 'Other']);
+const PAID_VIA_OPTIONS = new Set(['UPI', 'Card', 'Cash', 'Bank transfer', 'Wallet', 'Other']);
 
 function normalizePaidVia(raw) {
   const v = String(raw || 'Cash').trim();
@@ -127,6 +127,7 @@ function normalizePaidVia(raw) {
   if (lower === 'bank transfer' || lower === 'bank' || lower === 'neft' || lower === 'imps') {
     return 'Bank transfer';
   }
+  if (lower === 'wallet' || lower.includes('wallet')) return 'Wallet';
   if (lower === 'other') return 'Other';
   return 'Cash';
 }

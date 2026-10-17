@@ -163,6 +163,7 @@ const kPaidViaOptions = <String>[
   'Card',
   'Cash',
   'Bank transfer',
+  'Wallet',
   'Other',
 ];
 
@@ -174,6 +175,8 @@ String paidViaDetailLabel(String via) {
       return 'Card name';
     case 'Bank transfer':
       return 'Bank name';
+    case 'Wallet':
+      return 'Wallet name';
     case 'Other':
       return 'Payment note';
     default:
@@ -189,8 +192,10 @@ String paidViaDetailHint(String via) {
       return 'e.g. HDFC Millennia';
     case 'Bank transfer':
       return 'e.g. ICICI, Axis';
+    case 'Wallet':
+      return 'e.g. Paytm, Amazon Pay';
     case 'Other':
-      return 'e.g. Wallet, voucher';
+      return 'e.g. voucher, gift card';
     default:
       return '';
   }
