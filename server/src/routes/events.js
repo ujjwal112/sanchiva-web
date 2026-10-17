@@ -1091,6 +1091,68 @@ router.post('/items/:itemId/payments', async (req, res) => {
   }
 });
 
+router.put('/payments/:paymentId', async (req, res) => {
+  try {
+    const { rows: ownRows } = await query(
+      `SELECT p.id, p.item_id, ei.event_id, p.amount, p.payment_date, p.paid_via, p.paid_via_detail, p.notes
+       FROM event_item_payments p
+       JOIN event_items ei ON ei.id = p.item_id
+       JOIN events e ON e.id = ei.event_id
+       WHERE p.id = $1 AND e.user_id = $2`,
+      [req.params.paymentId, userId(req)]
+    );
+    if (!ownRows[0]) return res.status(404).json({ error: 'Not found' });
+    const cur = ownRows[0];
+    const itemId = cur.item_id;
+    const eventId = cur.event_id;
+
+    const amount =
+      req.body.amount !== undefined ? Number(req.body.amount) : Number(cur.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ error: 'amount must be greater than 0' });
+    }
+    const local = clientLocalDate(req);
+    const paymentDate = String(req.body.payment_date || cur.payment_date || local.ymd)
+      .slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(paymentDate)) {
+      return res.status(400).json({ error: 'payment_date required (YYYY-MM-DD)' });
+    }
+    const paidVia = normalizeEventPaidVia(
+      req.body.paid_via !== undefined ? req.body.paid_via : cur.paid_via
+    );
+    const detailRaw =
+      req.body.paid_via_detail !== undefined
+        ? String(req.body.paid_via_detail || '').trim()
+        : String(cur.paid_via_detail || '').trim();
+    const detail = paidVia === 'Cash' ? null : detailRaw || null;
+    const notes =
+      req.body.notes !== undefined
+        ? String(req.body.notes || '').trim() || null
+        : cur.notes || null;
+
+    const { rows } = await query(
+      `UPDATE event_item_payments SET
+         amount = $1,
+         payment_date = $2::date,
+         paid_via = $3,
+         paid_via_detail = $4,
+         notes = $5
+       WHERE id = $6
+       RETURNING *`,
+      [amount, paymentDate, paidVia, detail, notes, req.params.paymentId]
+    );
+    const item = await resyncItemPaidFromPayments(itemId);
+    await syncEventStatus(eventId);
+    res.json({
+      payment: rows[0],
+      item,
+      payments: await listPaymentsForItem(itemId),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.delete('/payments/:paymentId', async (req, res) => {
   try {
     const { rows: ownRows } = await query(

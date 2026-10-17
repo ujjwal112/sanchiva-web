@@ -149,6 +149,37 @@ class EventService {
     return (item: item.copyWith(payments: payments), payments: payments);
   }
 
+  Future<({EventItem item, List<EventItemPayment> payments})> updateItemPayment(
+    String paymentId, {
+    required double amount,
+    required String paymentDate,
+    required String paidVia,
+    String paidViaDetail = '',
+    String notes = '',
+  }) async {
+    final data = await _api.put('/events/payments/$paymentId', {
+      'amount': amount,
+      'payment_date': paymentDate,
+      'paid_via': paidVia,
+      'paid_via_detail': paidViaDetail.trim(),
+      if (notes.trim().isNotEmpty) 'notes': notes.trim(),
+    });
+    final itemRaw = data['item'];
+    final item = itemRaw is Map
+        ? EventItem.fromJson(Map<String, dynamic>.from(itemRaw))
+        : EventItem(id: '', eventId: '', title: '');
+    final payments = <EventItemPayment>[];
+    final rawPay = data['payments'];
+    if (rawPay is List) {
+      for (final e in rawPay) {
+        if (e is Map) {
+          payments.add(EventItemPayment.fromJson(Map<String, dynamic>.from(e)));
+        }
+      }
+    }
+    return (item: item.copyWith(payments: payments), payments: payments);
+  }
+
   Future<({EventItem? item, List<EventItemPayment> payments})> deleteItemPayment(
     String paymentId,
   ) async {

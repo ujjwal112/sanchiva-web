@@ -51,6 +51,10 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   int _todoPage = 0;
   static const _todoPageSize = 6;
 
+  /// In-page todo editor (replaces bottom-sheet form).
+  bool _todoEditorOpen = false;
+  EventItem? _todoEditing;
+
   static const _chartPalette = <Color>[
     Color(0xFFF472B6),
     Color(0xFF60A5FA),
@@ -209,11 +213,34 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                       Expanded(
                         child: TabBarView(
                           controller: _tabs,
-                          physics: const BouncingScrollPhysics(),
+                          physics: _todoEditorOpen
+                              ? const NeverScrollableScrollPhysics()
+                              : const BouncingScrollPhysics(),
                           children: [
                             _scrollable(_overview(d, ink, muted, isDark, accent)),
                             _scrollable(_charts(d, ink, muted, isDark, accent)),
-                            _scrollable(_todos(d, ink, muted, isDark, accent)),
+                            // Editor fills the tab (not inside ListView) so Back stays tappable.
+                            _todoEditorOpen
+                                ? Padding(
+                                    padding: EdgeInsets.fromLTRB(
+                                      16,
+                                      4,
+                                      16,
+                                      8 + MediaQuery.viewPaddingOf(context).bottom,
+                                    ),
+                                    child: _TodoEditorSection(
+                                      key: ValueKey(
+                                        'todo-editor-${_todoEditing?.id ?? 'new'}',
+                                      ),
+                                      existing: _todoEditing,
+                                      eventId: widget.eventId,
+                                      accent: accent,
+                                      svc: _svc,
+                                      onBack: _closeTodoEditor,
+                                      onSaved: _onTodoEditorSaved,
+                                    ),
+                                  )
+                                : _scrollable(_todos(d, ink, muted, isDark, accent)),
                             _scrollable(_guests(d, ink, muted, isDark, accent)),
                           ],
                         ),
@@ -2265,6 +2292,9 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     if (!ok) return;
     try {
       await _svc.deleteItem(item.id);
+      if (_todoEditing?.id == item.id) {
+        _closeTodoEditor();
+      }
       await _reload();
       if (mounted) AppSnack.danger(context, 'Todo deleted');
     } catch (e) {
@@ -2405,7 +2435,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                   child: SizedBox(
                     height: 46,
                     child: ElevatedButton.icon(
-                      onPressed: () => _editTodo(null),
+                      onPressed: () => _openTodoEditor(null),
                       icon: const Icon(Icons.add_rounded, size: 18, color: Colors.white),
                       label: Text(
                         'Add todo',
@@ -2479,7 +2509,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
               accent: accent,
               categoryIcon: _todoCategoryIcon((item.category ?? '').trim().isEmpty ? 'Uncategorized' : item.category!),
               onToggleDone: (v) => _toggleTodoDone(item, v),
-              onEdit: () => _editTodo(item),
+              onEdit: () => _openTodoEditor(item),
               onDelete: () => _deleteTodo(item),
             );
           },
@@ -3084,56 +3114,29 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     }
   }
 
-  Future<void> _editTodo(EventItem? existing) async {
-    final result = await showModalBottomSheet<_TodoEditResult>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: false,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
-      builder: (ctx) => _EditTodoSheet(
-        existing: existing,
-        accent: _accent,
-        eventId: widget.eventId,
-        svc: _svc,
-      ),
-    );
-    if (result == null || !mounted) return;
-    try {
-      if (existing == null) {
-        final created = await _svc.addItem(
-          widget.eventId,
-          title: result.title,
-          category: result.category,
-          plannedAmount: result.planned,
-          tokenPaid: 0,
-          vendorName: result.vendor,
-        );
-        for (final p in result.queuedPayments) {
-          if (p.amount <= 0) continue;
-          await _svc.addItemPayment(
-            created.id,
-            amount: p.amount,
-            paymentDate: p.paymentDate.isEmpty ? localDateYmd() : p.paymentDate,
-            paidVia: p.paidVia,
-            paidViaDetail: p.paidViaDetail ?? '',
-          );
-        }
-      } else {
-        // Paid total is driven by the payment list — do not overwrite token_paid.
-        await _svc.updateItem(
-          existing.id,
-          title: result.title,
-          category: result.category,
-          plannedAmount: result.planned,
-          vendorName: result.vendor,
-        );
-      }
-      await _reload();
-      if (mounted) AppSnack.success(context, 'Todo saved');
-    } catch (e) {
-      if (mounted) AppSnack.error(context, e.toString());
-    }
+  void _openTodoEditor(EventItem? existing) {
+    setState(() {
+      _todoEditorOpen = true;
+      _todoEditing = existing;
+    });
+  }
+
+  void _closeTodoEditor() {
+    setState(() {
+      _todoEditorOpen = false;
+      _todoEditing = null;
+    });
+  }
+
+  Future<void> _onTodoEditorSaved(EventItem item) async {
+    await _reload();
+    if (!mounted) return;
+    // Stay on the editor with refreshed item so more payments can be saved.
+    final refreshed = _detail?.items.where((i) => i.id == item.id).toList();
+    setState(() {
+      _todoEditorOpen = true;
+      _todoEditing = (refreshed != null && refreshed.isNotEmpty) ? refreshed.first : item;
+    });
   }
 
   Future<void> _editGuest(EventGuest? existing) async {
@@ -4078,61 +4081,55 @@ class _TodoGridCard extends StatelessWidget {
   }
 }
 
-class _TodoEditResult {
-  const _TodoEditResult({
-    required this.title,
-    required this.category,
-    required this.planned,
-    required this.vendor,
-    this.queuedPayments = const [],
-  });
-
-  final String title;
-  final String category;
-  final double planned;
-  final String vendor;
-  final List<EventItemPayment> queuedPayments;
-}
-
-class _EditTodoSheet extends StatefulWidget {
-  const _EditTodoSheet({
+class _TodoEditorSection extends StatefulWidget {
+  const _TodoEditorSection({
+    super.key,
     required this.existing,
-    required this.accent,
     required this.eventId,
+    required this.accent,
     required this.svc,
+    required this.onBack,
+    required this.onSaved,
   });
 
   final EventItem? existing;
-  final Color accent;
   final String eventId;
+  final Color accent;
   final EventService svc;
+  final VoidCallback onBack;
+  final Future<void> Function(EventItem item) onSaved;
 
   @override
-  State<_EditTodoSheet> createState() => _EditTodoSheetState();
+  State<_TodoEditorSection> createState() => _TodoEditorSectionState();
 }
 
-class _EditTodoSheetState extends State<_EditTodoSheet> {
+class _TodoEditorSectionState extends State<_TodoEditorSection> {
   late final TextEditingController _title;
   late final TextEditingController _category;
   late final TextEditingController _planned;
   late final TextEditingController _vendor;
   late final TextEditingController _payAmount;
   late final TextEditingController _payDetail;
+
   String? _titleError;
   String? _payError;
   bool _saving = false;
-  bool _addingPay = false;
+  /// entry | payments
+  String _section = 'entry';
   late DateTime _payDate;
   String _payVia = kEventPaidViaOptions.first;
   List<EventItemPayment> _payments = const [];
   double _paidTotal = 0;
+  EventItem? _item;
+  EventItemPayment? _editingPayment;
 
-  bool get _isAdd => widget.existing == null;
+  bool get _isAdd => _item == null;
 
   @override
   void initState() {
     super.initState();
-    final e = widget.existing;
+    _item = widget.existing;
+    final e = _item;
     _title = TextEditingController(text: e?.title ?? '');
     _category = TextEditingController(text: e?.category ?? '');
     _planned = TextEditingController(
@@ -4144,10 +4141,6 @@ class _EditTodoSheetState extends State<_EditTodoSheet> {
     _payDate = localCalendarDate();
     _payments = List<EventItemPayment>.from(e?.payments ?? const []);
     _paidTotal = e?.tokenPaid ?? 0;
-    if (e != null && _payments.isEmpty && (e.tokenPaid) > 0) {
-      // Detail reload will backfill; keep paid total visible meanwhile.
-      _paidTotal = e.tokenPaid;
-    }
   }
 
   static String _fmtAmt(double v) {
@@ -4164,6 +4157,27 @@ class _EditTodoSheetState extends State<_EditTodoSheet> {
     _payAmount.dispose();
     _payDetail.dispose();
     super.dispose();
+  }
+
+  void _clearPaymentFields() {
+    _payAmount.clear();
+    _payDetail.clear();
+    _payDate = localCalendarDate();
+    _payVia = kEventPaidViaOptions.first;
+    _editingPayment = null;
+    _payError = null;
+  }
+
+  void _startEditPayment(EventItemPayment p) {
+    setState(() {
+      _section = 'payments';
+      _editingPayment = p;
+      _payAmount.text = _fmtAmt(p.amount);
+      _payDate = p.paymentDate.isNotEmpty ? parseLocalYmd(p.paymentDate) : localCalendarDate();
+      _payVia = kEventPaidViaOptions.contains(p.paidVia) ? p.paidVia : 'UPI';
+      _payDetail.text = (p.paidViaDetail ?? '').trim();
+      _payError = null;
+    });
   }
 
   Future<void> _pickPayDate() async {
@@ -4184,6 +4198,7 @@ class _EditTodoSheetState extends State<_EditTodoSheet> {
       context: context,
       title: 'Mode of payment',
       options: kEventPaidViaOptions,
+      selected: _payVia,
       icon: Icons.payments_rounded,
       accent: widget.accent,
       labelOf: (k) => k,
@@ -4204,74 +4219,12 @@ class _EditTodoSheetState extends State<_EditTodoSheet> {
     }
   }
 
-  Future<void> _addPayment() async {
-    if (_addingPay || _saving) return;
-    final amount = double.tryParse(_payAmount.text.trim().replaceAll(',', ''));
-    if (amount == null || amount <= 0) {
-      setState(() => _payError = 'Enter a payment amount');
-      return;
-    }
-    setState(() {
-      _payError = null;
-      _addingPay = true;
-    });
-    FocusManager.instance.primaryFocus?.unfocus();
-
-    final existing = widget.existing;
-    if (existing == null) {
-      // New todo: queue locally; flushed after the todo is created.
-      final queued = EventItemPayment(
-        id: 'local-${DateTime.now().microsecondsSinceEpoch}',
-        itemId: '',
-        amount: amount,
-        paymentDate: localDateYmd(_payDate),
-        paidVia: _payVia,
-        paidViaDetail: _payVia == 'Cash' ? null : _payDetail.text.trim(),
-      );
-      setState(() {
-        _payments = [..._payments, queued];
-        _paidTotal = _payments.fold<double>(0, (s, e) => s + e.amount);
-        _payAmount.clear();
-        _addingPay = false;
-      });
-      return;
-    }
-
-    try {
-      final res = await widget.svc.addItemPayment(
-        existing.id,
-        amount: amount,
-        paymentDate: localDateYmd(_payDate),
-        paidVia: _payVia,
-        paidViaDetail: _payVia == 'Cash' ? '' : _payDetail.text.trim(),
-      );
-      if (!mounted) return;
-      setState(() {
-        _payments = res.payments;
-        _paidTotal = res.item.tokenPaid;
-        _payAmount.clear();
-        _addingPay = false;
-      });
-      AppSnack.success(context, 'Payment added');
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _addingPay = false);
-      AppSnack.error(context, e.toString());
-    }
-  }
-
   Future<void> _deletePayment(EventItemPayment p) async {
-    if (p.id.startsWith('local')) {
-      setState(() {
-        _payments = _payments.where((e) => e.id != p.id).toList();
-        _paidTotal = _payments.fold<double>(0, (s, e) => s + e.amount);
-      });
-      return;
-    }
+    if (_item == null) return;
     final ok = await showAppConfirmDialog(
       context,
       title: 'Delete payment?',
-      message: 'Remove ${formatMoney(p.amount)} (${p.modeLabel}) from this todo?',
+      message: 'Remove ${formatMoney(p.amount)} (${p.modeLabel})?',
       confirmLabel: 'Delete',
       tone: AppConfirmTone.danger,
     );
@@ -4282,37 +4235,146 @@ class _EditTodoSheetState extends State<_EditTodoSheet> {
       setState(() {
         _payments = res.payments;
         _paidTotal = res.item?.tokenPaid ?? _payments.fold<double>(0, (s, e) => s + e.amount);
+        if (res.item != null) _item = res.item!.copyWith(payments: res.payments);
+        if (_editingPayment?.id == p.id) _clearPaymentFields();
       });
       AppSnack.success(context, 'Payment removed');
+      await widget.onSaved(_item!);
     } catch (e) {
       if (mounted) AppSnack.error(context, e.toString());
     }
   }
 
-  void _submit() {
-    if (_saving || _addingPay) return;
+  Future<void> _saveEntry() async {
+    if (_saving) return;
     final title = _title.text.trim();
     if (title.isEmpty) {
-      setState(() => _titleError = 'Enter a title');
+      setState(() {
+        _section = 'entry';
+        _titleError = 'Enter a title';
+      });
       return;
     }
+
+    final payRaw = _payAmount.text.trim().replaceAll(',', '');
+    double? payAmt;
+    if (payRaw.isNotEmpty) {
+      payAmt = double.tryParse(payRaw);
+      if (payAmt == null || payAmt <= 0) {
+        setState(() {
+          _section = 'entry';
+          _payError = 'Enter a valid payment amount';
+        });
+        return;
+      }
+    }
+
     setState(() {
       _titleError = null;
+      _payError = null;
       _saving = true;
     });
     FocusManager.instance.primaryFocus?.unfocus();
 
-    final payload = _TodoEditResult(
-      title: title,
-      category: _category.text.trim(),
-      planned: double.tryParse(_planned.text.trim().replaceAll(',', '')) ?? 0,
-      vendor: _vendor.text.trim(),
-      queuedPayments: _isAdd ? List<EventItemPayment>.from(_payments) : const [],
-    );
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    final planned = double.tryParse(_planned.text.trim().replaceAll(',', '')) ?? 0;
+    final category = _category.text.trim();
+    final vendor = _vendor.text.trim();
+
+    try {
+      EventItem saved;
+      if (_item == null) {
+        saved = await widget.svc.addItem(
+          widget.eventId,
+          title: title,
+          category: category,
+          plannedAmount: planned,
+          tokenPaid: 0,
+          vendorName: vendor,
+        );
+      } else {
+        saved = await widget.svc.updateItem(
+          _item!.id,
+          title: title,
+          category: category,
+          plannedAmount: planned,
+          vendorName: vendor,
+        );
+      }
+
+      if (payAmt != null && payAmt > 0) {
+        final res = await widget.svc.addItemPayment(
+          saved.id,
+          amount: payAmt,
+          paymentDate: localDateYmd(_payDate),
+          paidVia: _payVia,
+          paidViaDetail: _payVia == 'Cash' ? '' : _payDetail.text.trim(),
+        );
+        saved = res.item;
+        if (mounted) {
+          setState(() {
+            _item = saved;
+            _payments = res.payments;
+            _paidTotal = saved.tokenPaid;
+            _clearPaymentFields();
+            _saving = false;
+          });
+        }
+      } else if (mounted) {
+        setState(() {
+          _item = saved.copyWith(payments: _payments, tokenPaid: _paidTotal);
+          _saving = false;
+        });
+      }
+
+      if (mounted) AppSnack.success(context, 'Saved');
+      await widget.onSaved(_item ?? saved);
+    } catch (e) {
       if (!mounted) return;
-      Navigator.of(context).pop(payload);
+      setState(() => _saving = false);
+      AppSnack.error(context, e.toString());
+    }
+  }
+
+  Future<void> _saveEditedPayment() async {
+    final editing = _editingPayment;
+    final item = _item;
+    if (editing == null || item == null || _saving) return;
+
+    final payAmt = double.tryParse(_payAmount.text.trim().replaceAll(',', ''));
+    if (payAmt == null || payAmt <= 0) {
+      setState(() => _payError = 'Enter a valid payment amount');
+      return;
+    }
+
+    setState(() {
+      _payError = null;
+      _saving = true;
     });
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    try {
+      final res = await widget.svc.updateItemPayment(
+        editing.id,
+        amount: payAmt,
+        paymentDate: localDateYmd(_payDate),
+        paidVia: _payVia,
+        paidViaDetail: _payVia == 'Cash' ? '' : _payDetail.text.trim(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _item = res.item;
+        _payments = res.payments;
+        _paidTotal = res.item.tokenPaid;
+        _clearPaymentFields();
+        _saving = false;
+      });
+      AppSnack.success(context, 'Payment updated');
+      await widget.onSaved(_item!);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      AppSnack.error(context, e.toString());
+    }
   }
 
   @override
@@ -4320,393 +4382,485 @@ class _EditTodoSheetState extends State<_EditTodoSheet> {
     final ink = AppColors.inkOf(context);
     final muted = AppColors.mutedOf(context);
     final isDark = AppColors.isDark(context);
-    final card = isDark ? AppColors.cardDark : Colors.white;
+    final card = AppColors.cardOf(context);
     final accent = widget.accent;
     final softFill =
         Color.lerp(accent, card, isDark ? 0.82 : 0.9) ?? AppColors.softPurpleOf(context);
     final planned = double.tryParse(_planned.text.trim().replaceAll(',', '')) ?? 0;
     final balance = planned - _paidTotal;
 
-    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
-    final maxH = (MediaQuery.sizeOf(context).height - keyboard) * 0.88;
-
-    return Padding(
-      padding: SafeInsets.floatingSheet(context),
-      child: Material(
-        color: card,
-        elevation: 12,
-        shadowColor: accent.withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(22),
-        clipBehavior: Clip.antiAlias,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxH.clamp(360.0, 720.0)),
-          child: Column(
-            children: [
-              const SizedBox(height: 10),
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: muted.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(99),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Fixed header — outside scroll so Back always works
+        Material(
+          color: card,
+          elevation: 0,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(4, 6, 12, 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: accent.withValues(alpha: 0.2)),
+              boxShadow: AppColors.cardShadow(context),
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Back to todos',
+                  onPressed: _saving
+                      ? null
+                      : () {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          widget.onBack();
+                        },
+                  icon: Icon(Icons.arrow_back_rounded, color: accent),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: softFill,
-                        borderRadius: BorderRadius.circular(13),
-                        border: Border.all(color: accent.withValues(alpha: 0.35)),
-                      ),
-                      alignment: Alignment.center,
-                      child: Icon(
-                        _isAdd ? Icons.add_task_rounded : Icons.edit_note_rounded,
-                        color: accent,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _isAdd ? 'Add todo' : 'Edit todo',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                              color: ink,
-                            ),
-                          ),
-                          Text(
-                            _isAdd
-                                ? 'Checklist + partial payments'
-                                : (widget.existing?.title ?? 'Update details'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: muted,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      onPressed: (_saving || _addingPay) ? null : () => Navigator.of(context).pop(),
-                      icon: Icon(Icons.close_rounded, color: muted, size: 22),
-                    ),
-                  ],
-                ),
-              ),
-              Divider(height: 1, color: AppColors.borderOf(context)),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _iconField(
-                        label: 'Title',
-                        icon: Icons.title_rounded,
-                        controller: _title,
-                        hint: 'What needs to be done?',
-                        ink: ink,
-                        muted: muted,
-                        accent: accent,
-                        softFill: softFill,
-                        errorText: _titleError,
-                        enabled: !_saving,
-                        onChanged: (_) {
-                          if (_titleError != null) setState(() => _titleError = null);
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      _iconField(
-                        label: 'Category',
-                        icon: Icons.category_rounded,
-                        controller: _category,
-                        hint: 'Venue, catering, decor…',
-                        ink: ink,
-                        muted: muted,
-                        accent: accent,
-                        softFill: softFill,
-                        enabled: !_saving,
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _iconField(
-                              label: 'Planned',
-                              icon: Icons.savings_rounded,
-                              controller: _planned,
-                              hint: '0',
-                              ink: ink,
-                              muted: muted,
-                              accent: accent,
-                              softFill: softFill,
-                              enabled: !_saving,
-                              number: true,
-                              onChanged: (_) => setState(() {}),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _readOnlyAmount(
-                              label: 'Paid (total)',
-                              value: formatMoney(_paidTotal),
-                              ink: ink,
-                              muted: muted,
-                              accent: const Color(0xFF34D399),
-                              softFill: softFill,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      _readOnlyAmount(
-                        label: 'Balance (plan − paid)',
-                        value: formatMoney(balance),
-                        ink: ink,
-                        muted: muted,
-                        accent: balance < 0 ? AppColors.danger : const Color(0xFFFBBF24),
-                        softFill: softFill,
-                      ),
-                      const SizedBox(height: 12),
-                      _iconField(
-                        label: 'Vendor',
-                        icon: Icons.storefront_rounded,
-                        controller: _vendor,
-                        hint: 'Optional vendor name',
-                        ink: ink,
-                        muted: muted,
-                        accent: accent,
-                        softFill: softFill,
-                        enabled: !_saving,
-                      ),
-                      const SizedBox(height: 18),
                       Text(
-                        'Add payment',
+                        _isAdd ? 'Add todo' : 'Edit todo',
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w800,
-                          fontSize: 13,
+                          fontSize: 16,
                           color: ink,
                         ),
                       ),
-                      const SizedBox(height: 4),
                       Text(
-                        'Token, mid, or final — each payment is listed below.',
-                        style: GoogleFonts.inter(fontSize: 11.5, color: muted),
-                      ),
-                      const SizedBox(height: 10),
-                      _iconField(
-                        label: 'Amount',
-                        icon: Icons.currency_rupee_rounded,
-                        controller: _payAmount,
-                        hint: '0',
-                        ink: ink,
-                        muted: muted,
-                        accent: accent,
-                        softFill: softFill,
-                        enabled: !_saving && !_addingPay,
-                        number: true,
-                        errorText: _payError,
-                        onChanged: (_) {
-                          if (_payError != null) setState(() => _payError = null);
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Date of payment',
+                        _isAdd
+                            ? 'Entry & payments'
+                            : (_item?.title ?? 'Update todo'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
                           fontSize: 12,
+                          fontWeight: FontWeight.w600,
                           color: muted,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Material(
-                        color: softFill,
-                        borderRadius: BorderRadius.circular(14),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: (_saving || _addingPay) ? null : _pickPayDate,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                            child: Row(
-                              children: [
-                                Icon(Icons.calendar_today_rounded, size: 18, color: accent),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    formatDate(_payDate),
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                      color: ink,
-                                    ),
-                                  ),
-                                ),
-                                Icon(Icons.expand_more_rounded, color: muted),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Mode of payment',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          color: muted,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Material(
-                        color: softFill,
-                        borderRadius: BorderRadius.circular(14),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: (_saving || _addingPay) ? null : _pickPayVia,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                            child: Row(
-                              children: [
-                                Icon(Icons.payments_rounded, size: 18, color: accent),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    _payVia,
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                      color: ink,
-                                    ),
-                                  ),
-                                ),
-                                Icon(Icons.expand_more_rounded, color: muted),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (_payVia != 'Cash') ...[
-                        const SizedBox(height: 12),
-                        _iconField(
-                          label: eventPaidViaDetailLabel(_payVia),
-                          icon: Icons.storefront_rounded,
-                          controller: _payDetail,
-                          hint: eventPaidViaDetailHint(_payVia),
-                          ink: ink,
-                          muted: muted,
-                          accent: accent,
-                          softFill: softFill,
-                          enabled: !_saving && !_addingPay,
-                        ),
-                      ],
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: 46,
-                        child: OutlinedButton.icon(
-                          onPressed: (_saving || _addingPay) ? null : _addPayment,
-                          icon: _addingPay
-                              ? SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: accent,
-                                  ),
-                                )
-                              : Icon(Icons.add_rounded, color: accent),
-                          label: Text(
-                            _isAdd ? 'Queue payment' : 'Add payment',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w800,
-                              color: accent,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: accent.withValues(alpha: 0.45)),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      Text(
-                        'Payments (${_payments.length})',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                          color: ink,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      if (_payments.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: softFill,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: accent.withValues(alpha: 0.18)),
-                          ),
-                          child: Text(
-                            'No payments yet. Add a token or booking amount above.',
-                            style: GoogleFonts.inter(fontSize: 12.5, color: muted),
-                          ),
-                        )
-                      else
-                        ..._payments.map((p) => _paymentRow(p, ink, muted, accent, softFill, isDark)),
-                      const SizedBox(height: 8),
                     ],
                   ),
                 ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Entry | Payments section switcher
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: softFill,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: accent.withValues(alpha: 0.18)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _sectionTab(
+                  label: 'Entry',
+                  selected: _section == 'entry',
+                  accent: accent,
+                  ink: ink,
+                  muted: muted,
+                  onTap: _saving
+                      ? null
+                      : () => setState(() {
+                            _section = 'entry';
+                            if (_editingPayment != null) _clearPaymentFields();
+                          }),
+                ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: SizedBox(
-                  height: 50,
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: (_saving || _addingPay) ? null : _submit,
-                    icon: Icon(
-                      _isAdd ? Icons.add_rounded : Icons.check_rounded,
-                      color: Colors.white,
-                    ),
-                    label: Text(
-                      _isAdd ? 'Add todo' : 'Save changes',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 15),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: accent,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: accent.withValues(alpha: 0.45),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
+              Expanded(
+                child: _sectionTab(
+                  label: 'Payments',
+                  selected: _section == 'payments',
+                  accent: accent,
+                  ink: ink,
+                  muted: muted,
+                  onTap: _saving ? null : () => setState(() => _section = 'payments'),
                 ),
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        Expanded(
+          child: ListView(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.only(
+              bottom: 8 + MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            children: [
+              if (_section == 'entry')
+                ..._entryBody(
+                  ink: ink,
+                  muted: muted,
+                  isDark: isDark,
+                  accent: accent,
+                  softFill: softFill,
+                  balance: balance,
+                )
+              else
+                ..._paymentsBody(
+                  ink: ink,
+                  muted: muted,
+                  isDark: isDark,
+                  accent: accent,
+                  softFill: softFill,
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _sectionTab({
+    required String label,
+    required bool selected,
+    required Color accent,
+    required Color ink,
+    required Color muted,
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: selected ? accent : Colors.transparent,
+      borderRadius: BorderRadius.circular(11),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(11),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+              color: selected ? Colors.white : muted,
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _paymentRow(
+  List<Widget> _entryBody({
+    required Color ink,
+    required Color muted,
+    required bool isDark,
+    required Color accent,
+    required Color softFill,
+    required double balance,
+  }) {
+    return [
+      _card(
+        accent: accent,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _titleRow('Todo details', Icons.checklist_rounded, ink, accent),
+            const SizedBox(height: 12),
+            _field(
+              label: 'Title',
+              controller: _title,
+              hint: 'What needs to be done?',
+              ink: ink,
+              muted: muted,
+              accent: accent,
+              softFill: softFill,
+              enabled: !_saving,
+              errorText: _titleError,
+              onChanged: (_) {
+                if (_titleError != null) setState(() => _titleError = null);
+              },
+            ),
+            const SizedBox(height: 10),
+            _field(
+              label: 'Category',
+              controller: _category,
+              hint: 'Venue, catering, decor…',
+              ink: ink,
+              muted: muted,
+              accent: accent,
+              softFill: softFill,
+              enabled: !_saving,
+            ),
+            const SizedBox(height: 10),
+            _field(
+              label: 'Planned amount',
+              controller: _planned,
+              hint: '0',
+              ink: ink,
+              muted: muted,
+              accent: accent,
+              softFill: softFill,
+              enabled: !_saving,
+              number: true,
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 10),
+            _field(
+              label: 'Vendor',
+              controller: _vendor,
+              hint: 'Optional',
+              ink: ink,
+              muted: muted,
+              accent: accent,
+              softFill: softFill,
+              enabled: !_saving,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _statChip(
+                    'Paid',
+                    formatMoney(_paidTotal),
+                    const Color(0xFF34D399),
+                    ink,
+                    muted,
+                    isDark,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _statChip(
+                    'Balance',
+                    formatMoney(balance),
+                    balance < 0 ? AppColors.danger : const Color(0xFFFBBF24),
+                    ink,
+                    muted,
+                    isDark,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 12),
+      _card(
+        accent: accent,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _titleRow('New payment (optional)', Icons.payments_rounded, ink, accent),
+            const SizedBox(height: 4),
+            Text(
+              'Fill amount to add a payment when you save.',
+              style: GoogleFonts.inter(fontSize: 11.5, color: muted),
+            ),
+            const SizedBox(height: 12),
+            ..._paymentFields(
+              ink: ink,
+              muted: muted,
+              accent: accent,
+              softFill: softFill,
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 14),
+      SizedBox(
+        height: 52,
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: _saving ? null : _saveEntry,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: accent,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: accent.withValues(alpha: 0.45),
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          child: _saving
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                )
+              : Text(
+                  'Save changes',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 15),
+                ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _paymentsBody({
+    required Color ink,
+    required Color muted,
+    required bool isDark,
+    required Color accent,
+    required Color softFill,
+  }) {
+    final editing = _editingPayment;
+    return [
+      if (editing != null) ...[
+        _card(
+          accent: accent,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _titleRow('Edit payment', Icons.edit_rounded, ink, accent),
+                  ),
+                  TextButton(
+                    onPressed: _saving
+                        ? null
+                        : () => setState(_clearPaymentFields),
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w700,
+                        color: muted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ..._paymentFields(
+                ink: ink,
+                muted: muted,
+                accent: accent,
+                softFill: softFill,
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _saving ? null : _saveEditedPayment,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: accent,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: accent.withValues(alpha: 0.45),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    'Update payment',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+      _card(
+        accent: accent,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _titleRow(
+              'Payment list (${_payments.length})',
+              Icons.receipt_long_rounded,
+              ink,
+              accent,
+            ),
+            const SizedBox(height: 10),
+            if (_item == null)
+              Text(
+                'Save the todo on Entry first, then payments will appear here.',
+                style: GoogleFonts.inter(fontSize: 12.5, color: muted),
+              )
+            else if (_payments.isEmpty)
+              Text(
+                'No payments yet. Add one from the Entry section.',
+                style: GoogleFonts.inter(fontSize: 12.5, color: muted),
+              )
+            else
+              ..._payments.map(
+                (p) => _paymentTile(p, ink, muted, accent, softFill, isDark),
+              ),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _paymentFields({
+    required Color ink,
+    required Color muted,
+    required Color accent,
+    required Color softFill,
+  }) {
+    return [
+      _field(
+        label: 'Amount',
+        controller: _payAmount,
+        hint: '0',
+        ink: ink,
+        muted: muted,
+        accent: accent,
+        softFill: softFill,
+        enabled: !_saving,
+        number: true,
+        errorText: _payError,
+        onChanged: (_) {
+          if (_payError != null) setState(() => _payError = null);
+        },
+      ),
+      const SizedBox(height: 10),
+      Text(
+        'Date',
+        style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 12, color: muted),
+      ),
+      const SizedBox(height: 6),
+      _pickerTile(
+        icon: Icons.calendar_today_rounded,
+        label: formatDate(_payDate),
+        ink: ink,
+        muted: muted,
+        accent: accent,
+        softFill: softFill,
+        onTap: _saving ? null : _pickPayDate,
+      ),
+      const SizedBox(height: 10),
+      Text(
+        'Mode',
+        style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 12, color: muted),
+      ),
+      const SizedBox(height: 6),
+      _pickerTile(
+        icon: Icons.payments_rounded,
+        label: _payVia,
+        ink: ink,
+        muted: muted,
+        accent: accent,
+        softFill: softFill,
+        onTap: _saving ? null : _pickPayVia,
+      ),
+      if (_payVia != 'Cash') ...[
+        const SizedBox(height: 10),
+        _field(
+          label: eventPaidViaDetailLabel(_payVia),
+          controller: _payDetail,
+          hint: eventPaidViaDetailHint(_payVia),
+          ink: ink,
+          muted: muted,
+          accent: accent,
+          softFill: softFill,
+          enabled: !_saving,
+        ),
+      ],
+    ];
+  }
+
+  Widget _paymentTile(
     EventItemPayment p,
     Color ink,
     Color muted,
@@ -4714,27 +4868,20 @@ class _EditTodoSheetState extends State<_EditTodoSheet> {
     Color softFill,
     bool isDark,
   ) {
+    final selected = _editingPayment?.id == p.id;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
       decoration: BoxDecoration(
         color: softFill,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accent.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: accent.withValues(alpha: selected ? 0.45 : 0.16),
+          width: selected ? 1.4 : 1,
+        ),
       ),
       child: Row(
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: const Color(0xFF34D399).withValues(alpha: isDark ? 0.22 : 0.14),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            alignment: Alignment.center,
-            child: const Icon(Icons.payments_rounded, size: 16, color: Color(0xFF34D399)),
-          ),
-          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -4752,45 +4899,58 @@ class _EditTodoSheetState extends State<_EditTodoSheet> {
                   '${p.paymentDate.isEmpty ? '-' : formatDate(p.paymentDate)} · ${p.modeLabel}',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(fontSize: 11.5, color: muted, fontWeight: FontWeight.w600),
+                  style: GoogleFonts.inter(
+                    fontSize: 11.5,
+                    color: muted,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
           ),
           IconButton(
+            tooltip: 'Edit',
             visualDensity: VisualDensity.compact,
-            onPressed: (_saving || _addingPay) ? null : () => _deletePayment(p),
-            icon: Icon(Icons.delete_rounded, size: 18, color: AppColors.danger.withValues(alpha: 0.9)),
-            tooltip: 'Delete payment',
+            onPressed: _saving ? null : () => _startEditPayment(p),
+            icon: Icon(Icons.edit_rounded, size: 18, color: accent),
+          ),
+          IconButton(
+            tooltip: 'Delete',
+            visualDensity: VisualDensity.compact,
+            onPressed: _saving ? null : () => _deletePayment(p),
+            icon: Icon(
+              Icons.delete_rounded,
+              size: 18,
+              color: AppColors.danger.withValues(alpha: 0.9),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _readOnlyAmount({
-    required String label,
-    required String value,
-    required Color ink,
-    required Color muted,
-    required Color accent,
-    required Color softFill,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _card({required Color accent, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      decoration: BoxDecoration(
+        color: AppColors.cardOf(context),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: accent.withValues(alpha: 0.18)),
+        boxShadow: AppColors.cardShadow(context),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _titleRow(String title, IconData icon, Color ink, Color accent) {
+    return Row(
       children: [
-        Text(label, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 12, color: muted)),
-        const SizedBox(height: 6),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          decoration: BoxDecoration(
-            color: softFill,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: accent.withValues(alpha: 0.22)),
-          ),
+        Icon(icon, size: 18, color: accent),
+        const SizedBox(width: 8),
+        Expanded(
           child: Text(
-            value,
+            title,
             style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 14, color: ink),
           ),
         ),
@@ -4798,9 +4958,77 @@ class _EditTodoSheetState extends State<_EditTodoSheet> {
     );
   }
 
-  Widget _iconField({
-    required String label,
+  Widget _statChip(
+    String label,
+    String value,
+    Color tint,
+    Color ink,
+    Color muted,
+    bool isDark,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: tint.withValues(alpha: isDark ? 0.18 : 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: tint.withValues(alpha: isDark ? 0.32 : 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: muted),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w800, color: ink),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pickerTile({
     required IconData icon,
+    required String label,
+    required Color ink,
+    required Color muted,
+    required Color accent,
+    required Color softFill,
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: softFill,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: accent),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: ink),
+                ),
+              ),
+              Icon(Icons.expand_more_rounded, color: muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _field({
+    required String label,
     required TextEditingController controller,
     required String hint,
     required Color ink,
@@ -4830,12 +5058,14 @@ class _EditTodoSheetState extends State<_EditTodoSheet> {
           style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: ink),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.inter(color: muted.withValues(alpha: 0.7), fontWeight: FontWeight.w500),
-            prefixIcon: Icon(icon, color: accent, size: 20),
+            hintStyle: GoogleFonts.inter(
+              color: muted.withValues(alpha: 0.7),
+              fontWeight: FontWeight.w500,
+            ),
             errorText: errorText,
             filled: true,
             fillColor: softFill,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide.none,
